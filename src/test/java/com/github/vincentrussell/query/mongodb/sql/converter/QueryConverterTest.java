@@ -1,6 +1,8 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import org.bson.Document;
+import org.joda.time.DateTime;
+import org.joda.time.Interval;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -10,6 +12,7 @@ import java.util.Date;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class QueryConverterTest {
 
@@ -87,6 +90,25 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("column",document(mongoFunction,new Date(1452556800000L))),mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
+    public void fuzzyDateTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where date(column,'natural') >= '5000 days ago'");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        Date resultDate = mongoDBQueryHolder.getQuery().get("column",Document.class).get("$gte",Date.class);
+        DateTime fiveThousandDaysAgo = new DateTime().minusDays(5000);
+        assertTrue(new Interval(fiveThousandDaysAgo.minusMinutes(5),fiveThousandDaysAgo.plusMinutes(5)).contains(new DateTime(resultDate)));
+    }
+
+    @Test
+    public void fuzzyDateUnparseable() throws ParseException {
+        exception.expect(ParseException.class);
+        exception.expectMessage(containsString("could not parse natural date"));
+        new QueryConverter("select * from my_table where date(column,'natural') <= 'quarter hour ago'");
     }
 
     @Test(expected = ParseException.class)

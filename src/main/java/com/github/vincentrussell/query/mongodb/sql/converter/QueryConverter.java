@@ -3,6 +3,8 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.joestelmach.natty.DateGroup;
+import com.joestelmach.natty.Parser;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
@@ -281,15 +283,30 @@ public class QueryConverter {
     }
 
     private static class DateFunction {
-        private final DateTimeFormatter dateTimeFormatter;
         private final Date date;
         private final String column;
         private String comparisonExpresion = "$eq";
 
         private DateFunction(String format,String value, String column) {
-            this.dateTimeFormatter = DateTimeFormat.forPattern(format).withZoneUTC();
-            this.date = this.dateTimeFormatter.parseDateTime(value).toDate();
+            if ("natural".equals(format)) {
+                this.date = parse(value);
+            } else {
+                DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(format).withZoneUTC();
+                this.date = dateTimeFormatter.parseDateTime(value).toDate();
+            }
             this.column = column;
+        }
+
+        private static Date parse(String text) {
+            Parser parser = new Parser();
+            List<DateGroup> groups = parser.parse(text);
+            for (DateGroup group : groups) {
+                List<Date> dates = group.getDates();
+                if (dates.size() > 0) {
+                    return dates.get(0);
+                }
+            }
+            throw new IllegalArgumentException("could not parse natural date: "+ text);
         }
 
         public Date getDate() {

@@ -28,6 +28,11 @@
         <version>2.9.4</version>
       </dependency>
       <dependency>
+        <groupId>com.joestelmach</groupId>
+        <artifactId>natty</artifactId>
+        <version>0.12</version>
+      </dependency>
+      <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>18.0</version>
@@ -58,6 +63,10 @@
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.joestelmach</groupId>
+      <artifactId>natty</artifactId>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
