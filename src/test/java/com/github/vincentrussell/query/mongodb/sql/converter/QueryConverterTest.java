@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.util.Arrays;
+import java.util.Date;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
@@ -30,7 +31,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("value",1L),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",1L),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -39,7 +40,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("value",new Document("$exists",true)),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$exists",true)),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -48,7 +49,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("column",new Document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("column",document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -57,26 +58,46 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("column",new Document("$regex","^[ae\"gaf]+$").append("$options","si")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("column",document("$regex","^[ae\"gaf]+$").append("$options","si")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void dateMatchGTE() throws ParseException {
+        dateTest(">=","$gte");
+    }
+
+    @Test
+    public void dateMatchGT() throws ParseException {
+        dateTest(">","$gt");
+    }
+
+    @Test
+    public void dateMatchLTE() throws ParseException {
+        dateTest("<=","$lte");
+    }
+
+    @Test
+    public void dateMatchLT() throws ParseException {
+        dateTest("<","$lt");
+    }
+
+    private void dateTest(String equation, String mongoFunction) throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where date(column,'YYY-MM-DD') "+equation+" '2016-12-12' ");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("column",document(mongoFunction,new Date(1452556800000L))),mongoDBQueryHolder.getQuery());
     }
 
     @Test(expected = ParseException.class)
     public void regexMatchInvalidRegex() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select * from my_table where regexMatch(column,'[') = true ");
-        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
-        assertEquals(0,mongoDBQueryHolder.getProjection().size());
-        assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("column",new Document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
+        new QueryConverter("select * from my_table where regexMatch(column,'[') = true ");
     }
 
 
     @Test(expected = ParseException.class)
     public void regexMatchMalformed() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$') = false ");
-        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
-        assertEquals(0,mongoDBQueryHolder.getProjection().size());
-        assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("column",new Document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
+        new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$') = false ");
     }
 
     @Test
@@ -85,7 +106,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("value",new Document("$exists",false)),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$exists",false)),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -94,35 +115,35 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("$not",new Document("value",1L)),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$not",document("value",1L)),mongoDBQueryHolder.getQuery());
     }
 
     @Test
     public void selectAllFromTableWithSimpleWhereClauseLongGT() throws ParseException {
-        comparisonQueriesTest("select * from my_table where value > 1","$gt");
+        comparisonQueriesTest(">","$gt");
     }
 
     @Test
     public void selectAllFromTableWithSimpleWhereClauseLongLT() throws ParseException {
-        comparisonQueriesTest("select * from my_table where value < 1","$lt");
+        comparisonQueriesTest("<","$lt");
     }
 
     @Test
     public void selectAllFromTableWithSimpleWhereClauseLongGTE() throws ParseException {
-        comparisonQueriesTest("select * from my_table where value >= 1","$gte");
+        comparisonQueriesTest(">=","$gte");
     }
 
     @Test
     public void selectAllFromTableWithSimpleWhereClauseLongLTE() throws ParseException {
-        comparisonQueriesTest("select * from my_table where value <= 1","$lte");
+        comparisonQueriesTest("<=","$lte");
     }
 
-    private void comparisonQueriesTest(String query, String comparisonFunction) throws ParseException {
-        QueryConverter queryConverter = new QueryConverter(query);
+    private void comparisonQueriesTest(String equation, String comparisonFunction) throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value "+equation+" 1");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("value",new Document(comparisonFunction,1L)),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document(comparisonFunction,1L)),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -131,7 +152,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("value","theValue"),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value","theValue"),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -140,8 +161,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("$and", Arrays.asList(new Document("value",1L), new Document("value2","theValue"))),
-                mongoDBQueryHolder.getQuery());
+        assertEquals(document("$and",document("value",1L),document("value2","theValue")),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -150,8 +170,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("$or", Arrays.asList(new Document("value",1L), new Document("value2","theValue"))),
-                mongoDBQueryHolder.getQuery());
+        assertEquals(document("$or",document("value",1L),document("value2","theValue")),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -160,11 +179,13 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("$or",
-                                        Arrays.asList(new Document("value",1L),
-                                        new Document("$and",
-                                                Arrays.asList(new Document("number",1L),
-                                                        new Document("value2","theValue"))))),
+        assertEquals(document("$or",
+                    document("value",1L),
+                    document("$and",
+                                document("number",1L),
+                                document("value2","theValue")
+                            )
+                ),
                 mongoDBQueryHolder.getQuery());
     }
 
@@ -174,8 +195,8 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(3,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("_id",0).append("column1",1).append("column2",1),mongoDBQueryHolder.getProjection());
-        assertEquals(new Document("value","theValue"),mongoDBQueryHolder.getQuery());
+        assertEquals(document("_id",0).append("column1",1).append("column2",1),mongoDBQueryHolder.getProjection());
+        assertEquals(document("value","theValue"),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -184,8 +205,8 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(3,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("_id",0).append("document.subdocument.column1",1).append("document.subdocument.column2",1),mongoDBQueryHolder.getProjection());
-        assertEquals(new Document("value","theValue"),mongoDBQueryHolder.getQuery());
+        assertEquals(document("_id",0).append("document.subdocument.column1",1).append("document.subdocument.column2",1),mongoDBQueryHolder.getProjection());
+        assertEquals(document("value","theValue"),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -223,8 +244,8 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(new Document("$in",Arrays.asList("theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
+        assertEquals(document("$in","theValue1","theValue2","theValue3"),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -233,8 +254,51 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(new Document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(new Document("$nin",Arrays.asList("theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
+        assertEquals(document("$nin","theValue1","theValue2","theValue3"),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void complicatedTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where (value=1 and  date(column,'YYY-MM-DD') <= '2016-12-12' AND nullField IS NULL ) OR ((number > 5 OR number = 1) AND value2=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(
+                document("$or",
+                        document("$and",
+                                   document("$and",
+                                           document("value",1L),
+                                           document("column",document("$lte",new Date(1452556800000L)))
+                                        ),
+                                    document("nullField",document("$exists",false))
+                                   ),
+                           document("$and",
+                                document("$or",
+                                            document("number", document("$gt", 5L)),
+                                            document("number",1L)
+                                        ),
+                                document("value2","theValue")
+                           )
+
+                        )
+                ,
+                mongoDBQueryHolder.getQuery());
+    }
+
+
+    private static Document document(String key, Object... values) {
+        Document document = new Document();
+        if (values.length > 1) {
+            document.put(key,Arrays.asList(values));
+        } else {
+            document.put(key,values[0]);
+        }
+        return document;
+    }
+
+    private static Document documentValuesArray(String key, Object... values) {
+        return new Document(key,Arrays.asList(values));
     }
 
 }

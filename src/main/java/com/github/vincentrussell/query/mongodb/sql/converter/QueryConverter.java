@@ -11,10 +11,13 @@ import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import org.bson.Document;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -111,13 +114,16 @@ public class QueryConverter {
 
     private Object parseExpression(Document query, Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
-            if (isRegexFunction(incomingExpression)!=null) {
-                RegexFunction regexFunction = isRegexFunction(incomingExpression);
+            RegexFunction regexFunction = isRegexFunction(incomingExpression);
+            DateFunction dateFunction = isDateFunction(incomingExpression);
+            if (regexFunction != null) {
                 Document regexDocument = new Document("$regex", regexFunction.getRegex());
-                if (regexFunction.getOptions()!=null) {
-                    regexDocument.append("$options",regexFunction.getOptions());
+                if (regexFunction.getOptions() != null) {
+                    regexDocument.append("$options", regexFunction.getOptions());
                 }
                 query.put(regexFunction.getColumn(), regexDocument);
+            } else if (dateFunction!=null) {
+                query.put(dateFunction.getColumn(),new Document(dateFunction.getComparisonExpresion(),dateFunction.getDate()));
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 query.put(parseExpression(new Document(),((EqualsTo)incomingExpression).getLeftExpression()).toString(),parseExpression(new Document(),((EqualsTo)incomingExpression).getRightExpression()));
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
@@ -160,16 +166,50 @@ public class QueryConverter {
         } else if (StringValue.class.isInstance(incomingExpression)) {
             return (((StringValue)incomingExpression).getValue());
         } else if (Column.class.isInstance(incomingExpression)) {
-            String columnName = incomingExpression.toString();
+            return getStringValue(incomingExpression);
+        } else {
+            throw new ParseException("can not parse: " + incomingExpression.toString());
+        }
+        return query;
+    }
+
+    private DateFunction isDateFunction(Expression incomingExpression) throws ParseException {
+        if (ComparisonOperator.class.isInstance(incomingExpression)) {
+            ComparisonOperator comparisonOperator = (ComparisonOperator)incomingExpression;
+            String rightExpression = getStringValue(comparisonOperator.getRightExpression());
+            if (Function.class.isInstance(comparisonOperator.getLeftExpression())) {
+                Function function = ((Function)comparisonOperator.getLeftExpression());
+                if ("date".equals(function.getName())
+                        && (function.getParameters().getExpressions().size()==2)
+                        && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
+                    String column = function.getParameters().getExpressions().get(0).toString();
+                    DateFunction dateFunction = null;
+                    try {
+                        dateFunction = new DateFunction(((StringValue)(function.getParameters().getExpressions().get(1))).getValue(),rightExpression,column);
+                        dateFunction.setComparisonFunction(comparisonOperator);
+                    } catch (IllegalArgumentException e) {
+                        throw new ParseException(e.getMessage());
+                    }
+                    return dateFunction;
+                }
+
+            }
+        }
+        return null;
+    }
+
+    private String getStringValue(Expression expression) {
+        if (StringValue.class.isInstance(expression)) {
+            return ((StringValue)expression).getValue();
+        } else if (Column.class.isInstance(expression)) {
+            String columnName = ((Column)expression).getColumnName();
             Matcher matcher = SURROUNDED_IN_QUOTES.matcher(columnName);
             if (matcher.matches()) {
                 return matcher.group(1);
             }
             return columnName;
-        } else {
-            throw new ParseException("can not parse: " + incomingExpression.toString());
         }
-        return query;
+        return expression.toString();
     }
 
     private RegexFunction isRegexFunction(Expression incomingExpression) throws ParseException {
@@ -237,6 +277,45 @@ public class QueryConverter {
 
         public String getOptions() {
             return options;
+        }
+    }
+
+    private static class DateFunction {
+        private final DateTimeFormatter dateTimeFormatter;
+        private final Date date;
+        private final String column;
+        private String comparisonExpresion = "$eq";
+
+        private DateFunction(String format,String value, String column) {
+            this.dateTimeFormatter = DateTimeFormat.forPattern(format).withZoneUTC();
+            this.date = this.dateTimeFormatter.parseDateTime(value).toDate();
+            this.column = column;
+        }
+
+        public Date getDate() {
+            return date;
+        }
+
+        public String getColumn() {
+            return column;
+        }
+
+        public void setComparisonFunction(ComparisonOperator comparisonFunction) throws ParseException {
+            if (GreaterThanEquals.class.isInstance(comparisonFunction)) {
+                this.comparisonExpresion = "$gte";
+            } else if (GreaterThan.class.isInstance(comparisonFunction)) {
+                this.comparisonExpresion = "$gt";
+            } else if (MinorThanEquals.class.isInstance(comparisonFunction)) {
+                this.comparisonExpresion = "$lte";
+            } else if (MinorThan.class.isInstance(comparisonFunction)) {
+                this.comparisonExpresion = "$lt";
+            } else {
+                throw new ParseException("could not parse string expression: " + comparisonFunction.getStringExpression());
+            }
+        }
+
+        public String getComparisonExpresion() {
+            return comparisonExpresion;
         }
     }
 }
