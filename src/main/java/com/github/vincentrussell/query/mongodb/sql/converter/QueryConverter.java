@@ -3,6 +3,10 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
 import net.sf.jsqlparser.expression.*;
@@ -12,12 +16,15 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
+import org.apache.commons.io.IOUtils;
 import org.bson.Document;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -253,6 +260,24 @@ public class QueryConverter {
         } else {
             return false;
         }
+    }
+
+    public void write(OutputStream outputStream) throws IOException {
+        MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
+        IOUtils.write("db."+mongoDBQueryHolder.getCollection()+".find(",outputStream);
+        IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()),outputStream);
+        if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() >0 ) {
+            IOUtils.write(" , ",outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson()),outputStream);
+        }
+        IOUtils.write(")",outputStream);
+    }
+
+    private String prettyPrintJson(String json) {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        JsonElement je = jp.parse(json);
+        return gson.toJson(je);
     }
 
     private static class RegexFunction {

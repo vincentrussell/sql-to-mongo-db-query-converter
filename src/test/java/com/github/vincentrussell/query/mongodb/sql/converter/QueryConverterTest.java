@@ -7,6 +7,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
 
@@ -222,6 +224,16 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void selectColumnsWithIdFromTableWithSimpleWhereClauseString() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select column1, column2, _id from my_table where value=\"theValue\"");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(3,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("_id",1).append("column1",1).append("column2",1),mongoDBQueryHolder.getProjection());
+        assertEquals(document("value","theValue"),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectNestedColumnsFromTableWithSimpleWhereClauseString() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select document.subdocument.column1, document.subdocument.column2 from my_table where value=\"theValue\"");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -306,6 +318,35 @@ public class QueryConverterTest {
                         )
                 ,
                 mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void writeWithoutProjections() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"value\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+
+    @Test
+    public void writeWithProjections() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1, column2 from my_table where value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"value\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "} , {\n" +
+                "  \"_id\": 0,\n" +
+                "  \"column1\": 1,\n" +
+                "  \"column2\": 1\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
     }
 
 
