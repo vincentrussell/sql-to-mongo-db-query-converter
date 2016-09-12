@@ -45,7 +45,7 @@ usage: com.github.vincentrussell.query.mongodb.sql.converter.Main [-s
 ## Interactive mode
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.0-SNAPSHOT-standalone.jar -i
+java -jar target/sql-to-mongo-db-query-converter-1.0-standalone.jar -i
 Enter input sql:
 
 
