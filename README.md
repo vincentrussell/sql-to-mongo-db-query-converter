@@ -128,3 +128,18 @@ db.my_table.find({
   }
 })
 ```
+
+###Distinct
+
+```
+select distinct column1 from my_table where value IS NULL
+
+
+******Result:*********
+
+db.my_table.distinct("column1" , {
+  "value": {
+    "$exists": false
+  }
+})
+```

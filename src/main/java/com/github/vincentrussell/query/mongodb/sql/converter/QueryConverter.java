@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -41,6 +42,7 @@ public class QueryConverter {
     private final Expression where;
     private final List<Join> joins;
     private final String table;
+    private final boolean isDistinct;
 
     /**
      * Create a QueryConverter with a string
@@ -61,6 +63,7 @@ public class QueryConverter {
         try {
             try {
                 final PlainSelect plainSelect = jSqlParser.PlainSelect();
+                isDistinct = (plainSelect.getDistinct() != null);
                 where = plainSelect.getWhere();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
@@ -102,6 +105,9 @@ public class QueryConverter {
                 return false;
             }
         }));
+        if ((selectItems.size() >1 || isSelectAll(selectItems)) && isDistinct) {
+            throw new ParseException("cannot run distinct one more than one column");
+        }
         if (selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems)) {
             throw new ParseException("illegal expression(s) found in select clause.  Only column names supported");
         }
@@ -121,8 +127,12 @@ public class QueryConverter {
 
     private MongoDBQueryHolder getMongoQueryInternal() throws ParseException {
         MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(table);
-        if (!isSelectAll(selectItems)) {
-            Document document = new Document();
+        Document document = new Document();
+        if (isDistinct) {
+            document.put(selectItems.get(0).toString(),1);
+            mongoDBQueryHolder.setProjection(document);
+            mongoDBQueryHolder.setDistinct(isDistinct);
+        } else if (!isSelectAll(selectItems)) {
             document.put("_id",0);
             for (SelectItem selectItem : selectItems) {
                 document.put(selectItem.toString(),1);
@@ -283,13 +293,21 @@ public class QueryConverter {
      */
     public void write(OutputStream outputStream) throws IOException {
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
-        IOUtils.write("db."+mongoDBQueryHolder.getCollection()+".find(",outputStream);
-        IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()),outputStream);
-        if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() >0 ) {
-            IOUtils.write(" , ",outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson()),outputStream);
+        if (!mongoDBQueryHolder.isDistinct()) {
+            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".find(", outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+            if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0) {
+                IOUtils.write(" , ", outputStream);
+                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson()), outputStream);
+            }
+            IOUtils.write(")", outputStream);
+        } else {
+            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".distinct(", outputStream);
+            IOUtils.write("\""+Iterables.get(mongoDBQueryHolder.getProjection().keySet(),0) + "\"", outputStream);
+            IOUtils.write(" , ", outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+            IOUtils.write(")", outputStream);
         }
-        IOUtils.write(")",outputStream);
     }
 
     private String prettyPrintJson(String json) {

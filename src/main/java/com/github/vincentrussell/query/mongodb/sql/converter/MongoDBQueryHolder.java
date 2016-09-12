@@ -8,6 +8,7 @@ public class MongoDBQueryHolder {
     private final String collection;
     private Document query = new Document();
     private Document projection = new Document();
+    private boolean distinct = false;
 
     /**
      * Pojo to hold the MongoDB data
@@ -42,6 +43,10 @@ public class MongoDBQueryHolder {
         return collection;
     }
 
+    public boolean isDistinct() {
+        return distinct;
+    }
+
     public void setQuery(Document query) {
         notNull(query, "query is null");
         this.query = query;
@@ -50,5 +55,9 @@ public class MongoDBQueryHolder {
     public void setProjection(Document projection) {
         notNull(projection, "projection is null");
         this.projection = projection;
+    }
+
+    public void setDistinct(boolean distinct) {
+        this.distinct = distinct;
     }
 }

@@ -39,6 +39,31 @@ public class QueryConverterTest {
         assertEquals(document("value",1L),mongoDBQueryHolder.getQuery());
     }
 
+
+    @Test
+    public void selectDistinctFieldFromTableWithSimpleWhereClauseLong() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select DISTINCT column1 from my_table where value=1");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(1, mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("column1",1),mongoDBQueryHolder.getProjection());
+        assertEquals("my_table", mongoDBQueryHolder.getCollection());
+        assertEquals(document("value", 1L), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectDistinctMultipleFields() throws ParseException {
+        exception.expect(ParseException.class);
+        exception.expectMessage(containsString("cannot run distinct one more than one column"));
+        new QueryConverter("select DISTINCT column1, column2 from my_table where value=1");
+    }
+
+    @Test
+    public void selectDistinctAll() throws ParseException {
+        exception.expect(ParseException.class);
+        exception.expectMessage(containsString("cannot run distinct one more than one column"));
+        new QueryConverter("select DISTINCT * from my_table where value=1");
+    }
+
     @Test
     public void selectAllFromTableWithSimpleWhereClauseLongNotNull() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value IS NOT NULL");
@@ -332,6 +357,17 @@ public class QueryConverterTest {
                 "})",byteArrayOutputStream.toString("UTF-8"));
     }
 
+    @Test
+    public void writeWithoutDistinctProjections() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select distinct column1 from my_table where value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.distinct(\"column1\" , {\n" +
+                "  \"value\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
 
     @Test
     public void writeWithProjections() throws ParseException, IOException {
