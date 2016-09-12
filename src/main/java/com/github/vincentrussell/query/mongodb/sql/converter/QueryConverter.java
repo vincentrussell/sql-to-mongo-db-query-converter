@@ -42,10 +42,20 @@ public class QueryConverter {
     private final List<Join> joins;
     private final String table;
 
+    /**
+     * Create a QueryConverter with a string
+     * @param sql
+     * @throws ParseException
+     */
     public QueryConverter(String sql) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes()));
     }
 
+    /**
+     * Create a QueryConverter with an InputStream
+     * @param inputStream
+     * @throws ParseException
+     */
     public QueryConverter(InputStream inputStream) throws ParseException {
         CCJSqlParser jSqlParser = new CCJSqlParser(inputStream);
         try {
@@ -101,6 +111,10 @@ public class QueryConverter {
         }
     }
 
+    /**
+     * get the object that you need to submit a query
+     * @return
+     */
     public MongoDBQueryHolder getMongoQuery() {
         return mongoDBQueryHolder;
     }
@@ -262,6 +276,11 @@ public class QueryConverter {
         }
     }
 
+    /**
+     * Build a mongo shell statement with the code to run the specified query.
+     * @param outputStream
+     * @throws IOException
+     */
     public void write(OutputStream outputStream) throws IOException {
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
         IOUtils.write("db."+mongoDBQueryHolder.getCollection()+".find(",outputStream);
