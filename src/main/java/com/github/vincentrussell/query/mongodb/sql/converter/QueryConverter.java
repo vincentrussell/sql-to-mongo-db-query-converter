@@ -1,6 +1,5 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -36,6 +35,7 @@ import java.util.regex.PatternSyntaxException;
 public class QueryConverter {
 
     private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
+    private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private final MongoDBQueryHolder mongoDBQueryHolder;
 
     private final List<SelectItem> selectItems;
@@ -156,7 +156,7 @@ public class QueryConverter {
                 }
                 query.put(regexFunction.getColumn(), regexDocument);
             } else if (dateFunction!=null) {
-                query.put(dateFunction.getColumn(),new Document(dateFunction.getComparisonExpresion(),dateFunction.getDate()));
+                query.put(dateFunction.getColumn(),new Document(dateFunction.getComparisonExpression(),dateFunction.getDate()));
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 query.put(parseExpression(new Document(),((EqualsTo)incomingExpression).getLeftExpression()).toString(),parseExpression(new Document(),((EqualsTo)incomingExpression).getRightExpression()));
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
@@ -170,6 +170,19 @@ public class QueryConverter {
             } else if (MinorThanEquals.class.isInstance(incomingExpression)) {
                 query.put(((MinorThanEquals)incomingExpression).getLeftExpression().toString(),new Document("$lte", parseExpression(new Document(),((MinorThanEquals)incomingExpression).getRightExpression())));
             }
+        } else if(LikeExpression.class.isInstance(incomingExpression)
+                && Column.class.isInstance(((LikeExpression)incomingExpression).getLeftExpression())
+                && StringValue.class.isInstance(((LikeExpression)incomingExpression).getRightExpression())) {
+            LikeExpression likeExpression = (LikeExpression)incomingExpression;
+            Column column = ((Column)likeExpression.getLeftExpression());
+            StringValue stringValue = ((StringValue)likeExpression.getRightExpression());
+            Document document = new Document("$regex", "^" + replaceRegexCharacters(stringValue.getValue()) + "$");
+            if (likeExpression.isNot()) {
+                document = new Document("$not",new Document(column.getColumnName(),document));
+            } else {
+                document = new Document(column.getColumnName(),document);
+            }
+            query.putAll(document);
         } else if(IsNullExpression.class.isInstance(incomingExpression)) {
             IsNullExpression isNullExpression = (IsNullExpression) incomingExpression;
             query.put(isNullExpression.getLeftExpression().toString(),new Document("$exists",isNullExpression.isNot()));
@@ -205,6 +218,28 @@ public class QueryConverter {
         }
         return query;
     }
+
+    private String replaceRegexCharacters(String value) {
+        String newValue = value.replaceAll("%",".*")
+                .replaceAll("_",".{1}");
+
+        Matcher m = LIKE_RANGE_REGEX.matcher(newValue);
+        StringBuffer sb = new StringBuffer();
+        while(m.find())  {
+            m.appendReplacement(sb, m.group(1) + "{1}");
+        }
+        m.appendTail(sb);
+
+        return sb.toString();
+    }
+
+    private static String replaceGroup(String source, int groupToReplace, int groupOccurrence, String replacement) {
+        Matcher m = LIKE_RANGE_REGEX.matcher(source);
+        for (int i = 0; i < groupOccurrence; i++)
+            if (!m.find()) return source; // pattern not met, may also throw an exception here
+        return new StringBuilder(source).replace(m.start(groupToReplace), m.end(groupToReplace), replacement).toString();
+    }
+
 
     private DateFunction isDateFunction(Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
@@ -347,7 +382,7 @@ public class QueryConverter {
     private static class DateFunction {
         private final Date date;
         private final String column;
-        private String comparisonExpresion = "$eq";
+        private String comparisonExpression = "$eq";
 
         private DateFunction(String format,String value, String column) {
             if ("natural".equals(format)) {
@@ -381,20 +416,20 @@ public class QueryConverter {
 
         public void setComparisonFunction(ComparisonOperator comparisonFunction) throws ParseException {
             if (GreaterThanEquals.class.isInstance(comparisonFunction)) {
-                this.comparisonExpresion = "$gte";
+                this.comparisonExpression = "$gte";
             } else if (GreaterThan.class.isInstance(comparisonFunction)) {
-                this.comparisonExpresion = "$gt";
+                this.comparisonExpression = "$gt";
             } else if (MinorThanEquals.class.isInstance(comparisonFunction)) {
-                this.comparisonExpresion = "$lte";
+                this.comparisonExpression = "$lte";
             } else if (MinorThan.class.isInstance(comparisonFunction)) {
-                this.comparisonExpresion = "$lt";
+                this.comparisonExpression = "$lt";
             } else {
                 throw new ParseException("could not parse string expression: " + comparisonFunction.getStringExpression());
             }
         }
 
-        public String getComparisonExpresion() {
-            return comparisonExpresion;
+        public String getComparisonExpression() {
+            return comparisonExpression;
         }
     }
 }

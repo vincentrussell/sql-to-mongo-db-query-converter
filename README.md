@@ -143,3 +143,18 @@ db.my_table.distinct("column1" , {
   }
 })
 ```
+
+###Like Queries
+
+```
+select * from my_table where value LIKE 'start%'
+
+
+******Result:*********
+
+db.my_table.find({
+  "value": {
+    "$regex": "^start.*$"
+  }
+})
+```

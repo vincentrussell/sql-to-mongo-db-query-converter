@@ -119,6 +119,47 @@ public class QueryConverterTest {
         assertEquals(document("column",document(mongoFunction,new Date(1452556800000L))),mongoDBQueryHolder.getQuery());
     }
 
+    @Test
+    public void selectAllFromTableWithLikeQuery() throws ParseException {
+        likeTest("start%","^start.*$");
+    }
+
+    @Test
+    public void selectAllFromTableWithLikeQueryMultipleWildcards() throws ParseException {
+        likeTest("%start%","^.*start.*$");
+    }
+
+    @Test
+    public void selectAllFromTableWithLikeQueryOneChar() throws ParseException {
+        likeTest("start_","^start.{1}$");
+    }
+
+    @Test
+    public void selectAllFromTableWithLikeQueryOneCharMultipleWildcards() throws ParseException {
+        likeTest("_st_rt%","^.{1}st.{1}rt.*$");
+    }
+
+    @Test
+    public void selectAllFromTableWithLikeQueryRange() throws ParseException {
+        likeTest("st[dz]rt[a-d]time%","^st[dz]{1}rt[a-d]{1}time.*$");
+    }
+
+    private void likeTest(String like, String regex) throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value LIKE '"+like+"'");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value",document("$regex",regex)),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectAllFromTableWithNotLikeQuery() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value NOT LIKE 'start%'");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$not",document("value",document("$regex","^start.*$"))),mongoDBQueryHolder.getQuery());
+    }
 
     @Test
     public void fuzzyDateTest() throws ParseException {
