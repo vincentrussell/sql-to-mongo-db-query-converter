@@ -375,21 +375,24 @@ public class QueryConverter {
     }
 
     /**
-     * run the query
-     * @param <T>
+     * @param mongoDatabase
+     * @param <T> When query does a find will return QueryResultIterator<Document>
+     *           When query does a count will return a Long
+     *           When query does a distinct will return QueryResultIterator<String>
      * @return
      */
-    public <T> QueryResultIterator<T> run(MongoDatabase mongoDatabase) {
+    @SuppressWarnings("unchecked")
+    public <T> T run(MongoDatabase mongoDatabase) {
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
 
         MongoCollection mongoCollection = mongoDatabase.getCollection(mongoDBQueryHolder.getCollection());
 
         if (mongoDBQueryHolder.isDistinct()) {
-            return new QueryResultIterator<T>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
+            return (T)new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
         } else if (mongoDBQueryHolder.isCountAll()) {
-            return new QueryResultIterator<T>(mongoCollection.count(mongoDBQueryHolder.getQuery()));
+            return (T)Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
         } else {
-            return new QueryResultIterator<T>(mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection()));
+            return (T)new QueryResultIterator<>(mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection()));
         }
     }
 

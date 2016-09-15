@@ -28,10 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 
@@ -157,16 +154,18 @@ public class QueryConverterIT {
 
     @Test
     public void distinctQuery() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select distinct address.building from "+COLLECTION+" where address.street LIKE '%Street'");
+        QueryConverter queryConverter = new QueryConverter("select distinct borough from "+COLLECTION+" where address.street LIKE '%Street'");
         QueryResultIterator<String> distinctIterable = queryConverter.run(mongoDatabase);
-        assertEquals(1957, Iterators.size(distinctIterable));
+        List<String> results = Lists.newArrayList(distinctIterable);
+        assertEquals(5, results.size());
+        assertEquals(Arrays.asList("Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island"),results);
     }
 
     @Test
     public void countQuery() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'");
-        QueryResultIterator<Long> findIterable = queryConverter.run(mongoDatabase);
-        assertEquals(Long.valueOf(7499), Iterators.get(findIterable,0));
+        long count  = queryConverter.run(mongoDatabase);
+        assertEquals(7499, count);
     }
 
     private static int getRandomFreePort() {
