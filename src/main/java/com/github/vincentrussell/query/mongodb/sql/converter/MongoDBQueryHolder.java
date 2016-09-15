@@ -9,6 +9,7 @@ public class MongoDBQueryHolder {
     private Document query = new Document();
     private Document projection = new Document();
     private boolean distinct = false;
+    private boolean countAll = false;
 
     /**
      * Pojo to hold the MongoDB data
@@ -59,5 +60,13 @@ public class MongoDBQueryHolder {
 
     public void setDistinct(boolean distinct) {
         this.distinct = distinct;
+    }
+
+    public boolean isCountAll() {
+        return countAll;
+    }
+
+    public void setCountAll(boolean countAll) {
+        this.countAll = countAll;
     }
 }

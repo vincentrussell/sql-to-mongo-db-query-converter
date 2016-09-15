@@ -9,6 +9,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
@@ -43,6 +45,7 @@ public class QueryConverter {
     private final List<Join> joins;
     private final String table;
     private final boolean isDistinct;
+    private final boolean isCountAll;
 
     /**
      * Create a QueryConverter with a string
@@ -64,6 +67,7 @@ public class QueryConverter {
             try {
                 final PlainSelect plainSelect = jSqlParser.PlainSelect();
                 isDistinct = (plainSelect.getDistinct() != null);
+                isCountAll = isCountAll(plainSelect.getSelectItems());
                 where = plainSelect.getWhere();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
@@ -108,7 +112,7 @@ public class QueryConverter {
         if ((selectItems.size() >1 || isSelectAll(selectItems)) && isDistinct) {
             throw new ParseException("cannot run distinct one more than one column");
         }
-        if (selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems)) {
+        if (selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems) && !isCountAll(selectItems)) {
             throw new ParseException("illegal expression(s) found in select clause.  Only column names supported");
         }
 
@@ -129,9 +133,11 @@ public class QueryConverter {
         MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(table);
         Document document = new Document();
         if (isDistinct) {
-            document.put(selectItems.get(0).toString(),1);
+            document.put(selectItems.get(0).toString(), 1);
             mongoDBQueryHolder.setProjection(document);
             mongoDBQueryHolder.setDistinct(isDistinct);
+        } else if (isCountAll) {
+            mongoDBQueryHolder.setCountAll(isCountAll);
         } else if (!isSelectAll(selectItems)) {
             document.put("_id",0);
             for (SelectItem selectItem : selectItems) {
@@ -144,6 +150,7 @@ public class QueryConverter {
         }
         return mongoDBQueryHolder;
     }
+
 
     private Object parseExpression(Document query, Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
@@ -178,9 +185,9 @@ public class QueryConverter {
             StringValue stringValue = ((StringValue)likeExpression.getRightExpression());
             Document document = new Document("$regex", "^" + replaceRegexCharacters(stringValue.getValue()) + "$");
             if (likeExpression.isNot()) {
-                document = new Document("$not",new Document(column.getColumnName(),document));
+                document = new Document("$not",new Document(getStringValue(column),document));
             } else {
-                document = new Document(column.getColumnName(),document);
+                document = new Document(getStringValue(column),document);
             }
             query.putAll(document);
         } else if(IsNullExpression.class.isInstance(incomingExpression)) {
@@ -250,7 +257,7 @@ public class QueryConverter {
                 if ("date".equals(function.getName())
                         && (function.getParameters().getExpressions().size()==2)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
-                    String column = function.getParameters().getExpressions().get(0).toString();
+                    String column = getStringValue(function.getParameters().getExpressions().get(0));
                     DateFunction dateFunction = null;
                     try {
                         dateFunction = new DateFunction(((StringValue)(function.getParameters().getExpressions().get(1))).getValue(),rightExpression,column);
@@ -270,7 +277,7 @@ public class QueryConverter {
         if (StringValue.class.isInstance(expression)) {
             return ((StringValue)expression).getValue();
         } else if (Column.class.isInstance(expression)) {
-            String columnName = ((Column)expression).getColumnName();
+            String columnName = ((Column)expression).toString();
             Matcher matcher = SURROUNDED_IN_QUOTES.matcher(columnName);
             if (matcher.matches()) {
                 return matcher.group(1);
@@ -291,7 +298,7 @@ public class QueryConverter {
                             || function.getParameters().getExpressions().size()==3)
                         && "true".equals(rightExpression)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
-                    String column = function.getParameters().getExpressions().get(0).toString();
+                    String column = getStringValue(function.getParameters().getExpressions().get(0));
                     String regex = ((StringValue)(function.getParameters().getExpressions().get(1))).getValue();
                     try {
                         Pattern.compile(regex);
@@ -321,6 +328,22 @@ public class QueryConverter {
         }
     }
 
+    private boolean isCountAll(List<SelectItem> selectItems) {
+        if (selectItems !=null && selectItems.size()==1) {
+            SelectItem firstItem = selectItems.get(0);
+            if ((SelectExpressionItem.class.isInstance(firstItem))
+                    && Function.class.isInstance(((SelectExpressionItem)firstItem).getExpression())) {
+                Function function = (Function) ((SelectExpressionItem) firstItem).getExpression();
+
+                if ("count(*)".equals(function.toString())) {
+                    return true;
+                }
+
+            }
+        }
+        return false;
+    }
+
     /**
      * Build a mongo shell statement with the code to run the specified query.
      * @param outputStream
@@ -328,22 +351,48 @@ public class QueryConverter {
      */
     public void write(OutputStream outputStream) throws IOException {
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
-        if (!mongoDBQueryHolder.isDistinct()) {
+        if (mongoDBQueryHolder.isDistinct()) {
+            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".distinct(", outputStream);
+            IOUtils.write("\""+getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
+            IOUtils.write(" , ", outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+        } else if (isCountAll) {
+            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+        } else {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".find(", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
             if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0) {
                 IOUtils.write(" , ", outputStream);
                 IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson()), outputStream);
             }
-            IOUtils.write(")", outputStream);
+        }
+        IOUtils.write(")", outputStream);
+    }
+
+    private String getDistinctFieldName(MongoDBQueryHolder mongoDBQueryHolder) {
+        return Iterables.get(mongoDBQueryHolder.getProjection().keySet(),0);
+    }
+
+    /**
+     * run the query
+     * @param <T>
+     * @return
+     */
+    public <T> QueryResultIterator<T> run(MongoDatabase mongoDatabase) {
+        MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
+
+        MongoCollection mongoCollection = mongoDatabase.getCollection(mongoDBQueryHolder.getCollection());
+
+        if (mongoDBQueryHolder.isDistinct()) {
+            return new QueryResultIterator<T>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
+        } else if (mongoDBQueryHolder.isCountAll()) {
+            return new QueryResultIterator<T>(mongoCollection.count(mongoDBQueryHolder.getQuery()));
         } else {
-            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".distinct(", outputStream);
-            IOUtils.write("\""+Iterables.get(mongoDBQueryHolder.getProjection().keySet(),0) + "\"", outputStream);
-            IOUtils.write(" , ", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
-            IOUtils.write(")", outputStream);
+            return new QueryResultIterator<T>(mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection()));
         }
     }
+
 
     private String prettyPrintJson(String json) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();

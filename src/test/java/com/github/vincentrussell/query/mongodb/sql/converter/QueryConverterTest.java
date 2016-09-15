@@ -145,11 +145,21 @@ public class QueryConverterTest {
     }
 
     private void likeTest(String like, String regex) throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select * from my_table where value LIKE '"+like+"'");
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where subDocument.value LIKE '"+like+"'");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("value",document("$regex",regex)),mongoDBQueryHolder.getQuery());
+        assertEquals(document("subDocument.value",document("$regex",regex)),mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
+    public void countAllFromTableWithNotLikeQuery() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select count(*) from my_table where value NOT LIKE 'start%'");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$not",document("value",document("$regex","^start.*$"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -404,6 +414,18 @@ public class QueryConverterTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.distinct(\"column1\" , {\n" +
+                "  \"value\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void writeCount() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select count(*) from my_table where value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.count({\n" +
                 "  \"value\": {\n" +
                 "    \"$exists\": false\n" +
                 "  }\n" +
