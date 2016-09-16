@@ -1,6 +1,9 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.mongodb.MongoClient;
@@ -15,6 +18,7 @@ import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version;
+import org.apache.commons.io.IOUtils;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
@@ -22,10 +26,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.ServerSocket;
 import java.util.*;
 
@@ -176,6 +177,71 @@ public class QueryConverterIT {
     }
 
     @Test
+    public void countGroupByQueryMultipleColumns() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, cuisine, count(*) from "+COLLECTION+" GROUP BY borough, cuisine");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(365, results.size());
+
+        List<Document> filteredResults = Lists.newArrayList(Collections2.filter(results, new Predicate<Document>() {
+            @Override
+            public boolean apply(Document document) {
+                return document.getInteger("count") > 500;
+            }
+        }));
+
+        assertEquals("[{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Manhattan\",\n" +
+                "\t\t\"cuisine\" : \"Chinese\"\n" +
+                "\t},\n" +
+                "\t\"count\" : 510\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Queens\",\n" +
+                "\t\t\"cuisine\" : \"American \"\n" +
+                "\t},\n" +
+                "\t\"count\" : 1040\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Manhattan\",\n" +
+                "\t\t\"cuisine\" : \"Café/Coffee/Tea\"\n" +
+                "\t},\n" +
+                "\t\"count\" : 680\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Manhattan\",\n" +
+                "\t\t\"cuisine\" : \"Italian\"\n" +
+                "\t},\n" +
+                "\t\"count\" : 621\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Brooklyn\",\n" +
+                "\t\t\"cuisine\" : \"American \"\n" +
+                "\t},\n" +
+                "\t\"count\" : 1273\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Manhattan\",\n" +
+                "\t\t\"cuisine\" : \"American \"\n" +
+                "\t},\n" +
+                "\t\"count\" : 3205\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Queens\",\n" +
+                "\t\t\"cuisine\" : \"Chinese\"\n" +
+                "\t},\n" +
+                "\t\"count\" : 728\n" +
+                "},{\n" +
+                "\t\"_id\" : {\n" +
+                "\t\t\"borough\" : \"Brooklyn\",\n" +
+                "\t\t\"cuisine\" : \"Chinese\"\n" +
+                "\t},\n" +
+                "\t\"count\" : 763\n" +
+                "}]",toJson(filteredResults));
+    }
+
+    @Test
     public void countQuery() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'");
         long count  = queryConverter.run(mongoDatabase);
@@ -206,5 +272,18 @@ public class QueryConverterIT {
         }
 
         throw new RuntimeException("Unable to find port");
+    }
+
+    private static String toJson(List<Document> documents) throws IOException {
+        StringWriter stringWriter = new StringWriter();
+        IOUtils.write("[", stringWriter);
+        IOUtils.write(Joiner.on(",").join(Lists.transform(documents, new com.google.common.base.Function<Document, String>() {
+            @Override
+            public String apply(Document document) {
+                return document.toJson(jsonWriterSettings);
+            }
+        })),stringWriter);
+        IOUtils.write("]", stringWriter);
+        return stringWriter.toString();
     }
 }

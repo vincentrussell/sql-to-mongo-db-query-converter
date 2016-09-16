@@ -1,6 +1,7 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.google.common.base.*;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -66,12 +67,14 @@ public class QueryConverter {
         try {
             try {
                 final PlainSelect plainSelect = jSqlParser.PlainSelect();
+                isTrue(plainSelect!=null,"could not parse SELECT statement from query");
                 isDistinct = (plainSelect.getDistinct() != null);
                 isCountAll = isCountAll(plainSelect.getSelectItems());
                 where = plainSelect.getWhere();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
                 groupBys = getGroupByColumnReferences(plainSelect);
+                isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
                 table = plainSelect.getFromItem().toString();
                 mongoDBQueryHolder = getMongoQueryInternal();
             } catch (NullPointerException e) {
@@ -102,6 +105,9 @@ public class QueryConverter {
             if (incomingException.getMessage().contains("Was expecting:\n" +
                     "    \"SELECT\"")) {
                 return new ParseException("Could not parse query.  Only select statements are supported.");
+            }
+            if (incomingException.getMessage()!=null) {
+                return new ParseException(incomingException.getMessage());
             }
             return new ParseException("Count not parse query.");
         }
@@ -167,7 +173,7 @@ public class QueryConverter {
             return document;
         }
 
-        List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
+        final List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
             @Override
             public boolean apply(SelectItem selectItem) {
                 try {
@@ -181,19 +187,32 @@ public class QueryConverter {
                 return false;
             }
         }));
-
-        for (SelectItem selectItem : selectItems) {
-            if (SelectExpressionItem.class.isInstance(selectItem)
-                    && Column.class.isInstance(((SelectExpressionItem)selectItem).getExpression())) {
-                Column column = (Column) ((SelectExpressionItem)selectItem).getExpression();
-                String columnName = getStringValue(column);
-                document.append(selectItems.size() - functionItems.size() == 1 ? "_id" : columnName,"$"+columnName);
-            } else if (SelectExpressionItem.class.isInstance(selectItem)
-                    && Function.class.isInstance(((SelectExpressionItem)selectItem).getExpression())) {
-                Function function = (Function) ((SelectExpressionItem)selectItem).getExpression();
-                parseFunctionForAggregation(function,document,groupBys);
+        final List<SelectItem> nonFunctionItems = Lists.newArrayList(Collections2.filter(selectItems, new Predicate<SelectItem>() {
+            @Override
+            public boolean apply(SelectItem selectItem) {
+                return !functionItems.contains(selectItem);
             }
+
+        }));
+
+        isTrue(functionItems.size() > 0, "there must be at least one group by function specified in the select clause");
+        isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
+
+
+        Document idDocument = new Document();
+        for (SelectItem selectItem : nonFunctionItems) {
+            Column column = (Column) ((SelectExpressionItem) selectItem).getExpression();
+            String columnName = getStringValue(column);
+            idDocument.put(columnName,"$" + columnName);
         }
+
+        document.append("_id", idDocument.size() == 1 ? Iterables.get(idDocument.values(),0) : idDocument);
+
+        for (SelectItem selectItem : functionItems) {
+            Function function = (Function) ((SelectExpressionItem)selectItem).getExpression();
+            parseFunctionForAggregation(function,document,groupBys);
+        }
+
         return document;
     }
 
@@ -593,4 +612,5 @@ public class QueryConverter {
             throw new ParseException(message);
         }
     }
+
 }

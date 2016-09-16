@@ -262,6 +262,22 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void testCountAllGroupByMultipleFields() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("SELECT field_1, field_2,   \n" +
+                "COUNT (*)   \n" +
+                "FROM orders \n " +
+                "WHERE field_1 LIKE 'AW_%'\n" +
+                "GROUP BY field_1, field_2;");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id",new Document("field_1","$field_1").append("field_2","$field_2")).append("count",document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals("orders",mongoDBQueryHolder.getCollection());
+        assertEquals(Arrays.asList("field_1","field_2"),mongoDBQueryHolder.getGroupBys());
+        assertEquals(document("field_1",document("$regex","^AW.{1}.*$")),mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
     public void countBySum() throws ParseException {
         testGroupBy("count");
     }
