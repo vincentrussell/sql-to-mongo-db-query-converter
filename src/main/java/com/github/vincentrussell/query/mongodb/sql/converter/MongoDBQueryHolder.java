@@ -2,6 +2,9 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import org.bson.Document;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.apache.commons.lang.Validate.notNull;
 
 public class MongoDBQueryHolder {
@@ -10,6 +13,7 @@ public class MongoDBQueryHolder {
     private Document projection = new Document();
     private boolean distinct = false;
     private boolean countAll = false;
+    private List<String> groupBys = new ArrayList<>();
 
     /**
      * Pojo to hold the MongoDB data
@@ -68,5 +72,13 @@ public class MongoDBQueryHolder {
 
     public void setCountAll(boolean countAll) {
         this.countAll = countAll;
+    }
+
+    public void setGroupBys(List<String> groupBys) {
+        this.groupBys = groupBys;
+    }
+
+    public List<String> getGroupBys() {
+        return groupBys;
     }
 }

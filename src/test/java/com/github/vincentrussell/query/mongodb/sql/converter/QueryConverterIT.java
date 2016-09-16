@@ -2,7 +2,6 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -34,17 +33,17 @@ import static org.junit.Assert.assertEquals;
 
 public class QueryConverterIT {
 
-    public static final int TOTAL_TEST_RECORDS = 25359;
-    static MongodStarter starter = MongodStarter.getDefaultInstance();
-    static MongodProcess mongodProcess;
-    static MongodExecutable mongodExecutable;
-    static int port = getRandomFreePort();
-    static MongoClient mongoClient;
-    static final String DATABASE = "local";
-    static final String COLLECTION = "my_collection";
-    static MongoDatabase mongoDatabase;
-    static MongoCollection mongoCollection;
-    static JsonWriterSettings jsonWriterSettings = new JsonWriterSettings(JsonMode.STRICT, "\t", "\n");
+    private static final int TOTAL_TEST_RECORDS = 25359;
+    private static MongodStarter starter = MongodStarter.getDefaultInstance();
+    private static MongodProcess mongodProcess;
+    private static MongodExecutable mongodExecutable;
+    private static int port = getRandomFreePort();
+    private static MongoClient mongoClient;
+    private static final String DATABASE = "local";
+    private static final String COLLECTION = "my_collection";
+    private static MongoDatabase mongoDatabase;
+    private static MongoCollection mongoCollection;
+    private static JsonWriterSettings jsonWriterSettings = new JsonWriterSettings(JsonMode.STRICT, "\t", "\n");
 
     @BeforeClass
     public static void beforeClass() throws IOException {
@@ -159,6 +158,21 @@ public class QueryConverterIT {
         List<String> results = Lists.newArrayList(distinctIterable);
         assertEquals(5, results.size());
         assertEquals(Arrays.asList("Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island"),results);
+    }
+
+    @Test
+    public void countGroupByQuery() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals(Arrays.asList(new Document("_id","Missing").append("count",51),
+                new Document("_id","Staten Island").append("count",969),
+                new Document("_id","Manhattan").append("count",10259),
+                new Document("_id","Bronx").append("count",2338),
+                new Document("_id","Queens").append("count",5656),
+                new Document("_id","Brooklyn").append("count",6086)
+                ),results);
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
-import com.google.common.base.Predicate;
+import com.google.common.base.*;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -12,6 +12,7 @@ import com.joestelmach.natty.Parser;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
@@ -27,9 +28,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -43,6 +42,7 @@ public class QueryConverter {
     private final List<SelectItem> selectItems;
     private final Expression where;
     private final List<Join> joins;
+    private final List<String> groupBys;
     private final String table;
     private final boolean isDistinct;
     private final boolean isCountAll;
@@ -71,6 +71,7 @@ public class QueryConverter {
                 where = plainSelect.getWhere();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
+                groupBys = getGroupByColumnReferences(plainSelect);
                 table = plainSelect.getFromItem().toString();
                 mongoDBQueryHolder = getMongoQueryInternal();
             } catch (NullPointerException e) {
@@ -80,6 +81,18 @@ public class QueryConverter {
         } catch (net.sf.jsqlparser.parser.ParseException e) {
             throw convertParseException(e);
         }
+    }
+
+    private List<String> getGroupByColumnReferences(PlainSelect plainSelect) {
+        if (plainSelect.getGroupByColumnReferences()==null) {
+            return Collections.emptyList();
+        }
+        return Lists.transform(plainSelect.getGroupByColumnReferences(), new com.google.common.base.Function<Expression, String>() {
+            @Override
+            public String apply(Expression expression) {
+                return getStringValue(expression);
+            }
+        });
     }
 
     private ParseException convertParseException(net.sf.jsqlparser.parser.ParseException incomingException) {
@@ -109,16 +122,10 @@ public class QueryConverter {
                 return false;
             }
         }));
-        if ((selectItems.size() >1 || isSelectAll(selectItems)) && isDistinct) {
-            throw new ParseException("cannot run distinct one more than one column");
-        }
-        if (selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems) && !isCountAll(selectItems)) {
-            throw new ParseException("illegal expression(s) found in select clause.  Only column names supported");
-        }
 
-        if (joins!=null) {
-            throw new ParseException("Joins are not supported.  Only one simple table name is supported.");
-        }
+        isFalse((selectItems.size() >1 || isSelectAll(selectItems)) && isDistinct,"cannot run distinct one more than one column");
+        isFalse(groupBys.size() == 0 && selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems) && !isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
+        isTrue(joins==null,"Joins are not supported.  Only one simple table name is supported.");
     }
 
     /**
@@ -136,6 +143,9 @@ public class QueryConverter {
             document.put(selectItems.get(0).toString(), 1);
             mongoDBQueryHolder.setProjection(document);
             mongoDBQueryHolder.setDistinct(isDistinct);
+        } else if (groupBys.size() > 0) {
+            mongoDBQueryHolder.setGroupBys(groupBys);
+            mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selectItems,groupBys));
         } else if (isCountAll) {
             mongoDBQueryHolder.setCountAll(isCountAll);
         } else if (!isSelectAll(selectItems)) {
@@ -149,6 +159,73 @@ public class QueryConverter {
             mongoDBQueryHolder.setQuery((Document) parseExpression(new Document(), where));
         }
         return mongoDBQueryHolder;
+    }
+
+    private Document createProjectionsFromSelectItems(List<SelectItem> selectItems, List<String> groupBys) throws ParseException {
+        Document document = new Document();
+        if (selectItems==null && selectItems.size()==0) {
+            return document;
+        }
+
+        List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
+            @Override
+            public boolean apply(SelectItem selectItem) {
+                try {
+                    if (SelectExpressionItem.class.isInstance(selectItem)
+                            && Function.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
+                        return true;
+                    }
+                } catch (NullPointerException e) {
+                    return false;
+                }
+                return false;
+            }
+        }));
+
+        for (SelectItem selectItem : selectItems) {
+            if (SelectExpressionItem.class.isInstance(selectItem)
+                    && Column.class.isInstance(((SelectExpressionItem)selectItem).getExpression())) {
+                Column column = (Column) ((SelectExpressionItem)selectItem).getExpression();
+                String columnName = getStringValue(column);
+                document.append(selectItems.size() - functionItems.size() == 1 ? "_id" : columnName,"$"+columnName);
+            } else if (SelectExpressionItem.class.isInstance(selectItem)
+                    && Function.class.isInstance(((SelectExpressionItem)selectItem).getExpression())) {
+                Function function = (Function) ((SelectExpressionItem)selectItem).getExpression();
+                parseFunctionForAggregation(function,document,groupBys);
+            }
+        }
+        return document;
+    }
+
+    private void parseFunctionForAggregation(Function function, Document document, List<String> groupBys) throws ParseException {
+        List<String> parameters = function.getParameters()== null ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(), new com.google.common.base.Function<Expression, String>() {
+            @Override
+            public String apply(Expression expression) {
+                return getStringValue(expression);
+            }
+        });
+        if (parameters.size() > 1) {
+            throw new ParseException(function.getName()+" function can only have one parameter");
+        }
+        String field = parameters.size() > 0 ? Iterables.get(parameters, 0).replaceAll("\\.","_") : null;
+        if ("sum".equals(function.getName().toLowerCase())) {
+            createFunction("sum",field, document,"$"+ field);
+        } else if ("avg".equals(function.getName().toLowerCase())) {
+            createFunction("avg",field, document,"$"+ field);
+        } else if ("count".equals(function.getName().toLowerCase())) {
+            document.put("count",new Document("$sum",1));
+        } else if ("min".equals(function.getName().toLowerCase())) {
+            createFunction("min",field, document,"$"+ field);
+        } else if ("max".equals(function.getName().toLowerCase())) {
+            createFunction("max",field, document,"$"+ field);
+        } else {
+            throw new ParseException("could not understand function:" + function.getName());
+        }
+    }
+
+    private void createFunction(String functionName, String field, Document document, Object value) throws ParseException {
+        isTrue(field!=null,"function "+ functionName + " must contain a single field to run on");
+        document.put(functionName + "_"+field,new Document("$"+functionName,value));
     }
 
 
@@ -254,7 +331,7 @@ public class QueryConverter {
             String rightExpression = getStringValue(comparisonOperator.getRightExpression());
             if (Function.class.isInstance(comparisonOperator.getLeftExpression())) {
                 Function function = ((Function)comparisonOperator.getLeftExpression());
-                if ("date".equals(function.getName())
+                if ("date".equals(function.getName().toLowerCase())
                         && (function.getParameters().getExpressions().size()==2)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
                     String column = getStringValue(function.getParameters().getExpressions().get(0));
@@ -277,7 +354,7 @@ public class QueryConverter {
         if (StringValue.class.isInstance(expression)) {
             return ((StringValue)expression).getValue();
         } else if (Column.class.isInstance(expression)) {
-            String columnName = ((Column)expression).toString();
+            String columnName = expression.toString();
             Matcher matcher = SURROUNDED_IN_QUOTES.matcher(columnName);
             if (matcher.matches()) {
                 return matcher.group(1);
@@ -293,7 +370,7 @@ public class QueryConverter {
             String rightExpression = equalsTo.getRightExpression().toString();
             if (Function.class.isInstance(equalsTo.getLeftExpression())) {
                 Function function = ((Function)equalsTo.getLeftExpression());
-                if ("regexMatch".equals(function.getName())
+                if ("regexmatch".equals(function.getName().toLowerCase())
                         && (function.getParameters().getExpressions().size()==2
                             || function.getParameters().getExpressions().size()==3)
                         && "true".equals(rightExpression)
@@ -356,6 +433,19 @@ public class QueryConverter {
             IOUtils.write("\""+getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
             IOUtils.write(" , ", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+        } else if (groupBys.size() > 0) {
+            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".aggregate(", outputStream);
+            IOUtils.write("[", outputStream);
+            List<Document> documents = new ArrayList<>();
+            documents.add(new Document("$match",mongoDBQueryHolder.getQuery()));
+            documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
+            IOUtils.write(Joiner.on(",").join(Lists.transform(documents, new com.google.common.base.Function<Document, String>() {
+                @Override
+                public String apply(Document document) {
+                    return prettyPrintJson(document.toJson());
+                }
+            })),outputStream);
+            IOUtils.write("]", outputStream);
         } else if (isCountAll) {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
@@ -391,6 +481,13 @@ public class QueryConverter {
             return (T)new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
         } else if (mongoDBQueryHolder.isCountAll()) {
             return (T)Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
+        } else if (groupBys.size() > 0) {
+            List<Document> documents = new ArrayList<>();
+            if (mongoDBQueryHolder.getQuery() !=null && mongoDBQueryHolder.getQuery().size() > 0) {
+                documents.add(new Document("$match", mongoDBQueryHolder.getQuery()));
+            }
+            documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
+            return (T)new QueryResultIterator<>(mongoCollection.aggregate(documents));
         } else {
             return (T)new QueryResultIterator<>(mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection()));
         }
@@ -482,6 +579,18 @@ public class QueryConverter {
 
         public String getComparisonExpression() {
             return comparisonExpression;
+        }
+    }
+
+    private static void isTrue(boolean expression, String message) throws ParseException {
+        if (!expression) {
+            throw new ParseException(message);
+        }
+    }
+
+    private static void isFalse(boolean expression, String message) throws ParseException {
+        if (expression) {
+            throw new ParseException(message);
         }
     }
 }

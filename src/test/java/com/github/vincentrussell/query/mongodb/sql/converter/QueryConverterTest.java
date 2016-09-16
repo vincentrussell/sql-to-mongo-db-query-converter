@@ -247,6 +247,60 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void testCountAllGroupBy() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code,   \n" +
+                "COUNT (*)   \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code;");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id","$agent_code").append("count",document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals("orders",mongoDBQueryHolder.getCollection());
+        assertEquals(Arrays.asList("agent_code"),mongoDBQueryHolder.getGroupBys());
+        assertEquals(document("agent_code",document("$regex","^AW.{1}.*$")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void countBySum() throws ParseException {
+        testGroupBy("count");
+    }
+
+    @Test
+    public void groupBySum() throws ParseException {
+        testGroupBy("sum");
+    }
+
+    @Test
+    public void groupByAvg() throws ParseException {
+        testGroupBy("avg");
+    }
+
+    @Test
+    public void groupByMin() throws ParseException {
+        testGroupBy("min");
+    }
+
+    @Test
+    public void groupByMax() throws ParseException {
+        testGroupBy("max");
+    }
+
+    private void testGroupBy(String function) throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code,   \n" +
+                function.toUpperCase()+" (advance_amount)   \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code;");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id","$agent_code").append(("count".equals(function) ? "count" : function + "_advance_amount"),document("$"+ ("count".equals(function) ? "sum" : function),"count".equals(function) ? 1 : "$advance_amount")),mongoDBQueryHolder.getProjection());
+        assertEquals("orders",mongoDBQueryHolder.getCollection());
+        assertEquals(Arrays.asList("agent_code"),mongoDBQueryHolder.getGroupBys());
+        assertEquals(document("agent_code",document("$regex","^AW.{1}.*$")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectAllFromTableWithSimpleWhereClauseString() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value=\"theValue\"");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -430,6 +484,31 @@ public class QueryConverterTest {
                 "    \"$exists\": false\n" +
                 "  }\n" +
                 "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void writeSumGroupBy() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code,   \n" +
+                "SUM (advance_amount)   \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"sum_advance_amount\": {\n" +
+                "      \"$sum\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
     }
 
     @Test
