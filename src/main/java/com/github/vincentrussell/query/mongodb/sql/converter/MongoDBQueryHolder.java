@@ -11,9 +11,11 @@ public class MongoDBQueryHolder {
     private final String collection;
     private Document query = new Document();
     private Document projection = new Document();
+    private Document sort = new Document();
     private boolean distinct = false;
     private boolean countAll = false;
     private List<String> groupBys = new ArrayList<>();
+    private long limit = -1;
 
     /**
      * Pojo to hold the MongoDB data
@@ -62,6 +64,15 @@ public class MongoDBQueryHolder {
         this.projection = projection;
     }
 
+    public Document getSort() {
+        return sort;
+    }
+
+    public void setSort(Document sort) {
+        notNull(sort, "sort is null");
+        this.sort = sort;
+    }
+
     public void setDistinct(boolean distinct) {
         this.distinct = distinct;
     }
@@ -80,5 +91,13 @@ public class MongoDBQueryHolder {
 
     public List<String> getGroupBys() {
         return groupBys;
+    }
+
+    public long getLimit() {
+        return limit;
+    }
+
+    public void setLimit(long limit) {
+        this.limit = limit;
     }
 }

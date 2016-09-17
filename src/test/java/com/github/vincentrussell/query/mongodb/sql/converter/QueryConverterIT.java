@@ -162,18 +162,69 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void countGroupByQuery() throws ParseException {
+    public void countGroupByQuery() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
+        assertEquals("[{\n" +
+                "\t\"_id\" : \"Missing\",\n" +
+                "\t\"count\" : 51\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Staten Island\",\n" +
+                "\t\"count\" : 969\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Manhattan\",\n" +
+                "\t\"count\" : 10259\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Bronx\",\n" +
+                "\t\"count\" : 2338\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Queens\",\n" +
+                "\t\"count\" : 5656\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Brooklyn\",\n" +
+                "\t\"count\" : 6086\n" +
+                "}]",toJson(results));
+    }
+
+    @Test
+    public void countGroupByQuerySortByCount() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" +
+                "\t\"_id\" : \"Manhattan\",\n" +
+                "\t\"count\" : 10259\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Brooklyn\",\n" +
+                "\t\"count\" : 6086\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Queens\",\n" +
+                "\t\"count\" : 5656\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Bronx\",\n" +
+                "\t\"count\" : 2338\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Staten Island\",\n" +
+                "\t\"count\" : 969\n" +
+                "},{\n" +
+                "\t\"_id\" : \"Missing\",\n" +
+                "\t\"count\" : 51\n" +
+                "}]",toJson(results));
+    }
+
+    @Test
+    public void countGroupByQueryLimit() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough LIMIT 2");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(2, results.size());
         assertEquals(Arrays.asList(new Document("_id","Missing").append("count",51),
-                new Document("_id","Staten Island").append("count",969),
-                new Document("_id","Manhattan").append("count",10259),
-                new Document("_id","Bronx").append("count",2338),
-                new Document("_id","Queens").append("count",5656),
-                new Document("_id","Brooklyn").append("count",6086)
-                ),results);
+                new Document("_id","Staten Island").append("count",969)
+        ),results);
     }
 
     @Test

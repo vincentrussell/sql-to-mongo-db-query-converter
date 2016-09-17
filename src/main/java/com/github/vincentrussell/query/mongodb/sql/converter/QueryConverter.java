@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.*;
@@ -29,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,10 +45,12 @@ public class QueryConverter {
     private final List<SelectItem> selectItems;
     private final Expression where;
     private final List<Join> joins;
+    private final List<OrderByElement> orderByElements;
     private final List<String> groupBys;
     private final String table;
     private final boolean isDistinct;
     private final boolean isCountAll;
+    private final long limit;
 
     /**
      * Create a QueryConverter with a string
@@ -65,25 +69,33 @@ public class QueryConverter {
     public QueryConverter(InputStream inputStream) throws ParseException {
         CCJSqlParser jSqlParser = new CCJSqlParser(inputStream);
         try {
-            try {
-                final PlainSelect plainSelect = jSqlParser.PlainSelect();
-                isTrue(plainSelect!=null,"could not parse SELECT statement from query");
-                isDistinct = (plainSelect.getDistinct() != null);
-                isCountAll = isCountAll(plainSelect.getSelectItems());
-                where = plainSelect.getWhere();
-                selectItems = plainSelect.getSelectItems();
-                joins = plainSelect.getJoins();
-                groupBys = getGroupByColumnReferences(plainSelect);
-                isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
-                table = plainSelect.getFromItem().toString();
-                mongoDBQueryHolder = getMongoQueryInternal();
-            } catch (NullPointerException e) {
-                throw new ParseException("Could not find table in query.  Only one simple table name is supported.");
-            }
+            final PlainSelect plainSelect = jSqlParser.PlainSelect();
+            isTrue(plainSelect!=null,"could not parse SELECT statement from query");
+            isDistinct = (plainSelect.getDistinct() != null);
+            isCountAll = isCountAll(plainSelect.getSelectItems());
+            where = plainSelect.getWhere();
+            orderByElements = plainSelect.getOrderByElements();
+            selectItems = plainSelect.getSelectItems();
+            joins = plainSelect.getJoins();
+            groupBys = getGroupByColumnReferences(plainSelect);
+            isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
+            table = plainSelect.getFromItem().toString();
+            limit = getLimit(plainSelect.getLimit());
+            mongoDBQueryHolder = getMongoQueryInternal();
             validate();
         } catch (net.sf.jsqlparser.parser.ParseException e) {
             throw convertParseException(e);
         }
+    }
+
+    private long getLimit(Limit limit) throws ParseException {
+        if (limit!=null) {
+            long incomingLimit = limit.getRowCount();
+            BigInteger bigInt = new BigInteger(""+incomingLimit);
+            isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, incomingLimit + ": value is too large");
+            return limit.getRowCount();
+        }
+        return -1;
     }
 
     private List<String> getGroupByColumnReferences(PlainSelect plainSelect) {
@@ -161,10 +173,58 @@ public class QueryConverter {
             }
             mongoDBQueryHolder.setProjection(document);
         }
+
+        if (orderByElements!=null && orderByElements.size() > 0) {
+            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(orderByElements));
+        }
+
         if (where!=null) {
             mongoDBQueryHolder.setQuery((Document) parseExpression(new Document(), where));
         }
+        mongoDBQueryHolder.setLimit(limit);
         return mongoDBQueryHolder;
+    }
+
+    private Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements) throws ParseException {
+        Document document = new Document();
+        if (orderByElements==null && orderByElements.size()==0) {
+            return document;
+        }
+
+        final List<OrderByElement> functionItems = Lists.newArrayList(Iterables.filter(orderByElements, new Predicate<OrderByElement>() {
+            @Override
+            public boolean apply(OrderByElement orderByElement) {
+                try {
+                    if (Function.class.isInstance(orderByElement.getExpression())) {
+                        return true;
+                    }
+                } catch (NullPointerException e) {
+                    return false;
+                }
+                return false;
+            }
+        }));
+        final List<OrderByElement> nonFunctionItems = Lists.newArrayList(Collections2.filter(orderByElements, new Predicate<OrderByElement>() {
+            @Override
+            public boolean apply(OrderByElement orderByElement) {
+                return !functionItems.contains(orderByElement);
+            }
+
+        }));
+
+        Document sortItems = new Document();
+        for (OrderByElement orderByElement : orderByElements) {
+            if (nonFunctionItems.contains(orderByElement)) {
+                sortItems.put(getStringValue(orderByElement.getExpression()),orderByElement.isAsc() ? 1 : -1);
+            } else {
+                Function function = (Function) orderByElement.getExpression();
+                Document parseFunctionDocument = new Document();
+                parseFunctionForAggregation(function,parseFunctionDocument,Collections.<String>emptyList());
+                sortItems.put(Iterables.get(parseFunctionDocument.keySet(),0),orderByElement.isAsc() ? 1 : -1);
+            }
+        }
+
+        return sortItems;
     }
 
     private Document createProjectionsFromSelectItems(List<SelectItem> selectItems, List<String> groupBys) throws ParseException {
@@ -458,6 +518,15 @@ public class QueryConverter {
             List<Document> documents = new ArrayList<>();
             documents.add(new Document("$match",mongoDBQueryHolder.getQuery()));
             documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
+
+            if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
+                documents.add(new Document("$sort",mongoDBQueryHolder.getSort()));
+            }
+
+            if (mongoDBQueryHolder.getLimit()!= -1) {
+                documents.add(new Document("$limit",mongoDBQueryHolder.getLimit()));
+            }
+
             IOUtils.write(Joiner.on(",").join(Lists.transform(documents, new com.google.common.base.Function<Document, String>() {
                 @Override
                 public String apply(Document document) {
@@ -477,6 +546,18 @@ public class QueryConverter {
             }
         }
         IOUtils.write(")", outputStream);
+
+        if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0 && !isCountAll && !isDistinct && groupBys.isEmpty()) {
+            IOUtils.write(".sort(", outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson()), outputStream);
+            IOUtils.write(")", outputStream);
+        }
+
+        if (mongoDBQueryHolder.getLimit()!=-1 && !isCountAll && !isDistinct && groupBys.isEmpty()) {
+            IOUtils.write(".limit(", outputStream);
+            IOUtils.write(mongoDBQueryHolder.getLimit()+"", outputStream);
+            IOUtils.write(")", outputStream);
+        }
     }
 
     private String getDistinctFieldName(MongoDBQueryHolder mongoDBQueryHolder) {
@@ -506,9 +587,22 @@ public class QueryConverter {
                 documents.add(new Document("$match", mongoDBQueryHolder.getQuery()));
             }
             documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
+            if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
+                documents.add(new Document("$sort",mongoDBQueryHolder.getSort()));
+            }
+            if (mongoDBQueryHolder.getLimit()!= -1) {
+                documents.add(new Document("$limit",mongoDBQueryHolder.getLimit()));
+            }
             return (T)new QueryResultIterator<>(mongoCollection.aggregate(documents));
         } else {
-            return (T)new QueryResultIterator<>(mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection()));
+            FindIterable findIterable = mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection());
+            if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
+                findIterable.sort(mongoDBQueryHolder.getSort());
+            }
+            if (mongoDBQueryHolder.getLimit()!= -1) {
+                findIterable.limit((int)mongoDBQueryHolder.getLimit());
+            }
+            return (T)new QueryResultIterator<>(findIterable);
         }
     }
 

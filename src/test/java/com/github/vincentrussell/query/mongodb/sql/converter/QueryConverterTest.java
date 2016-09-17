@@ -27,6 +27,29 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(-1,mongoDBQueryHolder.getLimit());
+        assertEquals(0,mongoDBQueryHolder.getQuery().size());
+    }
+
+    @Test
+    public void selectAllFromTableWithoutWhereClauseLimit() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table\n" +
+                "limit 10");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(10,mongoDBQueryHolder.getLimit());
+        assertEquals(0,mongoDBQueryHolder.getQuery().size());
+    }
+
+    @Test
+    public void selectAllFromTableWithoutWhereClauseOrderByField1() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table\n" +
+                "order by field_1 ASC, field_2 DESC");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("field_1",1).append("field_2",-1),mongoDBQueryHolder.getSort());
         assertEquals(0,mongoDBQueryHolder.getQuery().size());
     }
 
@@ -479,6 +502,21 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void writeSortByWithoutProjections() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value IS NULL order by field_1, field_2 DESC");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"value\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "}).sort({\n" +
+                "  \"field_1\": 1,\n" +
+                "  \"field_2\": -1\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
     public void writeWithoutDistinctProjections() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("select distinct column1 from my_table where value IS NULL");
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -523,6 +561,36 @@ public class QueryConverterTest {
                 "    \"sum_advance_amount\": {\n" +
                 "      \"$sum\": \"$advance_amount\"\n" +
                 "    }\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void writeSumGroupByWithSort() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code,   \n" +
+                "COUNT (advance_amount)   \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY COUNT (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"count\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"count\": -1\n" +
                 "  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
     }
