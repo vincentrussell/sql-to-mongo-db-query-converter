@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -38,6 +39,8 @@ import java.util.regex.PatternSyntaxException;
 
 public class QueryConverter {
 
+    public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
+    public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
     private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
     private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private final MongoDBQueryHolder mongoDBQueryHolder;
@@ -534,6 +537,23 @@ public class QueryConverter {
                 }
             })),outputStream);
             IOUtils.write("]", outputStream);
+
+            Document options = new Document();
+            if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)!=null) {
+                options.put("allowDiskUse",Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+            }
+
+            if (System.getProperty(D_AGGREGATION_BATCH_SIZE)!=null) {
+                options.put("cursor",new Document("batchSize",Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE))));
+            }
+
+            if (options.size() > 0) {
+                IOUtils.write(",",outputStream);
+                IOUtils.write(prettyPrintJson(options.toJson()),outputStream);
+            }
+
+
+
         } else if (isCountAll) {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
@@ -593,7 +613,17 @@ public class QueryConverter {
             if (mongoDBQueryHolder.getLimit()!= -1) {
                 documents.add(new Document("$limit",mongoDBQueryHolder.getLimit()));
             }
-            return (T)new QueryResultIterator<>(mongoCollection.aggregate(documents));
+            AggregateIterable aggregate = mongoCollection.aggregate(documents);
+
+            if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)!=null) {
+                aggregate.allowDiskUse(Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+            }
+
+            if (System.getProperty(D_AGGREGATION_BATCH_SIZE)!=null) {
+                aggregate.batchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
+            }
+
+            return (T)new QueryResultIterator<>(aggregate);
         } else {
             FindIterable findIterable = mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection());
             if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
@@ -602,6 +632,7 @@ public class QueryConverter {
             if (mongoDBQueryHolder.getLimit()!= -1) {
                 findIterable.limit((int)mongoDBQueryHolder.getLimit());
             }
+
             return (T)new QueryResultIterator<>(findIterable);
         }
     }

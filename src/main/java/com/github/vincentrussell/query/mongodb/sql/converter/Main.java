@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 
 public class Main {
 
+    public static final int DEFAULT_RESULT_BATCH_SIZE = 50;
     private static JsonWriterSettings JSON_WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "\t", "\n");
     public static final String ENTER_SQL_TEXT = "Enter input sql:\n\n ";
     private static final String DEFAULT_MONGO_PORT = "27017";
@@ -120,7 +121,7 @@ public class Main {
 
             CommandLineParser parser = new DefaultParser();
             HelpFormatter help = new HelpFormatter();
-            help.setOptionComparator(new OptionComparator(Arrays.asList("s", "d", "i","h","db","a","u","p","b")));
+            help.setOptionComparator(new OptionComparator(Arrays.asList("s","sql","i","d","h","db","a","u","p","b")));
 
             CommandLine cmd = null;
             try {
@@ -136,7 +137,7 @@ public class Main {
                 String destination = cmd.getOptionValue("d");
                 String authdb = cmd.getOptionValue("a");
                 String sql = cmd.getOptionValue("sql");
-                final int batchSize = Integer.parseInt(cmd.getOptionValue("b","50"));
+                final int batchSize = Integer.parseInt(cmd.getOptionValue("b", ""+DEFAULT_RESULT_BATCH_SIZE));
 
                 isFalse(hosts!=null && db==null,"provided option h, but missing db");
                 isFalse(username!=null && (password==null || authdb==null),"provided option u, but missing p or a");

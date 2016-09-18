@@ -3,6 +3,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 import org.bson.Document;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -20,6 +21,12 @@ public class QueryConverterTest {
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
+
+    @Before
+    public void before() {
+        System.getProperties().remove(QueryConverter.D_AGGREGATION_ALLOW_DISK_USE);
+        System.getProperties().remove(QueryConverter.D_AGGREGATION_BATCH_SIZE);
+    }
 
     @Test
     public void selectAllFromTableWithoutWhereClause() throws ParseException {
@@ -563,6 +570,38 @@ public class QueryConverterTest {
                 "    }\n" +
                 "  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void writeSumGroupByWithOptions() throws ParseException, IOException {
+        System.setProperty(QueryConverter.D_AGGREGATION_ALLOW_DISK_USE,"true");
+        System.setProperty(QueryConverter.D_AGGREGATION_BATCH_SIZE,"50");
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code,   \n" +
+                "SUM (advance_amount)   \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"sum_advance_amount\": {\n" +
+                "      \"$sum\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}],{\n" +
+                "  \"allowDiskUse\": true,\n" +
+                "  \"cursor\": {\n" +
+                "    \"batchSize\": 50\n" +
+                "  }\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
     }
 
     @Test
