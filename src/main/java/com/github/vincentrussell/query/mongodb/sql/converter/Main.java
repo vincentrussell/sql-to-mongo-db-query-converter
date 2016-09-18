@@ -175,6 +175,7 @@ public class Main {
                     QueryConverter queryConverter = new QueryConverter(inputStream);
 
                     inputStream.close();
+
                     if (hosts!=null) {
                         MongoClient mongoClient = null;
                         try {
@@ -197,16 +198,15 @@ public class Main {
 
                                     if (listIterator.hasNext()) {
 
+                                        inputLoop:
                                         while(true) {
                                             String continueString;
-                                            System.out.print("more results? (y/n): ");
-                                            Scanner scanner = new Scanner(System.in);
-                                            continueString = scanner.next();
+                                            continueString = getCharacterInput();
 
                                             if ("n".equals(continueString.trim().toLowerCase())) {
                                                 break resultIterator;
                                             } else if ("y".equals(continueString.trim().toLowerCase())) {
-                                                break;
+                                                break inputLoop;
                                             }
                                         }
                                     }
@@ -240,6 +240,16 @@ public class Main {
 
             System.exit(0);
         }
+
+    private static String getCharacterInput() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("more results? (y/n): ");
+        String choice = "";
+        if (scanner.hasNext()){
+            choice = scanner.next();
+        }
+        return choice;
+    }
 
     private static String toJson(List<Document> documents) throws IOException {
         StringWriter stringWriter = new StringWriter();
