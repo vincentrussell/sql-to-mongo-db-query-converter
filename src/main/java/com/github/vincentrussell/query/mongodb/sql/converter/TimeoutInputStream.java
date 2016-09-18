@@ -6,7 +6,7 @@ import java.util.concurrent.*;
 
 public class TimeoutInputStream extends InputStream {
 
-    private static ExecutorService EXECUTOR = Executors.newFixedThreadPool(1);
+    private ExecutorService executorService = Executors.newFixedThreadPool(1);
 
     private final InputStream inputStream;
     private final long timeout;
@@ -24,7 +24,7 @@ public class TimeoutInputStream extends InputStream {
     public int read() throws IOException {
 
         int result = -1;
-        Future<Integer> future = EXECUTOR.submit(new ReadNext(inputStream));
+        Future<Integer> future = executorService.submit(new ReadNext(inputStream));
         try {
             result = getInteger(future);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -45,7 +45,7 @@ public class TimeoutInputStream extends InputStream {
 
     @Override
     public void close() throws IOException {
-        //noop
+        executorService.shutdownNow();
     }
 
     private static class ReadNext implements Callable<Integer> {
