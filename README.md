@@ -22,8 +22,10 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 ```
 QueryConverter queryConverter = new QueryConverter("select column1 from my_table where value NOT IN ("theValue1","theValue2","theValue3")");
 MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+String collection = mongoDBQueryHolder.getCollection();
 Document query = mongoDBQueryHolder.getQuery();
 Document projection = mongoDBQueryHolder.getProjection();
+Document sort = mongoDBQueryHolder.getSort();
 ```
 
 ## Running it as a standalone jar
@@ -35,11 +37,30 @@ java -jar sql-to-mongo-db-query-converter-1.0-standalone.jar -s sql.file -d dest
 
 ```
 usage: com.github.vincentrussell.query.mongodb.sql.converter.Main [-s
-       <arg>] [-d <arg>] [-i]
+       <arg> | -sql <arg> | -i]   [-d <arg> | -h <arg>]  [-db <arg>] [-a
+       <arg>] [-u <arg>] [-p <arg>] [-b <arg>]
  -s,--sourceFile <arg>        the source file.
+ -sql,--sql <arg>             the sql select statement
+ -i,--interactiveMode         interactive mode
  -d,--destinationFile <arg>   the destination file.  Defaults to
                               System.out
- -i,--interactiveMode         interactive mode
+ -h,--host <arg>              hosts and ports in the following format
+                              (host:port) default port is 27017
+ -db,--database <arg>         mongo database
+ -a,--auth database <arg>     auth mongo database
+ -u,--username <arg>          usename
+ -p,--password <arg>          password
+ -b,--batchSize <arg>         batch size for query results
+```
+
+### Special Aggregation-specific System Properties
+
+```
+-DaggregationAllowDiskUse
+Enables writing to temporary files. When set to true, aggregation operations can write data to the _tmp subdirectory in the dbPath directory.
+
+-DaggregationBatchSize
+To specify an initial batch size for the cursor
 ```
 
 ## Interactive mode
@@ -157,4 +178,117 @@ db.my_table.find({
     "$regex": "^start.*$"
   }
 })
+```
+
+###Group By (Aggregation)
+
+```
+select borough, cuisine, count(*) from my_collection WHERE borough LIKE 'Queens%' GROUP BY borough, cuisine ORDER BY count(*) DESC;
+
+
+******Mongo Query:*********
+
+db.my_collection.aggregate([{
+  "$match": {
+    "borough": {
+      "$regex": "^Queens.*$"
+    }
+  }
+},{
+  "$group": {
+    "_id": {
+      "borough": "$borough",
+      "cuisine": "$cuisine"
+    },
+    "count": {
+      "$sum": 1
+    }
+  }
+},{
+  "$sort": {
+    "count": -1
+  }
+}])
+```
+
+###Direct Mongo Integration
+
+You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
+
+```
+java -jar target/sql-to-mongo-db-query-converter-1.0-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
+Enter input sql:
+
+
+select borough, cuisine, count(*) from my_collection GROUP BY borough, cuisine ORDER BY count(*) DESC;
+
+
+******Query Results:*********
+
+[{
+	"_id" : {
+		"borough" : "Manhattan",
+		"cuisine" : "American "
+	},
+	"count" : 3205
+},{
+	"_id" : {
+		"borough" : "Brooklyn",
+		"cuisine" : "American "
+	},
+	"count" : 1273
+},{
+	"_id" : {
+		"borough" : "Queens",
+		"cuisine" : "American "
+	},
+	"count" : 1040
+},{
+	"_id" : {
+		"borough" : "Brooklyn",
+		"cuisine" : "Chinese"
+	},
+	"count" : 763
+},{
+	"_id" : {
+		"borough" : "Queens",
+		"cuisine" : "Chinese"
+	},
+	"count" : 728
+}]
+
+more results? (y/n): y
+[{
+	"_id" : {
+		"borough" : "Manhattan",
+		"cuisine" : "Café/Coffee/Tea"
+	},
+	"count" : 680
+},{
+	"_id" : {
+		"borough" : "Manhattan",
+		"cuisine" : "Italian"
+	},
+	"count" : 621
+},{
+	"_id" : {
+		"borough" : "Manhattan",
+		"cuisine" : "Chinese"
+	},
+	"count" : 510
+},{
+	"_id" : {
+		"borough" : "Manhattan",
+		"cuisine" : "Japanese"
+	},
+	"count" : 438
+},{
+	"_id" : {
+		"borough" : "Bronx",
+		"cuisine" : "American "
+	},
+	"count" : 411
+}]
+
+more results? (y/n): n
 ```
