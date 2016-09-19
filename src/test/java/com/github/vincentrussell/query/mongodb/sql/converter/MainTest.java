@@ -1,6 +1,5 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
-import org.apache.commons.cli.AlreadySelectedException;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.IOUtils;
 import org.junit.Before;
@@ -52,13 +51,6 @@ public class MainTest {
         exception.expect(ParseException.class);
         exception.expectMessage("Missing required option: s or i");
         Main.main(new String[0]);
-    }
-
-    @Test
-    public void hostAndDestinationFileSpecified() throws ClassNotFoundException, ParseException, IOException, com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
-        exception.expect(AlreadySelectedException.class);
-        exception.expectMessage("The option 'h' was specified but an option from this group has already been selected: 'd'");
-        Main.main(new String[]{"-i","-d",destinationFile.getAbsolutePath(),"-h","localhost"});
     }
 
     @Test

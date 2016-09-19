@@ -30,24 +30,6 @@ public class Main {
         Options options = new Options();
 
 
-        final OptionGroup destinationOptionGroup = new OptionGroup();
-        destinationOptionGroup.setRequired(false);
-
-        destinationOptionGroup.addOption(Option.builder("d")
-                .longOpt("destinationFile")
-                .hasArg(true)
-                .required(false)
-                .desc("the destination file.  Defaults to System.out")
-                .build());
-
-        destinationOptionGroup.addOption(Option.builder("h")
-                .longOpt("host")
-                .hasArg(true)
-                .required(false)
-                .desc("hosts and ports in the following format (host:port) default port is " + DEFAULT_MONGO_PORT)
-                .build());
-
-
         final OptionGroup sourceOptionGroup = new OptionGroup();
         sourceOptionGroup.setRequired(false);
 
@@ -73,6 +55,19 @@ public class Main {
                 .build());
 
 
+        options.addOption(Option.builder("d")
+                .longOpt("destinationFile")
+                .hasArg(true)
+                .required(false)
+                .desc("the destination file.  Defaults to System.out")
+                .build());
+
+        options.addOption(Option.builder("h")
+                .longOpt("host")
+                .hasArg(true)
+                .required(false)
+                .desc("hosts and ports in the following format (host:port) default port is " + DEFAULT_MONGO_PORT)
+                .build());
 
         options.addOption(Option.builder("db")
                 .longOpt("database")
@@ -110,7 +105,6 @@ public class Main {
                 .build());
 
         options.addOptionGroup(sourceOptionGroup);
-        options.addOptionGroup(destinationOptionGroup);
 
         return options;
     }
@@ -187,30 +181,43 @@ public class Main {
                                 IOUtils.write(""+result,outputStream);
                                 IOUtils.write("\n\n", outputStream);
                             } else if (QueryResultIterator.class.isInstance(result)) {
-                                IOUtils.write("\n\n******Query Results:*********\n\n", outputStream);
-                                QueryResultIterator<Document> iterator = (QueryResultIterator)result;
+                                QueryResultIterator<Document> iterator = (QueryResultIterator) result;
 
-                                resultIterator:
-                                for (Iterator<List<Document>> listIterator = Iterators.partition(iterator,batchSize); listIterator.hasNext();) {
-                                    List<Document> documents = listIterator.next();
-                                    IOUtils.write(toJson(documents)+"\n\n", outputStream);
-                                    outputStream.flush();
+                                if (FileOutputStream.class.isInstance(outputStream)) {
+                                    IOUtils.write("[", outputStream);
+                                    while (iterator.hasNext()) {
+                                        IOUtils.write(iterator.next().toJson(),outputStream);
+                                        if (iterator.hasNext()) {
+                                            IOUtils.write(",\n",outputStream);
+                                        }
+                                    }
+                                    IOUtils.write("]", outputStream);
 
-                                    if (listIterator.hasNext()) {
+                                } else {
+                                    IOUtils.write("\n\n******Query Results:*********\n\n", outputStream);
 
-                                        inputLoop:
-                                        while(true) {
-                                            String continueString;
-                                            continueString = getCharacterInput();
+                                    resultIterator:
+                                    for (Iterator<List<Document>> listIterator = Iterators.partition(iterator, batchSize); listIterator.hasNext(); ) {
+                                        List<Document> documents = listIterator.next();
+                                        IOUtils.write(toJson(documents) + "\n\n", outputStream);
+                                        outputStream.flush();
 
-                                            if ("n".equals(continueString.trim().toLowerCase())) {
-                                                break resultIterator;
-                                            } else if ("y".equals(continueString.trim().toLowerCase())) {
-                                                break inputLoop;
+                                        if (listIterator.hasNext()) {
+
+                                            inputLoop:
+                                            while (true) {
+                                                String continueString;
+                                                continueString = getCharacterInput();
+
+                                                if ("n".equals(continueString.trim().toLowerCase())) {
+                                                    break resultIterator;
+                                                } else if ("y".equals(continueString.trim().toLowerCase())) {
+                                                    break inputLoop;
+                                                }
                                             }
                                         }
                                     }
-                                }
+                            }
 
                             }
 
