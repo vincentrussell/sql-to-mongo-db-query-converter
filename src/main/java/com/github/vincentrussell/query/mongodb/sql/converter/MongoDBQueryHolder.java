@@ -19,7 +19,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Pojo to hold the MongoDB data
-     * @param collection
+     * @param collection the collection that the query will be run on.
      */
     public MongoDBQueryHolder(String collection){
         notNull(collection, "collection is null");
@@ -28,7 +28,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Get the object used to create a projection
-     * @return
+     * @return the fields to be returned by the quer
      */
     public Document getProjection() {
         return projection;
@@ -36,7 +36,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Get the object used to create a query
-     * @return
+     * @return the where clause section of the query in mongo formt
      */
     public Document getQuery() {
         return query;
@@ -44,7 +44,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Get the collection to run the query on
-     * @return
+     * @return the collection to run the query on
      */
     public String getCollection() {
         return collection;

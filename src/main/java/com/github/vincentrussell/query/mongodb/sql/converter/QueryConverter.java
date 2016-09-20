@@ -57,8 +57,8 @@ public class QueryConverter {
 
     /**
      * Create a QueryConverter with a string
-     * @param sql
-     * @throws ParseException
+     * @param sql the sql statement
+     * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes()));
@@ -66,8 +66,8 @@ public class QueryConverter {
 
     /**
      * Create a QueryConverter with an InputStream
-     * @param inputStream
-     * @throws ParseException
+     * @param inputStream an input stream that has the sql statement in it
+     * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(InputStream inputStream) throws ParseException {
         CCJSqlParser jSqlParser = new CCJSqlParser(inputStream);
@@ -151,7 +151,7 @@ public class QueryConverter {
 
     /**
      * get the object that you need to submit a query
-     * @return
+     * @return the {@link com.github.vincentrussell.query.mongodb.sql.converter.MongoDBQueryHolder} that contains all that is needed to describe the query to be run.
      */
     public MongoDBQueryHolder getMongoQuery() {
         return mongoDBQueryHolder;
@@ -505,8 +505,8 @@ public class QueryConverter {
 
     /**
      * Build a mongo shell statement with the code to run the specified query.
-     * @param outputStream
-     * @throws IOException
+     * @param outputStream the {@link java.io.OutputStream} to write the data to
+     * @throws IOException when there is an issue writing to the {@link java.io.OutputStream}
      */
     public void write(OutputStream outputStream) throws IOException {
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
@@ -585,11 +585,11 @@ public class QueryConverter {
     }
 
     /**
-     * @param mongoDatabase
-     * @param <T> When query does a find will return QueryResultIterator<Document>
+     * @param mongoDatabase the database to run the query against.
+     * @param <T> variable based on the type of query run.
+     * @return When query does a find will return QueryResultIterator&lt;{@link org.bson.Document}&gt;
      *           When query does a count will return a Long
-     *           When query does a distinct will return QueryResultIterator<String>
-     * @return
+     *           When query does a distinct will return QueryResultIterator&lt;{@link java.lang.String}&gt;
      */
     @SuppressWarnings("unchecked")
     public <T> T run(MongoDatabase mongoDatabase) {
