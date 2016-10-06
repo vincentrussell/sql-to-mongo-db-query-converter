@@ -292,3 +292,12 @@ more results? (y/n): y
 
 more results? (y/n): n
 ```
+
+# Change Log
+
+
+## [1.1](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.1) (2016-10-05)
+
+**Bugs:**
+
+- Fix bug with not being able to parse like queries

@@ -338,15 +338,16 @@ public class QueryConverter {
             }
         } else if(LikeExpression.class.isInstance(incomingExpression)
                 && Column.class.isInstance(((LikeExpression)incomingExpression).getLeftExpression())
-                && StringValue.class.isInstance(((LikeExpression)incomingExpression).getRightExpression())) {
+                && (StringValue.class.isInstance(((LikeExpression)incomingExpression).getRightExpression()) ||
+                Column.class.isInstance(((LikeExpression)incomingExpression).getRightExpression()))) {
             LikeExpression likeExpression = (LikeExpression)incomingExpression;
-            Column column = ((Column)likeExpression.getLeftExpression());
-            StringValue stringValue = ((StringValue)likeExpression.getRightExpression());
-            Document document = new Document("$regex", "^" + replaceRegexCharacters(stringValue.getValue()) + "$");
+            String stringValueLeftSide = getStringValue(likeExpression.getLeftExpression());
+            String stringValueRightSide = getStringValue(likeExpression.getRightExpression());
+            Document document = new Document("$regex", "^" + replaceRegexCharacters(stringValueRightSide) + "$");
             if (likeExpression.isNot()) {
-                document = new Document("$not",new Document(getStringValue(column),document));
+                document = new Document("$not",new Document(stringValueLeftSide,document));
             } else {
-                document = new Document(getStringValue(column),document);
+                document = new Document(stringValueLeftSide,document);
             }
             query.putAll(document);
         } else if(IsNullExpression.class.isInstance(incomingExpression)) {

@@ -174,6 +174,15 @@ public class QueryConverterTest {
         likeTest("st[dz]rt[a-d]time%","^st[dz]{1}rt[a-d]{1}time.*$");
     }
 
+    @Test
+    public void likeTestWithDoubleQuotes() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where _id LIKE \"PREFIX%\"");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("_id",document("$regex","^PREFIX.*$")),mongoDBQueryHolder.getQuery());
+    }
+
     private void likeTest(String like, String regex) throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where subDocument.value LIKE '"+like+"'");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
