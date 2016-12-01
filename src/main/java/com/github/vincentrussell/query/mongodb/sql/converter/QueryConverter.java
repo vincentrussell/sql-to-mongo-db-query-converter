@@ -358,7 +358,7 @@ public class QueryConverter {
             query.put("$and", Arrays.asList(parseExpression(new Document(),andExpression.getLeftExpression()), parseExpression(new Document(),andExpression.getRightExpression())));
         } else if(InExpression.class.isInstance(incomingExpression)) {
             InExpression inExpression = (InExpression) incomingExpression;
-            String leftExpression = ((InExpression) incomingExpression).getLeftExpression().toString();
+            String leftExpression = getStringValue(((InExpression) incomingExpression).getLeftExpression());
             query.put(leftExpression,new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
                 @Override
                 public Object apply(Expression expression) {
