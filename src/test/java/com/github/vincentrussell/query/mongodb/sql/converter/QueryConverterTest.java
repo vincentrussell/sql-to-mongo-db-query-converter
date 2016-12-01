@@ -464,7 +464,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("$in","theValue1","theValue2","theValue3"),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$in","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -474,7 +474,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("$nin","theValue1","theValue2","theValue3"),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$nin","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
     }
 
     @Test

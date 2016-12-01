@@ -358,7 +358,8 @@ public class QueryConverter {
             query.put("$and", Arrays.asList(parseExpression(new Document(),andExpression.getLeftExpression()), parseExpression(new Document(),andExpression.getRightExpression())));
         } else if(InExpression.class.isInstance(incomingExpression)) {
             InExpression inExpression = (InExpression) incomingExpression;
-            query.put(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
+            String leftExpression = ((InExpression) incomingExpression).getLeftExpression().toString();
+            query.put(leftExpression,new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
                 @Override
                 public Object apply(Expression expression) {
                     try {
@@ -367,7 +368,7 @@ public class QueryConverter {
                         throw new RuntimeException(e);
                     }
                 }
-            }));
+            })));
         } else if(OrExpression.class.isInstance(incomingExpression)) {
             OrExpression orExpression = (OrExpression) incomingExpression;
             query.put("$or", Arrays.asList(parseExpression(new Document(), orExpression.getLeftExpression()), parseExpression(new Document(), orExpression.getRightExpression())));

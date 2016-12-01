@@ -80,11 +80,13 @@ public class MainTest {
             assertEquals("******Mongo Query:*********\n" +
                     "\n" +
                     "db.my_table.find({\n" +
-                    "  \"$in\": [\n" +
-                    "    \"theValue1\",\n" +
-                    "    \"theValue2\",\n" +
-                    "    \"theValue3\"\n" +
-                    "  ]\n" +
+                    "  \"value\": {\n" +
+                    "    \"$in\": [\n" +
+                    "      \"theValue1\",\n" +
+                    "      \"theValue2\",\n" +
+                    "      \"theValue3\"\n" +
+                    "    ]\n" +
+                    "  }\n" +
                     "} , {\n" +
                     "  \"_id\": 0,\n" +
                     "  \"column1\": 1\n" +

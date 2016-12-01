@@ -165,7 +165,7 @@ db.my_table.distinct("column1" , {
 })
 ```
 
-###Like Queries
+###Like
 
 ```
 select * from my_table where value LIKE 'start%'
@@ -177,6 +177,36 @@ db.my_table.find({
   "value": {
     "$regex": "^start.*$"
   }
+})
+```
+
+###In
+
+```
+select column1 from my_table where value IN ("theValue1","theValue2","theValue3")
+
+
+******Result:*********
+
+db.my_table.find({ 
+	"value" : { 
+		"$in" : ["theValue1","theValue2", "theValue3"] 
+		}
+})
+```
+
+###Not In
+
+```
+select column1 from my_table where value NOT IN ("theValue1","theValue2","theValue3")
+
+
+******Result:*********
+
+db.my_table.find({ 
+	"value" : { 
+		"$nin" : ["theValue1","theValue2", "theValue3"] 
+		}
 })
 ```
 
@@ -294,6 +324,12 @@ more results? (y/n): n
 ```
 
 # Change Log
+
+## [1.2](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.2) (2016-11-30)
+
+**Bugs:**
+
+- Fix bug with IN and NOT IN expressions from not converting properly to mongo format properly
 
 
 ## [1.1](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.1) (2016-10-05)
