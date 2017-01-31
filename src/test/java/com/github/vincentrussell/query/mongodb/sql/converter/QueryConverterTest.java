@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
@@ -58,6 +59,19 @@ public class QueryConverterTest {
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("field_1",1).append("field_2",-1),mongoDBQueryHolder.getSort());
         assertEquals(0,mongoDBQueryHolder.getQuery().size());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithString() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value=1", new HashMap(){{
+            put("value",FieldType.STRING);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value",1L),mongoDBQueryHolder.getQuery());
     }
 
     @Test

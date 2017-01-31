@@ -54,6 +54,7 @@ public class QueryConverter {
     private final boolean isDistinct;
     private final boolean isCountAll;
     private final long limit;
+    private final Map<String,FieldType> fieldNameToFieldTypeMapping;
 
     /**
      * Create a QueryConverter with a string
@@ -61,18 +62,41 @@ public class QueryConverter {
      * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()));
+        this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap());
+    }
+
+    /**
+     * Create a QueryConverter with a string
+     * @param sql the sql statement
+     * @param fieldNameToFieldTypeMapping mapping for each field
+     * @throws ParseException when the sql query cannot be parsed
+     */
+    public QueryConverter(String sql, Map<String,FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+        this(new ByteArrayInputStream(sql.getBytes()),fieldNameToFieldTypeMapping);
+    }
+
+
+    /**
+     * Create a QueryConverter with a string
+     * @param inputStream an input stream that has the sql statement in it
+     * @throws ParseException when the sql query cannot be parsed
+     */
+    public QueryConverter(InputStream inputStream) throws ParseException {
+        this(inputStream,Collections.<String, FieldType>emptyMap());
     }
 
     /**
      * Create a QueryConverter with an InputStream
      * @param inputStream an input stream that has the sql statement in it
+     * @param fieldNameToFieldTypeMapping mapping for each field
      * @throws ParseException when the sql query cannot be parsed
      */
-    public QueryConverter(InputStream inputStream) throws ParseException {
+    public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping) throws ParseException {
         CCJSqlParser jSqlParser = new CCJSqlParser(inputStream);
         try {
             final PlainSelect plainSelect = jSqlParser.PlainSelect();
+            this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping != null
+                    ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
             isTrue(plainSelect!=null,"could not parse SELECT statement from query");
             isDistinct = (plainSelect.getDistinct() != null);
             isCountAll = isCountAll(plainSelect.getSelectItems());
@@ -115,7 +139,9 @@ public class QueryConverter {
 
     private ParseException convertParseException(net.sf.jsqlparser.parser.ParseException incomingException) {
         try {
-            return new ParseException(new Token(incomingException.currentToken.kind, incomingException.currentToken.image), incomingException.expectedTokenSequences, incomingException.tokenImage);
+            return new ParseException(new Token(incomingException.currentToken.kind,
+                    incomingException.currentToken.image), incomingException.expectedTokenSequences,
+                    incomingException.tokenImage);
         } catch (NullPointerException e1) {
             if (incomingException.getMessage().contains("Was expecting:\n" +
                     "    \"SELECT\"")) {
@@ -145,13 +171,15 @@ public class QueryConverter {
         }));
 
         isFalse((selectItems.size() >1 || isSelectAll(selectItems)) && isDistinct,"cannot run distinct one more than one column");
-        isFalse(groupBys.size() == 0 && selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems) && !isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
+        isFalse(groupBys.size() == 0 && selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems)
+                && !isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
         isTrue(joins==null,"Joins are not supported.  Only one simple table name is supported.");
     }
 
     /**
      * get the object that you need to submit a query
-     * @return the {@link com.github.vincentrussell.query.mongodb.sql.converter.MongoDBQueryHolder} that contains all that is needed to describe the query to be run.
+     * @return the {@link com.github.vincentrussell.query.mongodb.sql.converter.MongoDBQueryHolder}
+     * that contains all that is needed to describe the query to be run.
      */
     public MongoDBQueryHolder getMongoQuery() {
         return mongoDBQueryHolder;
@@ -182,7 +210,7 @@ public class QueryConverter {
         }
 
         if (where!=null) {
-            mongoDBQueryHolder.setQuery((Document) parseExpression(new Document(), where));
+            mongoDBQueryHolder.setQuery((Document) parseExpression(new Document(), where, null));
         }
         mongoDBQueryHolder.setLimit(limit);
         return mongoDBQueryHolder;
@@ -311,7 +339,7 @@ public class QueryConverter {
     }
 
 
-    private Object parseExpression(Document query, Expression incomingExpression) throws ParseException {
+    private Object parseExpression(Document query,Expression incomingExpression, Expression otherSide) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
             RegexFunction regexFunction = isRegexFunction(incomingExpression);
             DateFunction dateFunction = isDateFunction(incomingExpression);
@@ -324,17 +352,29 @@ public class QueryConverter {
             } else if (dateFunction!=null) {
                 query.put(dateFunction.getColumn(),new Document(dateFunction.getComparisonExpression(),dateFunction.getDate()));
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
-                query.put(parseExpression(new Document(),((EqualsTo)incomingExpression).getLeftExpression()).toString(),parseExpression(new Document(),((EqualsTo)incomingExpression).getRightExpression()));
+                final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
+                final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
+                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),parseExpression(new Document(), rightExpression, leftExpression));
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
-                query.put("$not",new Document(parseExpression(new Document(),((NotEqualsTo)incomingExpression).getLeftExpression()).toString(),parseExpression(new Document(),((NotEqualsTo)incomingExpression).getRightExpression())));
+                final Expression leftExpression = ((NotEqualsTo) incomingExpression).getLeftExpression();
+                final Expression rightExpression = ((NotEqualsTo) incomingExpression).getRightExpression();
+                query.put("$not",new Document(parseExpression(new Document(), leftExpression, rightExpression).toString(),parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (GreaterThan.class.isInstance(incomingExpression)) {
-                query.put(((GreaterThan)incomingExpression).getLeftExpression().toString(),new Document("$gt",parseExpression(new Document(),((GreaterThan)incomingExpression).getRightExpression())));
+                final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
+                final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
+                query.put(leftExpression.toString(),new Document("$gt",parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (MinorThan.class.isInstance(incomingExpression)) {
-                query.put(((MinorThan)incomingExpression).getLeftExpression().toString(),new Document("$lt", parseExpression(new Document(),((MinorThan)incomingExpression).getRightExpression())));
+                final Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
+                final Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
+                query.put(leftExpression.toString(),new Document("$lt", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (GreaterThanEquals.class.isInstance(incomingExpression)) {
-                query.put(((GreaterThanEquals)incomingExpression).getLeftExpression().toString(),new Document("$gte",parseExpression(new Document(),((GreaterThanEquals)incomingExpression).getRightExpression())));
+                final Expression leftExpression = ((GreaterThanEquals) incomingExpression).getLeftExpression();
+                final Expression rightExpression = ((GreaterThanEquals) incomingExpression).getRightExpression();
+                query.put(leftExpression.toString(),new Document("$gte",parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (MinorThanEquals.class.isInstance(incomingExpression)) {
-                query.put(((MinorThanEquals)incomingExpression).getLeftExpression().toString(),new Document("$lte", parseExpression(new Document(),((MinorThanEquals)incomingExpression).getRightExpression())));
+                final Expression leftExpression = ((MinorThanEquals) incomingExpression).getLeftExpression();
+                final Expression rightExpression = ((MinorThanEquals) incomingExpression).getRightExpression();
+                query.put(leftExpression.toString(),new Document("$lte", parseExpression(new Document(), rightExpression, leftExpression)));
             }
         } else if(LikeExpression.class.isInstance(incomingExpression)
                 && Column.class.isInstance(((LikeExpression)incomingExpression).getLeftExpression())
@@ -355,15 +395,18 @@ public class QueryConverter {
             query.put(isNullExpression.getLeftExpression().toString(),new Document("$exists",isNullExpression.isNot()));
         } else if(AndExpression.class.isInstance(incomingExpression)) {
             AndExpression andExpression = (AndExpression) incomingExpression;
-            query.put("$and", Arrays.asList(parseExpression(new Document(),andExpression.getLeftExpression()), parseExpression(new Document(),andExpression.getRightExpression())));
+            final Expression leftExpression = andExpression.getLeftExpression();
+            final Expression rightExpression = andExpression.getRightExpression();
+            query.put("$and", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
         } else if(InExpression.class.isInstance(incomingExpression)) {
-            InExpression inExpression = (InExpression) incomingExpression;
-            String leftExpression = getStringValue(((InExpression) incomingExpression).getLeftExpression());
-            query.put(leftExpression,new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
+            final InExpression inExpression = (InExpression) incomingExpression;
+            final Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();
+            final String leftExpressionAsString = getStringValue(leftExpression);
+            query.put(leftExpressionAsString,new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
                 @Override
                 public Object apply(Expression expression) {
                     try {
-                        return parseExpression(new Document(),expression);
+                        return parseExpression(new Document(),expression, leftExpression);
                     } catch (ParseException e) {
                         throw new RuntimeException(e);
                     }
@@ -371,10 +414,12 @@ public class QueryConverter {
             })));
         } else if(OrExpression.class.isInstance(incomingExpression)) {
             OrExpression orExpression = (OrExpression) incomingExpression;
-            query.put("$or", Arrays.asList(parseExpression(new Document(), orExpression.getLeftExpression()), parseExpression(new Document(), orExpression.getRightExpression())));
+            final Expression leftExpression = orExpression.getLeftExpression();
+            final Expression rightExpression = orExpression.getRightExpression();
+            query.put("$or", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
-            return parseExpression(new Document(),parenthesis.getExpression());
+            return parseExpression(new Document(),parenthesis.getExpression(),null);
         } else if (LongValue.class.isInstance(incomingExpression)) {
             return (((LongValue)incomingExpression).getValue());
         } else if (StringValue.class.isInstance(incomingExpression)) {
