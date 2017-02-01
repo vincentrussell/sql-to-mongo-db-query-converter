@@ -71,8 +71,87 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value","1"),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithNumber() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value=\"1\"", new HashMap(){{
+            put("value",FieldType.NUMBER);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("value",1L),mongoDBQueryHolder.getQuery());
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithNumberGT() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"1\"", new HashMap(){{
+            put("value",FieldType.NUMBER);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value",document("$gt", 1L)),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateGT() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"2012-12-01\"", new HashMap(){{
+            put("value",FieldType.DATE);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value",document("$gt", new Date(1354338000000L))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateISO8601GT() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"2013-07-12T18:31:01.000Z\"", new HashMap(){{
+            put("value",FieldType.DATE);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value",document("$gt", new Date(1373653861000L))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateNaturalGT() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"45 days ago\"", new HashMap(){{
+            put("value",FieldType.DATE);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        Date resultDate = mongoDBQueryHolder.getQuery().get("value",Document.class).get("$gt",Date.class);
+        DateTime fortyFiveDaysAgo = new DateTime().minusDays(45);
+        assertTrue(new Interval(fortyFiveDaysAgo.minusMinutes(5),fortyFiveDaysAgo.plusMinutes(5)).contains(new DateTime(resultDate)));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWitUnparseableNaturalDateGT() throws ParseException {
+        exception.expect(ParseException.class);
+        exception.expectMessage(containsString("could not convert who cares to a date"));
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"who cares\"", new HashMap(){{
+            put("value",FieldType.DATE);
+        }}
+        );
+    }
+
 
     @Test
     public void selectAllFromTableWithSimpleWhereClauseLong() throws ParseException {
@@ -238,7 +317,7 @@ public class QueryConverterTest {
     @Test
     public void fuzzyDateUnparseable() throws ParseException {
         exception.expect(ParseException.class);
-        exception.expectMessage(containsString("could not parse natural date"));
+        exception.expectMessage(containsString("could not natural language date: quarter hour ago"));
         new QueryConverter("select * from my_table where date(column,'natural') <= 'quarter hour ago'");
     }
 
