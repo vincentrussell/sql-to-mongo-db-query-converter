@@ -325,6 +325,12 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.3](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3) (2017-01-31)
+
+**Enhancements:**
+
+- Added the ability to provide field types for columns passed into the query via Java API.  See QueryConverterTest for examples.
+
 ## [1.2](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.2) (2016-11-30)
 
 **Bugs:**

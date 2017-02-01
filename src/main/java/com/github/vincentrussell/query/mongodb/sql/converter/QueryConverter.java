@@ -24,8 +24,10 @@ import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import org.apache.commons.io.IOUtils;
 import org.bson.Document;
+import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -38,6 +40,14 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 public class QueryConverter {
+
+    private static final DateTimeFormatter YY_MM_DDFORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter YYMMDDFORMATTER = DateTimeFormat.forPattern("yyyyMMdd");
+
+    private static final Collection<DateTimeFormatter> FORMATTERS = Collections.unmodifiableList(Arrays.asList(
+            ISODateTimeFormat.dateTime(),
+            YY_MM_DDFORMATTER,
+            YYMMDDFORMATTER));
 
     public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
@@ -97,7 +107,7 @@ public class QueryConverter {
             final PlainSelect plainSelect = jSqlParser.PlainSelect();
             this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping != null
                     ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
-            isTrue(plainSelect!=null,"could not parse SELECT statement from query");
+            isTrue(plainSelect!=null,"could not parseNaturalLanguageDate SELECT statement from query");
             isDistinct = (plainSelect.getDistinct() != null);
             isCountAll = isCountAll(plainSelect.getSelectItems());
             where = plainSelect.getWhere();
@@ -145,12 +155,12 @@ public class QueryConverter {
         } catch (NullPointerException e1) {
             if (incomingException.getMessage().contains("Was expecting:\n" +
                     "    \"SELECT\"")) {
-                return new ParseException("Could not parse query.  Only select statements are supported.");
+                return new ParseException("Could not parseNaturalLanguageDate query.  Only select statements are supported.");
             }
             if (incomingException.getMessage()!=null) {
                 return new ParseException(incomingException.getMessage());
             }
-            return new ParseException("Count not parse query.");
+            return new ParseException("Count not parseNaturalLanguageDate query.");
         }
     }
 
@@ -420,16 +430,100 @@ public class QueryConverter {
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
             return parseExpression(new Document(),parenthesis.getExpression(),null);
-        } else if (LongValue.class.isInstance(incomingExpression)) {
-            return (((LongValue)incomingExpression).getValue());
-        } else if (StringValue.class.isInstance(incomingExpression)) {
-            return (((StringValue)incomingExpression).getValue());
-        } else if (Column.class.isInstance(incomingExpression)) {
-            return getStringValue(incomingExpression);
         } else {
-            throw new ParseException("can not parse: " + incomingExpression.toString());
+            return getValue(incomingExpression,otherSide);
         }
         return query;
+    }
+
+    private Object getValue(Expression incomingExpression, Expression otherSide) throws ParseException {
+        FieldType fieldType = fieldNameToFieldTypeMapping.get(getStringValue(otherSide));
+        if (LongValue.class.isInstance(incomingExpression)) {
+            return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
+        } else if (StringValue.class.isInstance(incomingExpression)) {
+            return normalizeValue((((StringValue)incomingExpression).getValue()),fieldType);
+        } else if (Column.class.isInstance(incomingExpression)) {
+            return normalizeValue(getStringValue(incomingExpression),fieldType);
+        } else {
+            throw new ParseException("can not parseNaturalLanguageDate: " + incomingExpression.toString());
+        }
+    }
+
+    private Object normalizeValue(Object value, FieldType fieldType) throws ParseException {
+        if (fieldType==null) {
+            return value;
+        } else {
+            if (FieldType.STRING.equals(fieldType)) {
+                return forceString(value);
+            }
+            if (FieldType.NUMBER.equals(fieldType)) {
+                return forceNumber(value);
+            }
+            if (FieldType.DATE.equals(fieldType)) {
+                return forceDate(value);
+            }
+        }
+        throw new ParseException("could not normalize value:" + value);
+    }
+
+    private Object forceDate(Object value) throws ParseException {
+        if (String.class.isInstance(value)){
+            for (DateTimeFormatter formatter : FORMATTERS) {
+                try {
+                    DateTime dt = formatter.parseDateTime((String) value);
+                    return dt.toDate();
+                } catch (Exception e) {
+                    //noop
+                }
+            }
+            try {
+                return parseNaturalLanguageDate((String) value);
+            } catch (Exception e) {
+                //noop
+            }
+
+        }
+        throw new ParseException("could not convert " + value + " to a date");
+    }
+
+    private static Date parseNaturalLanguageDate(String text) {
+        Parser parser = new Parser();
+        List<DateGroup> groups = parser.parse(text);
+        for (DateGroup group : groups) {
+            List<Date> dates = group.getDates();
+            if (dates.size() > 0) {
+                return dates.get(0);
+            }
+        }
+        throw new IllegalArgumentException("could not natural language date: "+ text);
+    }
+
+    private Object forceNumber(Object value) throws ParseException {
+        if (String.class.isInstance(value)){
+            try {
+                return Long.parseLong((String) value);
+            } catch (NumberFormatException e1) {
+                try {
+                    return Double.parseDouble((String) value);
+                } catch (NumberFormatException e2) {
+                    try {
+                        return Float.parseFloat((String) value);
+                    } catch (NumberFormatException e3) {
+                        throw new ParseException("could not convert " + value + " to number");
+                    }
+                }
+            }
+        } else {
+            return value;
+        }
+    }
+
+    private String forceString(Object value) {
+        if (String.class.isInstance(value)){
+            return (String) value;
+        } else {
+            return "" + value + "";
+        }
     }
 
     private String replaceRegexCharacters(String value) {
@@ -726,7 +820,7 @@ public class QueryConverter {
 
         private DateFunction(String format,String value, String column) {
             if ("natural".equals(format)) {
-                this.date = parse(value);
+                this.date = parseNaturalLanguageDate(value);
             } else {
                 DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(format).withZoneUTC();
                 this.date = dateTimeFormatter.parseDateTime(value).toDate();
@@ -734,17 +828,6 @@ public class QueryConverter {
             this.column = column;
         }
 
-        private static Date parse(String text) {
-            Parser parser = new Parser();
-            List<DateGroup> groups = parser.parse(text);
-            for (DateGroup group : groups) {
-                List<Date> dates = group.getDates();
-                if (dates.size() > 0) {
-                    return dates.get(0);
-                }
-            }
-            throw new IllegalArgumentException("could not parse natural date: "+ text);
-        }
 
         public Date getDate() {
             return date;
@@ -764,7 +847,7 @@ public class QueryConverter {
             } else if (MinorThan.class.isInstance(comparisonFunction)) {
                 this.comparisonExpression = "$lt";
             } else {
-                throw new ParseException("could not parse string expression: " + comparisonFunction.getStringExpression());
+                throw new ParseException("could not parseNaturalLanguageDate string expression: " + comparisonFunction.getStringExpression());
             }
         }
 
