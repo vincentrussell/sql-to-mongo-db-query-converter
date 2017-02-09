@@ -114,6 +114,33 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void withAbsentField() throws ParseException {
+        final String key  = "count";
+        final String query = "select * from table where "+ key + " = 0";
+
+        QueryConverter queryConverter = new QueryConverter(query);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        Document document = mongoDBQueryHolder.getQuery();
+        final Object value = document.get(key);
+        assertEquals(Long.class, value.getClass());
+    }
+
+    @Test
+    public void withPresentField() throws ParseException {
+        final String key  = "count";
+        final String query = "select * from table where "+ key + " = 0";
+
+        QueryConverter queryConverter = new QueryConverter(query, new HashMap(){{
+            put(key, FieldType.STRING);
+        }}
+        );;
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        Document document = mongoDBQueryHolder.getQuery();
+        final Object value = document.get(key);
+        assertEquals(String.class, value.getClass());
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateISO8601GT() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"2013-07-12T18:31:01.000Z\"", new HashMap(){{

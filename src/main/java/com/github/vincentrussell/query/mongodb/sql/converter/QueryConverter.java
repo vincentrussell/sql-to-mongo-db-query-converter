@@ -39,6 +39,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 public class QueryConverter {
 
     private static final DateTimeFormatter YY_MM_DDFORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd");
@@ -426,7 +428,8 @@ public class QueryConverter {
             OrExpression orExpression = (OrExpression) incomingExpression;
             final Expression leftExpression = orExpression.getLeftExpression();
             final Expression rightExpression = orExpression.getRightExpression();
-            query.put("$or", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
+            query.put("$or", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression),
+                    parseExpression(new Document(), rightExpression, leftExpression)));
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
             return parseExpression(new Document(),parenthesis.getExpression(),null);
@@ -437,7 +440,8 @@ public class QueryConverter {
     }
 
     private Object getValue(Expression incomingExpression, Expression otherSide) throws ParseException {
-        FieldType fieldType = fieldNameToFieldTypeMapping.get(getStringValue(otherSide));
+        FieldType fieldType = firstNonNull(fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
+                FieldType.UNKNOWN);
         if (LongValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
         } else if (StringValue.class.isInstance(incomingExpression)) {
@@ -450,7 +454,7 @@ public class QueryConverter {
     }
 
     private Object normalizeValue(Object value, FieldType fieldType) throws ParseException {
-        if (fieldType==null) {
+        if (fieldType==null || FieldType.UNKNOWN.equals(fieldType)) {
             return value;
         } else {
             if (FieldType.STRING.equals(fieldType)) {
