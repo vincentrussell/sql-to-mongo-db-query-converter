@@ -67,6 +67,7 @@ public class QueryConverter {
     private final boolean isCountAll;
     private final long limit;
     private final Map<String,FieldType> fieldNameToFieldTypeMapping;
+    private final FieldType defaultFieldType;
 
     /**
      * Create a QueryConverter with a string
@@ -74,7 +75,7 @@ public class QueryConverter {
      * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap());
+        this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
     }
 
     /**
@@ -84,9 +85,18 @@ public class QueryConverter {
      * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql, Map<String,FieldType> fieldNameToFieldTypeMapping) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()),fieldNameToFieldTypeMapping);
+        this(new ByteArrayInputStream(sql.getBytes()),fieldNameToFieldTypeMapping, FieldType.UNKNOWN);
     }
 
+    /**
+     *
+     * @param sql Create a QueryConverter with a string
+     * @param fieldType the default {@link FieldType} to be used
+     * @throws ParseException
+     */
+    public QueryConverter(String sql, FieldType fieldType) throws ParseException {
+        this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap(), fieldType);
+    }
 
     /**
      * Create a QueryConverter with a string
@@ -94,18 +104,21 @@ public class QueryConverter {
      * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(InputStream inputStream) throws ParseException {
-        this(inputStream,Collections.<String, FieldType>emptyMap());
+        this(inputStream,Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
     }
 
     /**
      * Create a QueryConverter with an InputStream
      * @param inputStream an input stream that has the sql statement in it
      * @param fieldNameToFieldTypeMapping mapping for each field
+     * @param defaultFieldType the default {@link FieldType} to be used
      * @throws ParseException when the sql query cannot be parsed
      */
-    public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+    public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping,
+                          FieldType defaultFieldType) throws ParseException {
         CCJSqlParser jSqlParser = new CCJSqlParser(inputStream);
         try {
+            this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
             final PlainSelect plainSelect = jSqlParser.PlainSelect();
             this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping != null
                     ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
@@ -441,7 +454,7 @@ public class QueryConverter {
 
     private Object getValue(Expression incomingExpression, Expression otherSide) throws ParseException {
         FieldType fieldType = firstNonNull(fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
-                FieldType.UNKNOWN);
+                defaultFieldType);
         if (LongValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
         } else if (StringValue.class.isInstance(incomingExpression)) {

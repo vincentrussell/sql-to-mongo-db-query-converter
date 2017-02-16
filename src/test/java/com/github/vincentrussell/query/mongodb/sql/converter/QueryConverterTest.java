@@ -311,6 +311,22 @@ public class QueryConverterTest {
         assertEquals(document("subDocument.value",document("$regex",regex)),mongoDBQueryHolder.getQuery());
     }
 
+    @Test
+    public void likeTestWithAbsentFieldType() throws ParseException {
+        String key = "key";
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where "+ key +" = 0");
+        Document document = queryConverter.getMongoQuery().getQuery();
+        assertEquals(Long.class, document.get(key).getClass());
+    }
+
+    @Test
+    public void likeTestWithDefaultFieldType() throws ParseException {
+        String key = "key";
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where "+ key +" = 0", FieldType.STRING);
+        Document document = queryConverter.getMongoQuery().getQuery();
+        assertEquals("0", document.get(key));
+        assertEquals(String.class, document.get(key).getClass());
+    }
 
     @Test
     public void countAllFromTableWithNotLikeQuery() throws ParseException {
