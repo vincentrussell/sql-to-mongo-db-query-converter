@@ -2,6 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.google.common.base.*;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -89,13 +90,24 @@ public class QueryConverter {
     }
 
     /**
-     *
-     * @param sql Create a QueryConverter with a string
+     * Create a QueryConverter with a string
+     * @param sql sql string
      * @param fieldType the default {@link FieldType} to be used
      * @throws ParseException
      */
     public QueryConverter(String sql, FieldType fieldType) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap(), fieldType);
+    }
+
+    /**
+     * Create a QueryConverter with a string
+     * @param sql sql string
+     * @param fieldNameToFieldTypeMapping mapping for each field
+     * @param defaultFieldType defaultFieldType the default {@link FieldType} to be used
+     * @throws ParseException
+     */
+    public QueryConverter(String sql, ImmutableMap<String, FieldType> fieldNameToFieldTypeMapping, FieldType defaultFieldType) throws ParseException {
+        this(new ByteArrayInputStream(sql.getBytes()), fieldNameToFieldTypeMapping, defaultFieldType);
     }
 
     /**

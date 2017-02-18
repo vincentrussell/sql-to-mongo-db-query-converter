@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.google.common.collect.ImmutableMap;
 import org.bson.Document;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -233,6 +234,17 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void regexMatchtWithFieldMappingsOfString() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$') = true ",
+                ImmutableMap.<String,FieldType>builder()
+                        .put("column",FieldType.DATE).build(), FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("column",document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void regexMatchWithOptions() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$','si') = true ");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -262,11 +274,22 @@ public class QueryConverterTest {
     }
 
     private void dateTest(String equation, String mongoFunction) throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select * from my_table where date(column,'YYY-MM-DD') "+equation+" '2016-12-12' ");
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where date(column,'YYYY-MM-DD') "+equation+" '2016-12-12' ");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("column",document(mongoFunction,new Date(1452556800000L))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void dateTestWithFieldMappingsOfString() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where date(column,'YYYY-MM-DD') > '2016-12-12' ",
+                ImmutableMap.<String,FieldType>builder()
+                .put("column",FieldType.DATE).build(), FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("column",document("$gt",new Date(1452556800000L))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -615,7 +638,7 @@ public class QueryConverterTest {
 
     @Test
     public void complicatedTest() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select * from my_table where (value=1 and  date(column,'YYY-MM-DD') <= '2016-12-12' AND nullField IS NULL ) OR ((number > 5 OR number = 1) AND value2=\"theValue\")");
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where (value=1 and  date(column,'YYYY-MM-DD') <= '2016-12-12' AND nullField IS NULL ) OR ((number > 5 OR number = 1) AND value2=\"theValue\")");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
