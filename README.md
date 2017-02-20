@@ -325,6 +325,13 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.3.1](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.1) (2017-02-19)
+
+**Enhancements:**
+
+- Added the ability to have default type like Number, String, or Date
+- Added the ability to provide a type for each field like Number, String, Date
+
 ## [1.3](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3) (2017-01-31)
 
 **Enhancements:**
