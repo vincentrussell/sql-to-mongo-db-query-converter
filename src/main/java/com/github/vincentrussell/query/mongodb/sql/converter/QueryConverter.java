@@ -153,10 +153,10 @@ public class QueryConverter {
 
     private long getLimit(Limit limit) throws ParseException {
         if (limit!=null) {
-            long incomingLimit = limit.getRowCount();
-            BigInteger bigInt = new BigInteger(""+incomingLimit);
-            isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, incomingLimit + ": value is too large");
-            return limit.getRowCount();
+            String rowCountString = getStringValue(limit.getRowCount());
+            BigInteger bigInt = new BigInteger(rowCountString);
+            isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, rowCountString + ": value is too large");
+            return bigInt.longValue();
         }
         return -1;
     }
