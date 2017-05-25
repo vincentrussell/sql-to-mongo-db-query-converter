@@ -394,7 +394,7 @@ public class QueryConverter {
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((NotEqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((NotEqualsTo) incomingExpression).getRightExpression();
-                query.put("$not",new Document(parseExpression(new Document(), leftExpression, rightExpression).toString(),parseExpression(new Document(), rightExpression, leftExpression)));
+                query.put(getStringValue(leftExpression), new Document("$ne", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (GreaterThan.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
@@ -422,6 +422,7 @@ public class QueryConverter {
             Document document = new Document("$regex", "^" + replaceRegexCharacters(stringValueRightSide) + "$");
             if (likeExpression.isNot()) {
                 document = new Document("$not",new Document(stringValueLeftSide,document));
+                throw new ParseException("NOT LIKE queries not supported");
             } else {
                 document = new Document(stringValueLeftSide,document);
             }

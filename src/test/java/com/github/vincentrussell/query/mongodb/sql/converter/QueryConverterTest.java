@@ -22,7 +22,7 @@ import static org.junit.Assert.assertTrue;
 public class QueryConverterTest {
 
     @Rule
-    public ExpectedException exception = ExpectedException.none();
+    public ExpectedException expectedException = ExpectedException.none();
 
     @Before
     public void before() {
@@ -172,8 +172,8 @@ public class QueryConverterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWitUnparseableNaturalDateGT() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("could not convert who cares to a date"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("could not convert who cares to a date"));
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"who cares\"", new HashMap(){{
             put("value",FieldType.DATE);
         }}
@@ -203,15 +203,15 @@ public class QueryConverterTest {
 
     @Test
     public void selectDistinctMultipleFields() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("cannot run distinct one more than one column"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("cannot run distinct one more than one column"));
         new QueryConverter("select DISTINCT column1, column2 from my_table where value=1");
     }
 
     @Test
     public void selectDistinctAll() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("cannot run distinct one more than one column"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("cannot run distinct one more than one column"));
         new QueryConverter("select DISTINCT * from my_table where value=1");
     }
 
@@ -353,20 +353,16 @@ public class QueryConverterTest {
 
     @Test
     public void countAllFromTableWithNotLikeQuery() throws ParseException {
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage("NOT LIKE queries not supported");
         QueryConverter queryConverter = new QueryConverter("select count(*) from my_table where value NOT LIKE 'start%'");
-        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
-        assertEquals(0,mongoDBQueryHolder.getProjection().size());
-        assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$not",document("value",document("$regex","^start.*$"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
     public void selectAllFromTableWithNotLikeQuery() throws ParseException {
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage("NOT LIKE queries not supported");
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value NOT LIKE 'start%'");
-        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
-        assertEquals(0,mongoDBQueryHolder.getProjection().size());
-        assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$not",document("value",document("$regex","^start.*$"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -382,8 +378,8 @@ public class QueryConverterTest {
 
     @Test
     public void fuzzyDateUnparseable() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("could not natural language date: quarter hour ago"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("could not natural language date: quarter hour ago"));
         new QueryConverter("select * from my_table where date(column,'natural') <= 'quarter hour ago'");
     }
 
@@ -413,7 +409,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$not",document("value",1L)),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value", document("$ne", 1L)), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -589,30 +585,30 @@ public class QueryConverterTest {
 
     @Test
     public void selectWithSubQuery() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("Only column names supported"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("Only column names supported"));
         new QueryConverter("select (select id from table2), column2 from my_table where value=\"theValue\"");
     }
 
     @Test
     public void deleteQuery() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("Only select statements are supported"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("Only select statements are supported"));
         new QueryConverter("delete from table where value = 1");
     }
 
     @Test
     public void fromWithSubQuery() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("Only one simple table name is supported"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("Only one simple table name is supported"));
         new QueryConverter("select column2 (select column4 from table_2) my_table where value=\"theValue\"");
     }
 
 
     @Test
     public void selectFromMultipleTables() throws ParseException {
-        exception.expect(ParseException.class);
-        exception.expectMessage(containsString("Only one simple table name is supported"));
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage(containsString("Only one simple table name is supported"));
         new QueryConverter("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value=\"theValue\"");
     }
 
