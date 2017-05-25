@@ -1,8 +1,8 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
-import com.google.common.base.*;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -16,7 +16,6 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.*;
-import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
@@ -106,7 +105,7 @@ public class QueryConverter {
      * @param defaultFieldType defaultFieldType the default {@link FieldType} to be used
      * @throws ParseException
      */
-    public QueryConverter(String sql, ImmutableMap<String, FieldType> fieldNameToFieldTypeMapping, FieldType defaultFieldType) throws ParseException {
+    public QueryConverter(String sql, Map<String, FieldType> fieldNameToFieldTypeMapping, FieldType defaultFieldType) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes()), fieldNameToFieldTypeMapping, defaultFieldType);
     }
 
