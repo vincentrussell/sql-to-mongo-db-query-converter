@@ -814,6 +814,36 @@ public class QueryConverterTest {
                 "})",byteArrayOutputStream.toString("UTF-8"));
     }
 
+    @Test
+    public void doubleEquals() throws ParseException {
+        expectedException.expect(ParseException.class);
+        expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==)");
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where key == 'value1'");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$or",document("value",1L),document("value2","theValue")),mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
+    public void singleQuoteSelect() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value=1 OR value2='theValue'");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$or",document("value",1L),document("value2","theValue")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void unicodeCharacters() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value=1 OR value2=\"亀a亁b亂c亃d亄\"");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$or",document("value",1L),document("value2","亀a亁b亂c亃d亄")),mongoDBQueryHolder.getQuery());
+    }
+
 
     private static Document document(String key, Object... values) {
         Document document = new Document();

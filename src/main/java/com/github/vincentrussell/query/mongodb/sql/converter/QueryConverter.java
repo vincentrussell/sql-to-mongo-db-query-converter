@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
@@ -40,6 +41,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
+import static org.apache.commons.lang.StringUtils.isEmpty;
 
 public class QueryConverter {
 
@@ -75,7 +77,7 @@ public class QueryConverter {
      * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
+        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
     }
 
     /**
@@ -85,7 +87,7 @@ public class QueryConverter {
      * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql, Map<String,FieldType> fieldNameToFieldTypeMapping) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()),fieldNameToFieldTypeMapping, FieldType.UNKNOWN);
+        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)),fieldNameToFieldTypeMapping, FieldType.UNKNOWN);
     }
 
     /**
@@ -95,7 +97,7 @@ public class QueryConverter {
      * @throws ParseException
      */
     public QueryConverter(String sql, FieldType fieldType) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()), Collections.<String, FieldType>emptyMap(), fieldType);
+        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), Collections.<String, FieldType>emptyMap(), fieldType);
     }
 
     /**
@@ -106,7 +108,7 @@ public class QueryConverter {
      * @throws ParseException
      */
     public QueryConverter(String sql, Map<String, FieldType> fieldNameToFieldTypeMapping, FieldType defaultFieldType) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes()), fieldNameToFieldTypeMapping, defaultFieldType);
+        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), fieldNameToFieldTypeMapping, defaultFieldType);
     }
 
     /**
@@ -127,7 +129,7 @@ public class QueryConverter {
      */
     public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping,
                           FieldType defaultFieldType) throws ParseException {
-        CCJSqlParser jSqlParser = new CCJSqlParser(inputStream);
+        CCJSqlParser jSqlParser = new CCJSqlParser(inputStream, Charsets.UTF_8.name());
         try {
             this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
             final PlainSelect plainSelect = jSqlParser.PlainSelect();
@@ -144,6 +146,10 @@ public class QueryConverter {
             isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
             table = plainSelect.getFromItem().toString();
             limit = getLimit(plainSelect.getLimit());
+
+            net.sf.jsqlparser.parser.Token nextToken = jSqlParser.getNextToken();
+            isTrue(isEmpty(nextToken.image) || ";".equals(nextToken.image), "unable to parse complete sql string. one reason for this is the use of double equals (==)");
+
             mongoDBQueryHolder = getMongoQueryInternal();
             validate();
         } catch (net.sf.jsqlparser.parser.ParseException e) {

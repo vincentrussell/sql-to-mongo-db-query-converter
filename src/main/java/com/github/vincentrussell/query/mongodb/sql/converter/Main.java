@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterators;
@@ -146,7 +147,7 @@ public class Main {
                         inputStream = new TimeoutInputStream(System.in, 1, TimeUnit.SECONDS);
                         System.out.println(ENTER_SQL_TEXT);
                     } else if (sql!=null) {
-                        inputStream = new ByteArrayInputStream(sql.getBytes());
+                        inputStream = new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8));
                     } else {
                         File sourceFile = new File(source);
                         if (!sourceFile.exists()) {
