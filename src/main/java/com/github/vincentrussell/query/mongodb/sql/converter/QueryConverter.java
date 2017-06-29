@@ -464,6 +464,11 @@ public class QueryConverter {
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
             return parseExpression(new Document(),parenthesis.getExpression(),null);
+        } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
+            Expression expression = ((NotExpression)incomingExpression).getExpression();
+            return new Document(getStringValue(expression), new Document("$ne", true));
+        } else if (otherSide == null) {
+            return new Document(getStringValue(incomingExpression), true);
         } else {
             return getValue(incomingExpression,otherSide);
         }
@@ -486,7 +491,8 @@ public class QueryConverter {
 
     private Object normalizeValue(Object value, FieldType fieldType) throws ParseException {
         if (fieldType==null || FieldType.UNKNOWN.equals(fieldType)) {
-            return value;
+            Object bool = forceBool(value);
+            return (bool != null) ? bool : value;
         } else {
             if (FieldType.STRING.equals(fieldType)) {
                 return forceString(value);
@@ -497,8 +503,18 @@ public class QueryConverter {
             if (FieldType.DATE.equals(fieldType)) {
                 return forceDate(value);
             }
+            if (FieldType.BOOLEAN.equals(fieldType)) {
+                return Boolean.valueOf(value.toString());
+            }
         }
         throw new ParseException("could not normalize value:" + value);
+    }
+
+    private Object forceBool(Object value) {
+        if (value.toString().equalsIgnoreCase("true") || value.toString().equalsIgnoreCase("false")) {
+            return Boolean.valueOf(value.toString());
+        }
+        return null;
     }
 
     private Object forceDate(Object value) throws ParseException {

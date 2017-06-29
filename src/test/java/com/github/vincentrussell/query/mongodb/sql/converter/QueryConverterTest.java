@@ -845,6 +845,60 @@ public class QueryConverterTest {
     }
 
 
+    @Test
+    public void booleanTestWithoutEquals() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where booleanField");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("booleanField",true),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void negativebooleanTestWithoutEquals() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT booleanField");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("booleanField",document("$ne", true)),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void booleanTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where booleanField = true");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("booleanField",true),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void negativebooleanTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where booleanField != true");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("booleanField",document("$ne", true)),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void booleanTestFalse() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where booleanField = false");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("booleanField",false),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void negativebooleanTestFalse() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where booleanField != false");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("booleanField",document("$ne", false)),mongoDBQueryHolder.getQuery());
+    }
+
     private static Document document(String key, Object... values) {
         Document document = new Document();
         if (values.length > 1) {
