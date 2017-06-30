@@ -210,6 +210,45 @@ db.my_table.find({
 })
 ```
 
+###Is True
+
+```
+select column1 from my_table where column = true
+
+
+******Result:*********
+
+db.my_table.find({ 
+	"column" : true
+})
+```
+
+###Is False
+
+```
+select column1 from my_table where column = false
+
+
+******Result:*********
+
+db.my_table.find({ 
+	"column" : false
+})
+```
+
+###Not True
+
+```
+select column1 from my_table where NOT column
+
+
+******Result:*********
+
+db.my_table.find({ 
+	"value" : {$ne: true}
+})
+```
+
 ###Group By (Aggregation)
 
 ```
@@ -324,6 +363,13 @@ more results? (y/n): n
 ```
 
 # Change Log
+
+## [1.3.2](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.2) (2017-06-29)
+
+**Enhancements:**
+
+- Added the ability to support queries on boolean fields
+- UTF-8 support
 
 ## [1.3.1](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.1) (2017-02-19)
 
