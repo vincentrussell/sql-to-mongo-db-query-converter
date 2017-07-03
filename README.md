@@ -364,7 +364,7 @@ more results? (y/n): n
 
 # Change Log
 
-## [1.3.2](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.2) (2017-06-29)
+## [1.3.2](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.2) (2017-07-02)
 
 **Enhancements:**
 
