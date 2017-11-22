@@ -495,7 +495,7 @@ public class QueryConverter {
             return (bool != null) ? bool : value;
         } else {
             if (FieldType.STRING.equals(fieldType)) {
-                return forceString(value);
+                return fixDoubleSingleQuotes(forceString(value));
             }
             if (FieldType.NUMBER.equals(fieldType)) {
                 return forceNumber(value);
@@ -649,8 +649,9 @@ public class QueryConverter {
                             || function.getParameters().getExpressions().size()==3)
                         && "true".equals(rightExpression)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
-                    String column = getStringValue(function.getParameters().getExpressions().get(0));
-                    String regex = ((StringValue)(function.getParameters().getExpressions().get(1))).getValue();
+                    final String column = getStringValue(function.getParameters().getExpressions().get(0));
+                    final String regex = fixDoubleSingleQuotes(((StringValue)(function.getParameters()
+                            .getExpressions().get(1))).getValue());
                     try {
                         Pattern.compile(regex);
                     } catch (PatternSyntaxException e) {
@@ -668,6 +669,10 @@ public class QueryConverter {
             }
         }
         return null;
+    }
+
+    private String fixDoubleSingleQuotes(final String regex) {
+        return regex.replaceAll("''", "'");
     }
 
     private boolean isSelectAll(List<SelectItem> selectItems) {
