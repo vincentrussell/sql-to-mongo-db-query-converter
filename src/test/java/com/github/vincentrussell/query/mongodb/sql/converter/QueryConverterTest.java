@@ -1,6 +1,7 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.bson.Document;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class QueryConverterTest {
@@ -400,7 +402,8 @@ public class QueryConverterTest {
 
     @Test(expected = ParseException.class)
     public void regexMatchMalformed() throws ParseException {
-        new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$') = false ");
+       QueryConverter queryConverter =  new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$') = false ");
+       assertNull(queryConverter);
     }
 
     @Test
@@ -410,6 +413,33 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("value",document("$exists",false)),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void specialtyFunctionTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where QUICKSEARCH('123') AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$QUICKSEARCH", "123"), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void specialtyFunctionWithNoArgsTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where QUICKSEARCH() AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$QUICKSEARCH", null), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void specialtyFunctionWithMultipleArgsTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where QUICKSEARCH(123, \"123\") AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$QUICKSEARCH", Lists.newArrayList(123L, "123")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -910,10 +940,12 @@ public class QueryConverterTest {
 
     private static Document document(String key, Object... values) {
         Document document = new Document();
-        if (values.length > 1) {
-            document.put(key,Arrays.asList(values));
+        if (values !=null && values.length > 1) {
+            document.put(key, Arrays.asList(values));
+        } else if (values!=null) {
+            document.put(key, values[0]);
         } else {
-            document.put(key,values[0]);
+            document.put(key, values);
         }
         return document;
     }

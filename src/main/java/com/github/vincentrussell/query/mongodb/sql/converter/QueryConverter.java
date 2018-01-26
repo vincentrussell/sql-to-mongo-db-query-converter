@@ -55,6 +55,8 @@ public class QueryConverter {
 
     public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
+    public static final String REGEXMATCH_FUNCTION = "regexMatch";
+    public static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION);
     private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
     private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private final MongoDBQueryHolder mongoDBQueryHolder;
@@ -467,6 +469,9 @@ public class QueryConverter {
         } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
             Expression expression = ((NotExpression)incomingExpression).getExpression();
             return new Document(getStringValue(expression), new Document("$ne", true));
+        } else if (Function.class.isInstance(incomingExpression) && !isSpecialtyFunction(incomingExpression)) {
+            Function function = ((Function)incomingExpression);
+            query.put("$"+ function.getName(), parseFunctionArguments(function.getParameters()));
         } else if (otherSide == null) {
             return new Document(getStringValue(incomingExpression), true);
         } else {
@@ -475,9 +480,50 @@ public class QueryConverter {
         return query;
     }
 
+    private boolean isSpecialtyFunction(Expression incomingExpression) {
+        if (incomingExpression == null) {
+          return false;
+        }
+
+        if (Function.class.isInstance(incomingExpression) && containsIgnoreCase(SPECIALTY_FUNCTIONS, ((Function)incomingExpression).getName())) {
+          return true;
+        }
+
+        return false;
+    }
+
+    private boolean containsIgnoreCase(List<String> list, String soughtFor) {
+        for (String current : list) {
+            if (current.equalsIgnoreCase(soughtFor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Object parseFunctionArguments(ExpressionList parameters) {
+        if (parameters == null) {
+            return null;
+        } else if (parameters.getExpressions().size()==1) {
+            return getStringValue(parameters.getExpressions().get(0));
+        } else {
+            return Lists.newArrayList(Lists.transform(parameters.getExpressions(),
+                    new com.google.common.base.Function<Expression, Object>() {
+                @Override
+                public Object apply(Expression expression) {
+                    try {
+                        return getValue(expression, null);
+                    } catch (ParseException e) {
+                        return getStringValue(expression);
+                    }
+                }
+            }));
+        }
+    }
+
     private Object getValue(Expression incomingExpression, Expression otherSide) throws ParseException {
-        FieldType fieldType = firstNonNull(fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
-                defaultFieldType);
+        FieldType fieldType = otherSide !=null ? firstNonNull(fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
+                defaultFieldType) : FieldType.UNKNOWN;
         if (LongValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
         } else if (StringValue.class.isInstance(incomingExpression)) {
@@ -644,7 +690,7 @@ public class QueryConverter {
             String rightExpression = equalsTo.getRightExpression().toString();
             if (Function.class.isInstance(equalsTo.getLeftExpression())) {
                 Function function = ((Function)equalsTo.getLeftExpression());
-                if ("regexmatch".equals(function.getName().toLowerCase())
+                if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size()==2
                             || function.getParameters().getExpressions().size()==3)
                         && "true".equals(rightExpression)
