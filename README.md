@@ -10,7 +10,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 <dependency>
    <groupId>com.github.vincentrussell</groupId>
    <artifactId>sql-to-mongo-db-query-converter</artifactId>
-   <version>1.0</version>
+   <version>1.3.4</version>
 </dependency>
 ```
 
@@ -363,6 +363,12 @@ more results? (y/n): n
 ```
 
 # Change Log
+
+## [1.3.4](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.4) (2018-01-27)
+
+**Enhancements:**
+
+- Added the ability to pass down custom sql functions down to mongo
 
 ## [1.3.2](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.2) (2017-07-02)
 
