@@ -57,6 +57,7 @@ public class QueryConverter {
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
     public static final String REGEXMATCH_FUNCTION = "regexMatch";
     public static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION);
+    public static final String LINE_SEPARATOR = System.getProperty("line.separator");
     private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
     private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private final MongoDBQueryHolder mongoDBQueryHolder;
@@ -187,9 +188,9 @@ public class QueryConverter {
                     incomingException.currentToken.image), incomingException.expectedTokenSequences,
                     incomingException.tokenImage);
         } catch (NullPointerException e1) {
-            if (incomingException.getMessage().contains("Was expecting:\n" +
+            if (incomingException.getMessage().contains("Was expecting:" + LINE_SEPARATOR +
                     "    \"SELECT\"")) {
-                return new ParseException("Could not parseNaturalLanguageDate query.  Only select statements are supported.");
+                return new ParseException("Only select statements are supported.");
             }
             if (incomingException.getMessage()!=null) {
                 return new ParseException(incomingException.getMessage());
@@ -465,7 +466,11 @@ public class QueryConverter {
                     parseExpression(new Document(), rightExpression, leftExpression)));
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
-            return parseExpression(new Document(),parenthesis.getExpression(),null);
+            Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
+            if (parenthesis.isNot()) {
+                return new Document("$nor", expression);
+            }
+            return expression;
         } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
             Expression expression = ((NotExpression)incomingExpression).getExpression();
             return new Document(getStringValue(expression), new Document("$ne", true));

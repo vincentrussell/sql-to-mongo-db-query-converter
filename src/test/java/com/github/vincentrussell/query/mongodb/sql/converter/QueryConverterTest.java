@@ -12,6 +12,7 @@ import org.junit.rules.ExpectedException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -105,7 +106,7 @@ public class QueryConverterTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateGT() throws ParseException {
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateGT() throws ParseException, java.text.ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"2012-12-01\"", new HashMap(){{
             put("value",FieldType.DATE);
         }}
@@ -113,7 +114,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("value",document("$gt", new Date(1354338000000L))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$gt", new SimpleDateFormat("yyyy-MM-dd").parse("2012-12-01"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -574,6 +575,33 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("$or",document("value",1L),document("value2","theValue")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectAllFromTableWithSimpleWhereNotBeforeBraces() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT (value=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$nor",document("value","theValue")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectAllFromTableWithSimpleWhereNotBeforeAndInBraces() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT (value=1 AND value2=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$nor",document("$and",document("value",1L),document("value2","theValue"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectAllFromTableWithSimpleWhereNotBeforeOrInBraces() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT (value=1 OR value2=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$nor",document("$or",document("value",1L),document("value2","theValue"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
