@@ -577,6 +577,33 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void selectAllFromTableWithSimpleWhereNotBeforeBraces() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT (value=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$nor",document("value","theValue")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectAllFromTableWithSimpleWhereNotBeforeAndInBraces() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT (value=1 AND value2=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$nor",document("$and",document("value",1L),document("value2","theValue"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectAllFromTableWithSimpleWhereNotBeforeOrInBraces() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where NOT (value=1 OR value2=\"theValue\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$nor",document("$or",document("value",1L),document("value2","theValue"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectAllFromTableWithSimpleWhereNestedOr() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value=1 OR (number = 1 AND value2=\"theValue\")");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();

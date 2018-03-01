@@ -465,7 +465,11 @@ public class QueryConverter {
                     parseExpression(new Document(), rightExpression, leftExpression)));
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
-            return parseExpression(new Document(),parenthesis.getExpression(),null);
+            Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
+            if (parenthesis.isNot()) {
+                return new Document("$nor", expression);
+            }
+            return expression;
         } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
             Expression expression = ((NotExpression)incomingExpression).getExpression();
             return new Document(getStringValue(expression), new Document("$ne", true));
