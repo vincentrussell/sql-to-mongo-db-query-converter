@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
@@ -592,7 +593,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$nor",document("$and",document("value",1L),document("value2","theValue"))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$nor",  Arrays.asList(document("$and",document("value",1L),document("value2","theValue")))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
