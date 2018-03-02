@@ -19,6 +19,8 @@ import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version;
 import org.apache.commons.io.IOUtils;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
@@ -297,6 +299,25 @@ public class QueryConverterIT {
         QueryConverter queryConverter = new QueryConverter("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'");
         long count  = queryConverter.run(mongoDatabase);
         assertEquals(7499, count);
+    }
+
+    @Test
+    public void deleteQuery() throws ParseException {
+        String collection = "new_collection";
+        MongoCollection newCollection = mongoDatabase.getCollection(collection);
+        try {
+            newCollection.insertOne(new Document("_id", "1").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "2").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "3").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "4").append("key2", "value2"));
+            assertEquals(3, newCollection.count(new BsonDocument("key", new BsonString("value"))));
+            QueryConverter queryConverter = new QueryConverter("delete from " + collection + " where key = 'value'");
+            long deleteCount = queryConverter.run(mongoDatabase);
+            assertEquals(3, deleteCount);
+            assertEquals(1, newCollection.count());
+        } finally {
+            newCollection.drop();
+        }
     }
 
     private static int getRandomFreePort() {

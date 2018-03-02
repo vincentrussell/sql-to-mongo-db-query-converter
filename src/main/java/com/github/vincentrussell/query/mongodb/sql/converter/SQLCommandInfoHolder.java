@@ -4,11 +4,11 @@ import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
-import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.OrderByElement;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.select.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -74,20 +74,23 @@ public class SQLCommandInfoHolder {
         return orderByElements;
     }
 
+    public SQLCommandType getSqlCommandType() {
+        return sqlCommandType;
+    }
+
     public static class Builder {
         private final FieldType defaultFieldType;
         private final Map<String, FieldType> fieldNameToFieldTypeMapping;
         private SQLCommandType sqlCommandType;
-        private CCJSqlParser jSqlParser;
         private Expression whereClause;
-        private boolean isDistinct;
-        private boolean isCountAll;
+        private boolean isDistinct = false;
+        private boolean isCountAll = false;
         private String table;
-        private long limit;
-        private List<SelectItem> selectItems;
-        private List<Join> joins;
-        private List<String> groupBys;
-        private List<OrderByElement> orderByElements1;
+        private long limit = -1;
+        private List<SelectItem> selectItems = new ArrayList<>();
+        private List<Join> joins = new ArrayList<>();
+        private List<String> groupBys = new ArrayList<>();
+        private List<OrderByElement> orderByElements1 = new ArrayList<>();
 
 
         private Builder(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping){
@@ -96,26 +99,30 @@ public class SQLCommandInfoHolder {
         }
 
         public Builder setJSqlParser(CCJSqlParser jSqlParser) throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
-            this.jSqlParser = jSqlParser;
-            try {
-                final PlainSelect plainSelect = jSqlParser.PlainSelect();
-                SqlUtils.isTrue(plainSelect !=null,"could not parseNaturalLanguageDate SELECT statement from query");
+            final Statement statement = jSqlParser.Statement();
+            if (Select.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.SELECT;
+                final PlainSelect plainSelect = (PlainSelect)(((Select)statement).getSelectBody());
+                SqlUtils.isTrue(plainSelect != null, "could not parseNaturalLanguageDate SELECT statement from query");
+                SqlUtils.isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
                 whereClause = plainSelect.getWhere();
                 isDistinct = (plainSelect.getDistinct() != null);
                 isCountAll = SqlUtils.isCountAll(plainSelect.getSelectItems());
-                SqlUtils.isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
+                SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
                 table = plainSelect.getFromItem().toString();
                 limit = SqlUtils.getLimit(plainSelect.getLimit());
                 orderByElements1 = plainSelect.getOrderByElements();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
                 groupBys = SqlUtils.getGroupByColumnReferences(plainSelect);
-                SqlUtils.isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
-            } catch (ParseException e) {
-                throw SqlUtils.convertParseException(e);
+                SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
+            } else if (Delete.class.isAssignableFrom(statement.getClass())) {
+                sqlCommandType = SQLCommandType.DELETE;
+                Delete delete = (Delete)statement;
+                SqlUtils.isTrue(delete.getTables().size() == 0, "there should only be on table specified for deletes");
+                table = delete.getTable().toString();
+                whereClause = delete.getWhere();
             }
-
             return this;
         }
 

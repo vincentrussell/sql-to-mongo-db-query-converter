@@ -11,10 +11,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.DeleteResult;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -145,7 +147,7 @@ public class QueryConverter {
                 && sqlCommandInfoHolder.isDistinct(),"cannot run distinct one more than one column");
         SqlUtils.isFalse(sqlCommandInfoHolder.getGoupBys().size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
                 && !SqlUtils.isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
-        SqlUtils.isTrue(sqlCommandInfoHolder.getJoins()==null,"Joins are not supported.  Only one simple table name is supported.");
+        SqlUtils.isTrue(sqlCommandInfoHolder.getJoins()==null || sqlCommandInfoHolder.getJoins().isEmpty(),"Joins are not supported.  Only one simple table name is supported.");
     }
 
     /**
@@ -158,7 +160,7 @@ public class QueryConverter {
     }
 
     private MongoDBQueryHolder getMongoQueryInternal() throws ParseException {
-        MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(sqlCommandInfoHolder.getTable());
+        MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(sqlCommandInfoHolder.getTable(), sqlCommandInfoHolder.getSqlCommandType());
         Document document = new Document();
         if (sqlCommandInfoHolder.isDistinct()) {
             document.put(sqlCommandInfoHolder.getSelectItems().get(0).toString(), 1);
@@ -412,43 +414,50 @@ public class QueryConverter {
 
         MongoCollection mongoCollection = mongoDatabase.getCollection(mongoDBQueryHolder.getCollection());
 
-        if (mongoDBQueryHolder.isDistinct()) {
-            return (T)new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
-        } else if (mongoDBQueryHolder.isCountAll()) {
-            return (T)Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
-        } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
-            List<Document> documents = new ArrayList<>();
-            if (mongoDBQueryHolder.getQuery() !=null && mongoDBQueryHolder.getQuery().size() > 0) {
-                documents.add(new Document("$match", mongoDBQueryHolder.getQuery()));
-            }
-            documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
-            if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
-                documents.add(new Document("$sort",mongoDBQueryHolder.getSort()));
-            }
-            if (mongoDBQueryHolder.getLimit()!= -1) {
-                documents.add(new Document("$limit",mongoDBQueryHolder.getLimit()));
-            }
-            AggregateIterable aggregate = mongoCollection.aggregate(documents);
+        if (SQLCommandType.SELECT.equals(mongoDBQueryHolder.getSqlCommandType())) {
+            if (mongoDBQueryHolder.isDistinct()) {
+                return (T) new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
+            } else if (mongoDBQueryHolder.isCountAll()) {
+                return (T) Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
+            } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
+                List<Document> documents = new ArrayList<>();
+                if (mongoDBQueryHolder.getQuery() != null && mongoDBQueryHolder.getQuery().size() > 0) {
+                    documents.add(new Document("$match", mongoDBQueryHolder.getQuery()));
+                }
+                documents.add(new Document("$group", mongoDBQueryHolder.getProjection()));
+                if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
+                    documents.add(new Document("$sort", mongoDBQueryHolder.getSort()));
+                }
+                if (mongoDBQueryHolder.getLimit() != -1) {
+                    documents.add(new Document("$limit", mongoDBQueryHolder.getLimit()));
+                }
+                AggregateIterable aggregate = mongoCollection.aggregate(documents);
 
-            if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)!=null) {
-                aggregate.allowDiskUse(Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
-            }
+                if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {
+                    aggregate.allowDiskUse(Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+                }
 
-            if (System.getProperty(D_AGGREGATION_BATCH_SIZE)!=null) {
-                aggregate.batchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
-            }
+                if (System.getProperty(D_AGGREGATION_BATCH_SIZE) != null) {
+                    aggregate.batchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
+                }
 
-            return (T)new QueryResultIterator<>(aggregate);
+                return (T) new QueryResultIterator<>(aggregate);
+            } else {
+                FindIterable findIterable = mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection());
+                if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
+                    findIterable.sort(mongoDBQueryHolder.getSort());
+                }
+                if (mongoDBQueryHolder.getLimit() != -1) {
+                    findIterable.limit((int) mongoDBQueryHolder.getLimit());
+                }
+
+                return (T) new QueryResultIterator<>(findIterable);
+            }
+        } else if (SQLCommandType.DELETE.equals(mongoDBQueryHolder.getSqlCommandType())) {
+            DeleteResult deleteResult = mongoCollection.deleteMany(mongoDBQueryHolder.getQuery());
+            return (T)((Long)deleteResult.getDeletedCount());
         } else {
-            FindIterable findIterable = mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection());
-            if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
-                findIterable.sort(mongoDBQueryHolder.getSort());
-            }
-            if (mongoDBQueryHolder.getLimit()!= -1) {
-                findIterable.limit((int)mongoDBQueryHolder.getLimit());
-            }
-
-            return (T)new QueryResultIterator<>(findIterable);
+            throw new UnsupportedOperationException("SQL command type not supported");
         }
     }
 

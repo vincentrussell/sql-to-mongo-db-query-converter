@@ -9,6 +9,7 @@ import static org.apache.commons.lang.Validate.notNull;
 
 public class MongoDBQueryHolder {
     private final String collection;
+    private final SQLCommandType sqlCommandType;
     private Document query = new Document();
     private Document projection = new Document();
     private Document sort = new Document();
@@ -20,10 +21,12 @@ public class MongoDBQueryHolder {
     /**
      * Pojo to hold the MongoDB data
      * @param collection the collection that the query will be run on.
+     * @param sqlCommandType
      */
-    public MongoDBQueryHolder(String collection){
+    public MongoDBQueryHolder(String collection, SQLCommandType sqlCommandType){
         notNull(collection, "collection is null");
         this.collection = collection;
+        this.sqlCommandType = sqlCommandType;
     }
 
     /**
@@ -99,5 +102,9 @@ public class MongoDBQueryHolder {
 
     public void setLimit(long limit) {
         this.limit = limit;
+    }
+
+    public SQLCommandType getSqlCommandType() {
+        return sqlCommandType;
     }
 }

@@ -252,6 +252,12 @@ public class SqlUtils {
                     incomingException.currentToken.image), incomingException.expectedTokenSequences,
                     incomingException.tokenImage);
         } catch (NullPointerException e1) {
+            if (incomingException.getMessage().startsWith("Encountered \" \"(\" \"( \"\"")) {
+                return new ParseException("Only one simple table name is supported.");
+            }
+            if (incomingException.getMessage().startsWith("Encountered \" \"=\" \"= \"\"")) {
+                return new ParseException("unable to parse complete sql string. one reason for this is the use of double equals (==).");
+            }
             if (incomingException.getMessage().contains("Was expecting:" + LINE_SEPARATOR +
                     "    \"SELECT\"")) {
                 return new ParseException("Only select statements are supported.");

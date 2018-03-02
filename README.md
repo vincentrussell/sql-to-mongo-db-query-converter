@@ -40,7 +40,7 @@ usage: com.github.vincentrussell.query.mongodb.sql.converter.Main [-s
        <arg> | -sql <arg> | -i]   [-d <arg> | -h <arg>]  [-db <arg>] [-a
        <arg>] [-u <arg>] [-p <arg>] [-b <arg>]
  -s,--sourceFile <arg>        the source file.
- -sql,--sql <arg>             the sql select statement
+ -sql,--sql <arg>             the select statement
  -i,--interactiveMode         interactive mode
  -d,--destinationFile <arg>   the destination file.  Defaults to
                               System.out
@@ -247,6 +247,18 @@ select column1 from my_table where NOT column
 db.my_table.find({ 
 	"value" : {$ne: true}
 })
+```
+
+
+###Delete
+
+```
+delete from my_table where value IN ("theValue1","theValue2","theValue3")
+
+
+******Result:*********
+
+3 (number or records deleted)
 ```
 
 ###Group By (Aggregation)

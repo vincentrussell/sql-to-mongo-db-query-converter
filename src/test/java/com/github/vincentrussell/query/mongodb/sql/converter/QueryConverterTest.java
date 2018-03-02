@@ -74,6 +74,7 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("value","1"),mongoDBQueryHolder.getQuery());
+        assertEquals(SQLCommandType.SELECT, mongoDBQueryHolder.getSqlCommandType());
     }
 
     @Test
@@ -657,15 +658,24 @@ public class QueryConverterTest {
 
     @Test
     public void deleteQuery() throws ParseException {
-        expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Only select statements are supported"));
-        new QueryConverter("delete from table where value = 1");
+        QueryConverter queryConverter = new QueryConverter("delete from table where value = 1");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("value",1L),mongoDBQueryHolder.getQuery());
+        assertEquals(SQLCommandType.DELETE, mongoDBQueryHolder.getSqlCommandType());
+    }
+
+    @Test
+    public void deleteQueryMoreComplicated() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("delete from table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("value",document("$in","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(SQLCommandType.DELETE, mongoDBQueryHolder.getSqlCommandType());
     }
 
     @Test
     public void fromWithSubQuery() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Only one simple table name is supported"));
+        expectedException.expectMessage(containsString("Only one simple table name is supported."));
         new QueryConverter("select column2 (select column4 from table_2) my_table where value=\"theValue\"");
     }
 
@@ -673,7 +683,7 @@ public class QueryConverterTest {
     @Test
     public void selectFromMultipleTables() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Only one simple table name is supported"));
+        expectedException.expectMessage(containsString("Only one simple table name is supported."));
         new QueryConverter("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value=\"theValue\"");
     }
 
@@ -882,7 +892,7 @@ public class QueryConverterTest {
     @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==)");
+        expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==).");
         QueryConverter queryConverter = new QueryConverter("select * from my_table where key == 'value1'");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
