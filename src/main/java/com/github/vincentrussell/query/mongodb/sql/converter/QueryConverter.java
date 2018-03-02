@@ -27,7 +27,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,20 +38,11 @@ public class QueryConverter {
 
     public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
-    public static final String LINE_SEPARATOR = System.getProperty("line.separator");
     private final MongoDBQueryHolder mongoDBQueryHolder;
 
-    private final List<SelectItem> selectItems;
-    private final Expression where;
-    private final List<Join> joins;
-    private final List<OrderByElement> orderByElements;
-    private final List<String> groupBys;
-    private final String table;
-    private final boolean isDistinct;
-    private final boolean isCountAll;
-    private final long limit;
     private final Map<String,FieldType> fieldNameToFieldTypeMapping;
     private final FieldType defaultFieldType;
+    private final SQLCommandInfoHolder sqlCommandInfoHolder;
 
     /**
      * Create a QueryConverter with a string
@@ -115,71 +105,26 @@ public class QueryConverter {
         CCJSqlParser jSqlParser = new CCJSqlParser(inputStream, Charsets.UTF_8.name());
         try {
             this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
-            final PlainSelect plainSelect = jSqlParser.PlainSelect();
+            //final PlainSelect plainSelect = jSqlParser.PlainSelect();
+            this.sqlCommandInfoHolder = SQLCommandInfoHolder.Builder
+                    .create(defaultFieldType, fieldNameToFieldTypeMapping)
+                    .setJSqlParser(jSqlParser)
+                    .build();
             this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping != null
                     ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
-            isTrue(plainSelect!=null,"could not parseNaturalLanguageDate SELECT statement from query");
-            isDistinct = (plainSelect.getDistinct() != null);
-            isCountAll = SqlUtils.isCountAll(plainSelect.getSelectItems());
-            where = plainSelect.getWhere();
-            orderByElements = plainSelect.getOrderByElements();
-            selectItems = plainSelect.getSelectItems();
-            joins = plainSelect.getJoins();
-            groupBys = getGroupByColumnReferences(plainSelect);
-            isTrue(plainSelect.getFromItem()!=null,"could not find table to query.  Only one simple table name is supported.");
-            table = plainSelect.getFromItem().toString();
-            limit = getLimit(plainSelect.getLimit());
 
             net.sf.jsqlparser.parser.Token nextToken = jSqlParser.getNextToken();
-            isTrue(isEmpty(nextToken.image) || ";".equals(nextToken.image), "unable to parse complete sql string. one reason for this is the use of double equals (==)");
+            SqlUtils.isTrue(isEmpty(nextToken.image) || ";".equals(nextToken.image), "unable to parse complete sql string. one reason for this is the use of double equals (==)");
 
             mongoDBQueryHolder = getMongoQueryInternal();
             validate();
         } catch (net.sf.jsqlparser.parser.ParseException e) {
-            throw convertParseException(e);
-        }
-    }
-
-    private long getLimit(Limit limit) throws ParseException {
-        if (limit!=null) {
-            String rowCountString = SqlUtils.getStringValue(limit.getRowCount());
-            BigInteger bigInt = new BigInteger(rowCountString);
-            isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, rowCountString + ": value is too large");
-            return bigInt.longValue();
-        }
-        return -1;
-    }
-
-    private List<String> getGroupByColumnReferences(PlainSelect plainSelect) {
-        if (plainSelect.getGroupByColumnReferences()==null) {
-            return Collections.emptyList();
-        }
-        return Lists.transform(plainSelect.getGroupByColumnReferences(), new com.google.common.base.Function<Expression, String>() {
-            @Override
-            public String apply(Expression expression) {
-                return SqlUtils.getStringValue(expression);
-            }
-        });
-    }
-
-    private ParseException convertParseException(net.sf.jsqlparser.parser.ParseException incomingException) {
-        try {
-            return new ParseException(new Token(incomingException.currentToken.kind,
-                    incomingException.currentToken.image), incomingException.expectedTokenSequences,
-                    incomingException.tokenImage);
-        } catch (NullPointerException e1) {
-            if (incomingException.getMessage().contains("Was expecting:" + LINE_SEPARATOR +
-                    "    \"SELECT\"")) {
-                return new ParseException("Only select statements are supported.");
-            }
-            if (incomingException.getMessage()!=null) {
-                return new ParseException(incomingException.getMessage());
-            }
-            return new ParseException("Count not parseNaturalLanguageDate query.");
+            throw SqlUtils.convertParseException(e);
         }
     }
 
     private void validate() throws ParseException {
+        List<SelectItem> selectItems = sqlCommandInfoHolder.getSelectItems();
         List<SelectItem> filteredItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
             @Override
             public boolean apply(SelectItem selectItem) {
@@ -195,10 +140,12 @@ public class QueryConverter {
             }
         }));
 
-        isFalse((selectItems.size() >1 || SqlUtils.isSelectAll(selectItems)) && isDistinct,"cannot run distinct one more than one column");
-        isFalse(groupBys.size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
+        SqlUtils.isFalse((selectItems.size() >1
+                || SqlUtils.isSelectAll(selectItems))
+                && sqlCommandInfoHolder.isDistinct(),"cannot run distinct one more than one column");
+        SqlUtils.isFalse(sqlCommandInfoHolder.getGoupBys().size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
                 && !SqlUtils.isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
-        isTrue(joins==null,"Joins are not supported.  Only one simple table name is supported.");
+        SqlUtils.isTrue(sqlCommandInfoHolder.getJoins()==null,"Joins are not supported.  Only one simple table name is supported.");
     }
 
     /**
@@ -211,34 +158,37 @@ public class QueryConverter {
     }
 
     private MongoDBQueryHolder getMongoQueryInternal() throws ParseException {
-        MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(table);
+        MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(sqlCommandInfoHolder.getTable());
         Document document = new Document();
-        if (isDistinct) {
-            document.put(selectItems.get(0).toString(), 1);
+        if (sqlCommandInfoHolder.isDistinct()) {
+            document.put(sqlCommandInfoHolder.getSelectItems().get(0).toString(), 1);
             mongoDBQueryHolder.setProjection(document);
-            mongoDBQueryHolder.setDistinct(isDistinct);
-        } else if (groupBys.size() > 0) {
-            mongoDBQueryHolder.setGroupBys(groupBys);
-            mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selectItems,groupBys));
-        } else if (isCountAll) {
-            mongoDBQueryHolder.setCountAll(isCountAll);
-        } else if (!SqlUtils.isSelectAll(selectItems)) {
+            mongoDBQueryHolder.setDistinct(sqlCommandInfoHolder.isDistinct());
+        } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
+            mongoDBQueryHolder.setGroupBys(sqlCommandInfoHolder.getGoupBys());
+            mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(sqlCommandInfoHolder.getSelectItems(),
+                    sqlCommandInfoHolder.getGoupBys()));
+        } else if (sqlCommandInfoHolder.isCountAll()) {
+            mongoDBQueryHolder.setCountAll(sqlCommandInfoHolder.isCountAll());
+        } else if (!SqlUtils.isSelectAll(sqlCommandInfoHolder.getSelectItems())) {
             document.put("_id",0);
-            for (SelectItem selectItem : selectItems) {
+            for (SelectItem selectItem : sqlCommandInfoHolder.getSelectItems()) {
                 document.put(selectItem.toString(),1);
             }
             mongoDBQueryHolder.setProjection(document);
         }
 
-        if (orderByElements!=null && orderByElements.size() > 0) {
-            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(orderByElements));
+        if (sqlCommandInfoHolder.getOrderByElements()!=null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
+            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(sqlCommandInfoHolder.getOrderByElements()));
         }
 
-        if (where!=null) {
-            WhereCauseProcessor whereCauseProcessor = new WhereCauseProcessor(defaultFieldType, fieldNameToFieldTypeMapping);
-            mongoDBQueryHolder.setQuery((Document) whereCauseProcessor.parseExpression(new Document(), where, null));
+        if (sqlCommandInfoHolder.getWhereClause()!=null) {
+            WhereCauseProcessor whereCauseProcessor = new WhereCauseProcessor(defaultFieldType,
+                    fieldNameToFieldTypeMapping);
+            mongoDBQueryHolder.setQuery((Document) whereCauseProcessor
+                    .parseExpression(new Document(), sqlCommandInfoHolder.getWhereClause(), null));
         }
-        mongoDBQueryHolder.setLimit(limit);
+        mongoDBQueryHolder.setLimit(sqlCommandInfoHolder.getLimit());
         return mongoDBQueryHolder;
     }
 
@@ -312,8 +262,8 @@ public class QueryConverter {
 
         }));
 
-        isTrue(functionItems.size() > 0, "there must be at least one group by function specified in the select clause");
-        isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
+        SqlUtils.isTrue(functionItems.size() > 0, "there must be at least one group by function specified in the select clause");
+        SqlUtils.isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
 
 
         Document idDocument = new Document();
@@ -360,7 +310,7 @@ public class QueryConverter {
     }
 
     private void createFunction(String functionName, String field, Document document, Object value) throws ParseException {
-        isTrue(field!=null,"function "+ functionName + " must contain a single field to run on");
+        SqlUtils.isTrue(field!=null,"function "+ functionName + " must contain a single field to run on");
         document.put(functionName + "_"+field,new Document("$"+functionName,value));
     }
 
@@ -377,7 +327,7 @@ public class QueryConverter {
             IOUtils.write("\""+getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
             IOUtils.write(" , ", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
-        } else if (groupBys.size() > 0) {
+        } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".aggregate(", outputStream);
             IOUtils.write("[", outputStream);
             List<Document> documents = new ArrayList<>();
@@ -416,7 +366,7 @@ public class QueryConverter {
 
 
 
-        } else if (isCountAll) {
+        } else if (sqlCommandInfoHolder.isCountAll()) {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
         } else {
@@ -429,13 +379,16 @@ public class QueryConverter {
         }
         IOUtils.write(")", outputStream);
 
-        if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0 && !isCountAll && !isDistinct && groupBys.isEmpty()) {
+        if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0
+                && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct() && sqlCommandInfoHolder.getGoupBys().isEmpty()) {
             IOUtils.write(".sort(", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson()), outputStream);
             IOUtils.write(")", outputStream);
         }
 
-        if (mongoDBQueryHolder.getLimit()!=-1 && !isCountAll && !isDistinct && groupBys.isEmpty()) {
+        if (mongoDBQueryHolder.getLimit()!=-1
+                && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct()
+                && sqlCommandInfoHolder.getGoupBys().isEmpty()) {
             IOUtils.write(".limit(", outputStream);
             IOUtils.write(mongoDBQueryHolder.getLimit()+"", outputStream);
             IOUtils.write(")", outputStream);
@@ -463,7 +416,7 @@ public class QueryConverter {
             return (T)new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
         } else if (mongoDBQueryHolder.isCountAll()) {
             return (T)Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
-        } else if (groupBys.size() > 0) {
+        } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
             List<Document> documents = new ArrayList<>();
             if (mongoDBQueryHolder.getQuery() !=null && mongoDBQueryHolder.getQuery().size() > 0) {
                 documents.add(new Document("$match", mongoDBQueryHolder.getQuery()));
@@ -507,17 +460,5 @@ public class QueryConverter {
         return gson.toJson(je);
     }
 
-
-    private static void isTrue(boolean expression, String message) throws ParseException {
-        if (!expression) {
-            throw new ParseException(message);
-        }
-    }
-
-    private static void isFalse(boolean expression, String message) throws ParseException {
-        if (expression) {
-            throw new ParseException(message);
-        }
-    }
 
 }

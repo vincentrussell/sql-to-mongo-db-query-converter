@@ -2,6 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
+import com.github.vincentrussell.query.mongodb.sql.converter.Token;
 import com.google.common.collect.Lists;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
@@ -11,14 +12,13 @@ import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.select.AllColumns;
-import net.sf.jsqlparser.statement.select.SelectExpressionItem;
-import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.*;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
+import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +31,7 @@ public class SqlUtils {
     private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private static final String REGEXMATCH_FUNCTION = "regexMatch";
     private static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION);
+    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     private static final DateTimeFormatter YY_MM_DDFORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd");
     private static final DateTimeFormatter YYMMDDFORMATTER = DateTimeFormat.forPattern("yyyyMMdd");
@@ -138,6 +139,15 @@ public class SqlUtils {
         throw new ParseException("could not normalize value:" + value);
     }
 
+    public static long getLimit(Limit limit) throws ParseException {
+        if (limit!=null) {
+            String rowCountString = SqlUtils.getStringValue(limit.getRowCount());
+            BigInteger bigInt = new BigInteger(rowCountString);
+            isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, rowCountString + ": value is too large");
+            return bigInt.longValue();
+        }
+        return -1;
+    }
 
     public static String fixDoubleSingleQuotes(final String regex) {
         return regex.replaceAll("''", "'");
@@ -236,6 +246,24 @@ public class SqlUtils {
     }
 
 
+    public static ParseException convertParseException(net.sf.jsqlparser.parser.ParseException incomingException) {
+        try {
+            return new ParseException(new Token(incomingException.currentToken.kind,
+                    incomingException.currentToken.image), incomingException.expectedTokenSequences,
+                    incomingException.tokenImage);
+        } catch (NullPointerException e1) {
+            if (incomingException.getMessage().contains("Was expecting:" + LINE_SEPARATOR +
+                    "    \"SELECT\"")) {
+                return new ParseException("Only select statements are supported.");
+            }
+            if (incomingException.getMessage()!=null) {
+                return new ParseException(incomingException.getMessage());
+            }
+            return new ParseException("Count not parseNaturalLanguageDate query.");
+        }
+    }
+
+
     public static String replaceRegexCharacters(String value) {
         String newValue = value.replaceAll("%",".*")
                 .replaceAll("_",".{1}");
@@ -248,6 +276,18 @@ public class SqlUtils {
         m.appendTail(sb);
 
         return sb.toString();
+    }
+
+    public static List<String> getGroupByColumnReferences(PlainSelect plainSelect) {
+        if (plainSelect.getGroupByColumnReferences()==null) {
+            return Collections.emptyList();
+        }
+        return Lists.transform(plainSelect.getGroupByColumnReferences(), new com.google.common.base.Function<Expression, String>() {
+            @Override
+            public String apply(Expression expression) {
+                return SqlUtils.getStringValue(expression);
+            }
+        });
     }
 
     public static String replaceGroup(String source, int groupToReplace, int groupOccurrence, String replacement) {
@@ -314,6 +354,18 @@ public class SqlUtils {
             }
         }
         return null;
+    }
+
+    public static void isTrue(boolean expression, String message) throws ParseException {
+        if (!expression) {
+            throw new ParseException(message);
+        }
+    }
+
+    public static void isFalse(boolean expression, String message) throws ParseException {
+        if (expression) {
+            throw new ParseException(message);
+        }
     }
 
 }
