@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
@@ -10,56 +11,35 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import com.joestelmach.natty.DateGroup;
-import com.joestelmach.natty.Parser;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import net.sf.jsqlparser.expression.*;
-import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
-import net.sf.jsqlparser.expression.operators.relational.*;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import org.apache.commons.io.IOUtils;
 import org.bson.Document;
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 
 public class QueryConverter {
 
-    private static final DateTimeFormatter YY_MM_DDFORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter YYMMDDFORMATTER = DateTimeFormat.forPattern("yyyyMMdd");
-
-    private static final Collection<DateTimeFormatter> FORMATTERS = Collections.unmodifiableList(Arrays.asList(
-            ISODateTimeFormat.dateTime(),
-            YY_MM_DDFORMATTER,
-            YYMMDDFORMATTER));
-
     public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
-    public static final String REGEXMATCH_FUNCTION = "regexMatch";
-    public static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION);
     public static final String LINE_SEPARATOR = System.getProperty("line.separator");
-    private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
-    private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private final MongoDBQueryHolder mongoDBQueryHolder;
 
     private final List<SelectItem> selectItems;
@@ -140,7 +120,7 @@ public class QueryConverter {
                     ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
             isTrue(plainSelect!=null,"could not parseNaturalLanguageDate SELECT statement from query");
             isDistinct = (plainSelect.getDistinct() != null);
-            isCountAll = isCountAll(plainSelect.getSelectItems());
+            isCountAll = SqlUtils.isCountAll(plainSelect.getSelectItems());
             where = plainSelect.getWhere();
             orderByElements = plainSelect.getOrderByElements();
             selectItems = plainSelect.getSelectItems();
@@ -162,7 +142,7 @@ public class QueryConverter {
 
     private long getLimit(Limit limit) throws ParseException {
         if (limit!=null) {
-            String rowCountString = getStringValue(limit.getRowCount());
+            String rowCountString = SqlUtils.getStringValue(limit.getRowCount());
             BigInteger bigInt = new BigInteger(rowCountString);
             isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, rowCountString + ": value is too large");
             return bigInt.longValue();
@@ -177,7 +157,7 @@ public class QueryConverter {
         return Lists.transform(plainSelect.getGroupByColumnReferences(), new com.google.common.base.Function<Expression, String>() {
             @Override
             public String apply(Expression expression) {
-                return getStringValue(expression);
+                return SqlUtils.getStringValue(expression);
             }
         });
     }
@@ -215,9 +195,9 @@ public class QueryConverter {
             }
         }));
 
-        isFalse((selectItems.size() >1 || isSelectAll(selectItems)) && isDistinct,"cannot run distinct one more than one column");
-        isFalse(groupBys.size() == 0 && selectItems.size()!=filteredItems.size() && !isSelectAll(selectItems)
-                && !isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
+        isFalse((selectItems.size() >1 || SqlUtils.isSelectAll(selectItems)) && isDistinct,"cannot run distinct one more than one column");
+        isFalse(groupBys.size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
+                && !SqlUtils.isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
         isTrue(joins==null,"Joins are not supported.  Only one simple table name is supported.");
     }
 
@@ -242,7 +222,7 @@ public class QueryConverter {
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selectItems,groupBys));
         } else if (isCountAll) {
             mongoDBQueryHolder.setCountAll(isCountAll);
-        } else if (!isSelectAll(selectItems)) {
+        } else if (!SqlUtils.isSelectAll(selectItems)) {
             document.put("_id",0);
             for (SelectItem selectItem : selectItems) {
                 document.put(selectItem.toString(),1);
@@ -255,7 +235,8 @@ public class QueryConverter {
         }
 
         if (where!=null) {
-            mongoDBQueryHolder.setQuery((Document) parseExpression(new Document(), where, null));
+            WhereCauseProcessor whereCauseProcessor = new WhereCauseProcessor(defaultFieldType, fieldNameToFieldTypeMapping);
+            mongoDBQueryHolder.setQuery((Document) whereCauseProcessor.parseExpression(new Document(), where, null));
         }
         mongoDBQueryHolder.setLimit(limit);
         return mongoDBQueryHolder;
@@ -291,7 +272,7 @@ public class QueryConverter {
         Document sortItems = new Document();
         for (OrderByElement orderByElement : orderByElements) {
             if (nonFunctionItems.contains(orderByElement)) {
-                sortItems.put(getStringValue(orderByElement.getExpression()),orderByElement.isAsc() ? 1 : -1);
+                sortItems.put(SqlUtils.getStringValue(orderByElement.getExpression()), orderByElement.isAsc() ? 1 : -1);
             } else {
                 Function function = (Function) orderByElement.getExpression();
                 Document parseFunctionDocument = new Document();
@@ -338,7 +319,7 @@ public class QueryConverter {
         Document idDocument = new Document();
         for (SelectItem selectItem : nonFunctionItems) {
             Column column = (Column) ((SelectExpressionItem) selectItem).getExpression();
-            String columnName = getStringValue(column);
+            String columnName = SqlUtils.getStringValue(column);
             idDocument.put(columnName,"$" + columnName);
         }
 
@@ -356,7 +337,7 @@ public class QueryConverter {
         List<String> parameters = function.getParameters()== null ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(), new com.google.common.base.Function<Expression, String>() {
             @Override
             public String apply(Expression expression) {
-                return getStringValue(expression);
+                return SqlUtils.getStringValue(expression);
             }
         });
         if (parameters.size() > 1) {
@@ -383,373 +364,6 @@ public class QueryConverter {
         document.put(functionName + "_"+field,new Document("$"+functionName,value));
     }
 
-
-    private Object parseExpression(Document query,Expression incomingExpression, Expression otherSide) throws ParseException {
-        if (ComparisonOperator.class.isInstance(incomingExpression)) {
-            RegexFunction regexFunction = isRegexFunction(incomingExpression);
-            DateFunction dateFunction = isDateFunction(incomingExpression);
-            if (regexFunction != null) {
-                Document regexDocument = new Document("$regex", regexFunction.getRegex());
-                if (regexFunction.getOptions() != null) {
-                    regexDocument.append("$options", regexFunction.getOptions());
-                }
-                query.put(regexFunction.getColumn(), regexDocument);
-            } else if (dateFunction!=null) {
-                query.put(dateFunction.getColumn(),new Document(dateFunction.getComparisonExpression(),dateFunction.getDate()));
-            } else if (EqualsTo.class.isInstance(incomingExpression)) {
-                final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
-                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),parseExpression(new Document(), rightExpression, leftExpression));
-            } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
-                final Expression leftExpression = ((NotEqualsTo) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((NotEqualsTo) incomingExpression).getRightExpression();
-                query.put(getStringValue(leftExpression), new Document("$ne", parseExpression(new Document(), rightExpression, leftExpression)));
-            } else if (GreaterThan.class.isInstance(incomingExpression)) {
-                final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$gt",parseExpression(new Document(), rightExpression, leftExpression)));
-            } else if (MinorThan.class.isInstance(incomingExpression)) {
-                final Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$lt", parseExpression(new Document(), rightExpression, leftExpression)));
-            } else if (GreaterThanEquals.class.isInstance(incomingExpression)) {
-                final Expression leftExpression = ((GreaterThanEquals) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((GreaterThanEquals) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$gte",parseExpression(new Document(), rightExpression, leftExpression)));
-            } else if (MinorThanEquals.class.isInstance(incomingExpression)) {
-                final Expression leftExpression = ((MinorThanEquals) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((MinorThanEquals) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$lte", parseExpression(new Document(), rightExpression, leftExpression)));
-            }
-        } else if(LikeExpression.class.isInstance(incomingExpression)
-                && Column.class.isInstance(((LikeExpression)incomingExpression).getLeftExpression())
-                && (StringValue.class.isInstance(((LikeExpression)incomingExpression).getRightExpression()) ||
-                Column.class.isInstance(((LikeExpression)incomingExpression).getRightExpression()))) {
-            LikeExpression likeExpression = (LikeExpression)incomingExpression;
-            String stringValueLeftSide = getStringValue(likeExpression.getLeftExpression());
-            String stringValueRightSide = getStringValue(likeExpression.getRightExpression());
-            Document document = new Document("$regex", "^" + replaceRegexCharacters(stringValueRightSide) + "$");
-            if (likeExpression.isNot()) {
-                document = new Document("$not",new Document(stringValueLeftSide,document));
-                throw new ParseException("NOT LIKE queries not supported");
-            } else {
-                document = new Document(stringValueLeftSide,document);
-            }
-            query.putAll(document);
-        } else if(IsNullExpression.class.isInstance(incomingExpression)) {
-            IsNullExpression isNullExpression = (IsNullExpression) incomingExpression;
-            query.put(isNullExpression.getLeftExpression().toString(),new Document("$exists",isNullExpression.isNot()));
-        } else if(AndExpression.class.isInstance(incomingExpression)) {
-            AndExpression andExpression = (AndExpression) incomingExpression;
-            final Expression leftExpression = andExpression.getLeftExpression();
-            final Expression rightExpression = andExpression.getRightExpression();
-            query.put("$and", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
-        } else if(InExpression.class.isInstance(incomingExpression)) {
-            final InExpression inExpression = (InExpression) incomingExpression;
-            final Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();
-            final String leftExpressionAsString = getStringValue(leftExpression);
-            query.put(leftExpressionAsString,new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
-                @Override
-                public Object apply(Expression expression) {
-                    try {
-                        return parseExpression(new Document(),expression, leftExpression);
-                    } catch (ParseException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            })));
-        } else if(OrExpression.class.isInstance(incomingExpression)) {
-            OrExpression orExpression = (OrExpression) incomingExpression;
-            final Expression leftExpression = orExpression.getLeftExpression();
-            final Expression rightExpression = orExpression.getRightExpression();
-            query.put("$or", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression),
-                    parseExpression(new Document(), rightExpression, leftExpression)));
-        } else if(Parenthesis.class.isInstance(incomingExpression)) {
-            Parenthesis parenthesis = (Parenthesis) incomingExpression;
-            Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
-            if (parenthesis.isNot()) {
-                return new Document("$nor", Arrays.asList(expression));
-            }
-            return expression;
-        } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
-            Expression expression = ((NotExpression)incomingExpression).getExpression();
-            return new Document(getStringValue(expression), new Document("$ne", true));
-        } else if (Function.class.isInstance(incomingExpression) && !isSpecialtyFunction(incomingExpression)) {
-            Function function = ((Function)incomingExpression);
-            query.put("$"+ function.getName(), parseFunctionArguments(function.getParameters()));
-        } else if (otherSide == null) {
-            return new Document(getStringValue(incomingExpression), true);
-        } else {
-            return getValue(incomingExpression,otherSide);
-        }
-        return query;
-    }
-
-    private boolean isSpecialtyFunction(Expression incomingExpression) {
-        if (incomingExpression == null) {
-          return false;
-        }
-
-        if (Function.class.isInstance(incomingExpression) && containsIgnoreCase(SPECIALTY_FUNCTIONS, ((Function)incomingExpression).getName())) {
-          return true;
-        }
-
-        return false;
-    }
-
-    private boolean containsIgnoreCase(List<String> list, String soughtFor) {
-        for (String current : list) {
-            if (current.equalsIgnoreCase(soughtFor)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Object parseFunctionArguments(ExpressionList parameters) {
-        if (parameters == null) {
-            return null;
-        } else if (parameters.getExpressions().size()==1) {
-            return getStringValue(parameters.getExpressions().get(0));
-        } else {
-            return Lists.newArrayList(Lists.transform(parameters.getExpressions(),
-                    new com.google.common.base.Function<Expression, Object>() {
-                @Override
-                public Object apply(Expression expression) {
-                    try {
-                        return getValue(expression, null);
-                    } catch (ParseException e) {
-                        return getStringValue(expression);
-                    }
-                }
-            }));
-        }
-    }
-
-    private Object getValue(Expression incomingExpression, Expression otherSide) throws ParseException {
-        FieldType fieldType = otherSide !=null ? firstNonNull(fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
-                defaultFieldType) : FieldType.UNKNOWN;
-        if (LongValue.class.isInstance(incomingExpression)) {
-            return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
-        } else if (StringValue.class.isInstance(incomingExpression)) {
-            return normalizeValue((((StringValue)incomingExpression).getValue()),fieldType);
-        } else if (Column.class.isInstance(incomingExpression)) {
-            return normalizeValue(getStringValue(incomingExpression),fieldType);
-        } else {
-            throw new ParseException("can not parseNaturalLanguageDate: " + incomingExpression.toString());
-        }
-    }
-
-    private Object normalizeValue(Object value, FieldType fieldType) throws ParseException {
-        if (fieldType==null || FieldType.UNKNOWN.equals(fieldType)) {
-            Object bool = forceBool(value);
-            return (bool != null) ? bool : value;
-        } else {
-            if (FieldType.STRING.equals(fieldType)) {
-                return fixDoubleSingleQuotes(forceString(value));
-            }
-            if (FieldType.NUMBER.equals(fieldType)) {
-                return forceNumber(value);
-            }
-            if (FieldType.DATE.equals(fieldType)) {
-                return forceDate(value);
-            }
-            if (FieldType.BOOLEAN.equals(fieldType)) {
-                return Boolean.valueOf(value.toString());
-            }
-        }
-        throw new ParseException("could not normalize value:" + value);
-    }
-
-    private Object forceBool(Object value) {
-        if (value.toString().equalsIgnoreCase("true") || value.toString().equalsIgnoreCase("false")) {
-            return Boolean.valueOf(value.toString());
-        }
-        return null;
-    }
-
-    private Object forceDate(Object value) throws ParseException {
-        if (String.class.isInstance(value)){
-            for (DateTimeFormatter formatter : FORMATTERS) {
-                try {
-                    DateTime dt = formatter.parseDateTime((String) value);
-                    return dt.toDate();
-                } catch (Exception e) {
-                    //noop
-                }
-            }
-            try {
-                return parseNaturalLanguageDate((String) value);
-            } catch (Exception e) {
-                //noop
-            }
-
-        }
-        throw new ParseException("could not convert " + value + " to a date");
-    }
-
-    private static Date parseNaturalLanguageDate(String text) {
-        Parser parser = new Parser();
-        List<DateGroup> groups = parser.parse(text);
-        for (DateGroup group : groups) {
-            List<Date> dates = group.getDates();
-            if (dates.size() > 0) {
-                return dates.get(0);
-            }
-        }
-        throw new IllegalArgumentException("could not natural language date: "+ text);
-    }
-
-    private Object forceNumber(Object value) throws ParseException {
-        if (String.class.isInstance(value)){
-            try {
-                return Long.parseLong((String) value);
-            } catch (NumberFormatException e1) {
-                try {
-                    return Double.parseDouble((String) value);
-                } catch (NumberFormatException e2) {
-                    try {
-                        return Float.parseFloat((String) value);
-                    } catch (NumberFormatException e3) {
-                        throw new ParseException("could not convert " + value + " to number");
-                    }
-                }
-            }
-        } else {
-            return value;
-        }
-    }
-
-    private String forceString(Object value) {
-        if (String.class.isInstance(value)){
-            return (String) value;
-        } else {
-            return "" + value + "";
-        }
-    }
-
-    private String replaceRegexCharacters(String value) {
-        String newValue = value.replaceAll("%",".*")
-                .replaceAll("_",".{1}");
-
-        Matcher m = LIKE_RANGE_REGEX.matcher(newValue);
-        StringBuffer sb = new StringBuffer();
-        while(m.find())  {
-            m.appendReplacement(sb, m.group(1) + "{1}");
-        }
-        m.appendTail(sb);
-
-        return sb.toString();
-    }
-
-    private static String replaceGroup(String source, int groupToReplace, int groupOccurrence, String replacement) {
-        Matcher m = LIKE_RANGE_REGEX.matcher(source);
-        for (int i = 0; i < groupOccurrence; i++)
-            if (!m.find()) return source; // pattern not met, may also throw an exception here
-        return new StringBuilder(source).replace(m.start(groupToReplace), m.end(groupToReplace), replacement).toString();
-    }
-
-
-    private DateFunction isDateFunction(Expression incomingExpression) throws ParseException {
-        if (ComparisonOperator.class.isInstance(incomingExpression)) {
-            ComparisonOperator comparisonOperator = (ComparisonOperator)incomingExpression;
-            String rightExpression = getStringValue(comparisonOperator.getRightExpression());
-            if (Function.class.isInstance(comparisonOperator.getLeftExpression())) {
-                Function function = ((Function)comparisonOperator.getLeftExpression());
-                if ("date".equals(function.getName().toLowerCase())
-                        && (function.getParameters().getExpressions().size()==2)
-                        && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
-                    String column = getStringValue(function.getParameters().getExpressions().get(0));
-                    DateFunction dateFunction = null;
-                    try {
-                        dateFunction = new DateFunction(((StringValue)(function.getParameters().getExpressions().get(1))).getValue(),rightExpression,column);
-                        dateFunction.setComparisonFunction(comparisonOperator);
-                    } catch (IllegalArgumentException e) {
-                        throw new ParseException(e.getMessage());
-                    }
-                    return dateFunction;
-                }
-
-            }
-        }
-        return null;
-    }
-
-    private String getStringValue(Expression expression) {
-        if (StringValue.class.isInstance(expression)) {
-            return ((StringValue)expression).getValue();
-        } else if (Column.class.isInstance(expression)) {
-            String columnName = expression.toString();
-            Matcher matcher = SURROUNDED_IN_QUOTES.matcher(columnName);
-            if (matcher.matches()) {
-                return matcher.group(1);
-            }
-            return columnName;
-        }
-        return expression.toString();
-    }
-
-    private RegexFunction isRegexFunction(Expression incomingExpression) throws ParseException {
-        if (EqualsTo.class.isInstance(incomingExpression)) {
-            EqualsTo equalsTo = (EqualsTo)incomingExpression;
-            String rightExpression = equalsTo.getRightExpression().toString();
-            if (Function.class.isInstance(equalsTo.getLeftExpression())) {
-                Function function = ((Function)equalsTo.getLeftExpression());
-                if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
-                        && (function.getParameters().getExpressions().size()==2
-                            || function.getParameters().getExpressions().size()==3)
-                        && "true".equals(rightExpression)
-                        && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
-                    final String column = getStringValue(function.getParameters().getExpressions().get(0));
-                    final String regex = fixDoubleSingleQuotes(((StringValue)(function.getParameters()
-                            .getExpressions().get(1))).getValue());
-                    try {
-                        Pattern.compile(regex);
-                    } catch (PatternSyntaxException e) {
-                        throw new ParseException(e.getMessage());
-                    }
-                    RegexFunction regexFunction = new RegexFunction(column,regex);
-
-                    if (function.getParameters().getExpressions().size()==3 && StringValue.class.isInstance(function.getParameters().getExpressions().get(2))) {
-                        regexFunction.setOptions(((StringValue)(function.getParameters().getExpressions().get(2))).getValue());
-                    }
-
-                    return regexFunction;
-                }
-
-            }
-        }
-        return null;
-    }
-
-    private String fixDoubleSingleQuotes(final String regex) {
-        return regex.replaceAll("''", "'");
-    }
-
-    private boolean isSelectAll(List<SelectItem> selectItems) {
-        if (selectItems !=null && selectItems.size()==1) {
-            SelectItem firstItem = selectItems.get(0);
-            return AllColumns.class.isInstance(firstItem);
-        } else {
-            return false;
-        }
-    }
-
-    private boolean isCountAll(List<SelectItem> selectItems) {
-        if (selectItems !=null && selectItems.size()==1) {
-            SelectItem firstItem = selectItems.get(0);
-            if ((SelectExpressionItem.class.isInstance(firstItem))
-                    && Function.class.isInstance(((SelectExpressionItem)firstItem).getExpression())) {
-                Function function = (Function) ((SelectExpressionItem) firstItem).getExpression();
-
-                if ("count(*)".equals(function.toString())) {
-                    return true;
-                }
-
-            }
-        }
-        return false;
-    }
 
     /**
      * Build a mongo shell statement with the code to run the specified query.
@@ -893,75 +507,6 @@ public class QueryConverter {
         return gson.toJson(je);
     }
 
-    private static class RegexFunction {
-        private final String column;
-        private final String regex;
-        private String options;
-
-        private RegexFunction(String column, String regex) {
-            this.column = column;
-            this.regex = regex;
-        }
-
-        public String getColumn() {
-            return column;
-        }
-
-        public String getRegex() {
-            return regex;
-        }
-
-        public void setOptions(String options) {
-            this.options = options;
-        }
-
-        public String getOptions() {
-            return options;
-        }
-    }
-
-    private static class DateFunction {
-        private final Date date;
-        private final String column;
-        private String comparisonExpression = "$eq";
-
-        private DateFunction(String format,String value, String column) {
-            if ("natural".equals(format)) {
-                this.date = parseNaturalLanguageDate(value);
-            } else {
-                DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(format).withZoneUTC();
-                this.date = dateTimeFormatter.parseDateTime(value).toDate();
-            }
-            this.column = column;
-        }
-
-
-        public Date getDate() {
-            return date;
-        }
-
-        public String getColumn() {
-            return column;
-        }
-
-        public void setComparisonFunction(ComparisonOperator comparisonFunction) throws ParseException {
-            if (GreaterThanEquals.class.isInstance(comparisonFunction)) {
-                this.comparisonExpression = "$gte";
-            } else if (GreaterThan.class.isInstance(comparisonFunction)) {
-                this.comparisonExpression = "$gt";
-            } else if (MinorThanEquals.class.isInstance(comparisonFunction)) {
-                this.comparisonExpression = "$lte";
-            } else if (MinorThan.class.isInstance(comparisonFunction)) {
-                this.comparisonExpression = "$lt";
-            } else {
-                throw new ParseException("could not parseNaturalLanguageDate string expression: " + comparisonFunction.getStringExpression());
-            }
-        }
-
-        public String getComparisonExpression() {
-            return comparisonExpression;
-        }
-    }
 
     private static void isTrue(boolean expression, String message) throws ParseException {
         if (!expression) {
