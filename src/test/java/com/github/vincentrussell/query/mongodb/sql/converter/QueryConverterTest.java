@@ -16,12 +16,9 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class QueryConverterTest {
 
@@ -584,7 +581,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$nor",document("value","theValue")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$nor", Lists.newArrayList(document("value","theValue"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -593,7 +590,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$nor",  Arrays.asList(document("$and",document("value",1L),document("value2","theValue")))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$nor", Lists.newArrayList(document("$and",document("value",1L),document("value2","theValue")))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -602,7 +599,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("$nor",document("$or",document("value",1L),document("value2","theValue"))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$nor", Lists.newArrayList(document("$or",document("value",1L),document("value2","theValue")))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
