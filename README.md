@@ -10,7 +10,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 <dependency>
    <groupId>com.github.vincentrussell</groupId>
    <artifactId>sql-to-mongo-db-query-converter</artifactId>
-   <version>1.3.4</version>
+   <version>1.4</version>
 </dependency>
 ```
 
@@ -31,7 +31,7 @@ Document sort = mongoDBQueryHolder.getSort();
 ## Running it as a standalone jar
 
 ```
-java -jar sql-to-mongo-db-query-converter-1.0-standalone.jar -s sql.file -d destination.json
+java -jar sql-to-mongo-db-query-converter-1.4-standalone.jar -s sql.file -d destination.json
 ```
 ### Options
 
@@ -375,6 +375,13 @@ more results? (y/n): n
 ```
 
 # Change Log
+
+## [1.4](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.4) (2018-03-03)
+
+**Enhancements:**
+
+- Added support NOT operator on parentheses
+- Added support for delete SQL statements
 
 ## [1.3.4](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.3.4) (2018-01-27)
 
