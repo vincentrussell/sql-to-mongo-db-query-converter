@@ -892,7 +892,25 @@ public class QueryConverterTest {
     @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==).");
+        expectedException.expectMessage("Encountered unexpected token: \"=\" \"=\"\n" +
+                "    at line 1, column 34.\n" +
+                "\n" +
+                "Was expecting one of:\n" +
+                "\n" +
+                "    \".\"\n" +
+                "    \";\"\n" +
+                "    \"AND\"\n" +
+                "    \"CONNECT\"\n" +
+                "    \"EXCEPT\"\n" +
+                "    \"FOR\"\n" +
+                "    \"GROUP\"\n" +
+                "    \"HAVING\"\n" +
+                "    \"INTERSECT\"\n" +
+                "    \"MINUS\"\n" +
+                "    \"ORDER\"\n" +
+                "    \"START\"\n" +
+                "    \"UNION\"\n" +
+                "    <EOF>\n");
         QueryConverter queryConverter = new QueryConverter("select * from my_table where key == 'value1'");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());

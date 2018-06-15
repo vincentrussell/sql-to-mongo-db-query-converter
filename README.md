@@ -376,6 +376,13 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.5](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.5) (2018-06-15)
+
+**Enhancements:**
+
+- upgrade jsqlparser to version 1.2
+
+
 ## [1.4](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.4) (2018-03-03)
 
 **Enhancements:**

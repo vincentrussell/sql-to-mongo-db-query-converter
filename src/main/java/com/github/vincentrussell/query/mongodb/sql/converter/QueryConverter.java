@@ -20,6 +20,7 @@ import com.mongodb.client.result.DeleteResult;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.parser.CCJSqlParser;
+import net.sf.jsqlparser.parser.StreamProvider;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import org.apache.commons.io.IOUtils;
@@ -104,8 +105,9 @@ public class QueryConverter {
      */
     public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping,
                           FieldType defaultFieldType) throws ParseException {
-        CCJSqlParser jSqlParser = new CCJSqlParser(inputStream, Charsets.UTF_8.name());
         try {
+            StreamProvider streamProvider = new StreamProvider(inputStream, Charsets.UTF_8.name());
+            CCJSqlParser jSqlParser = new CCJSqlParser(streamProvider);
             this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
             //final PlainSelect plainSelect = jSqlParser.PlainSelect();
             this.sqlCommandInfoHolder = SQLCommandInfoHolder.Builder
@@ -120,6 +122,8 @@ public class QueryConverter {
 
             mongoDBQueryHolder = getMongoQueryInternal();
             validate();
+        } catch (IOException e) {
+            throw new ParseException(e.getMessage());
         } catch (net.sf.jsqlparser.parser.ParseException e) {
             throw SqlUtils.convertParseException(e);
         }
