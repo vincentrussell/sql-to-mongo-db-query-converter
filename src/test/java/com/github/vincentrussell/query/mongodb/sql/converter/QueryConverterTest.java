@@ -713,26 +713,77 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(
-                document("$or",
-                        document("$and",
-                                   document("$and",
-                                           document("value",1L),
-                                           document("column",document("$lte",new Date(1452556800000L)))
-                                        ),
-                                    document("nullField",document("$exists",false))
-                                   ),
-                           document("$and",
-                                document("$or",
-                                            document("number", document("$gt", 5L)),
-                                            document("number",1L)
-                                        ),
-                                document("value2","theValue")
-                           )
 
-                        )
-                ,
-                mongoDBQueryHolder.getQuery());
+        assertEquals(document("$or", Lists.newArrayList(
+                document("$and", Lists.newArrayList(
+                        document("value",1L),
+                        document("column",document("$lte",new Date(1452556800000L))),
+                        document("nullField",document("$exists",false))
+                )),
+                document("$and", Lists.newArrayList(
+                        document("$or", Lists.newArrayList(
+                                document("number", document("$gt", 5L)),
+                                document("number",1L)
+                        )),
+                        document("value2","theValue")
+                ))
+        )), mongoDBQueryHolder.getQuery());
+    }
+
+
+
+
+    @Test
+    public void aLotofOrs() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where (value = \"1234\" OR value = \"1235\" OR value = \"1236\" OR value = \"1237\"  OR value = \"1238\")");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"$or\": [\n" +
+                "    {\n" +
+                "      \"value\": \"1234\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1235\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1236\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1237\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1238\"\n" +
+                "    }\n" +
+                "  ]\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+
+    @Test
+    public void aLotofAnds() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where (value = \"1234\" AND value = \"1235\" AND value = \"1236\" AND value = \"1237\"  AND value = \"1238\")");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"$and\": [\n" +
+                "    {\n" +
+                "      \"value\": \"1234\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1235\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1236\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1237\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"value\": \"1238\"\n" +
+                "    }\n" +
+                "  ]\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
     }
 
     @Test

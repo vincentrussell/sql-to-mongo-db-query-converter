@@ -11,7 +11,9 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import org.bson.Document;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class WhereCauseProcessor {
@@ -79,11 +81,6 @@ public class WhereCauseProcessor {
         } else if(IsNullExpression.class.isInstance(incomingExpression)) {
             IsNullExpression isNullExpression = (IsNullExpression) incomingExpression;
             query.put(isNullExpression.getLeftExpression().toString(),new Document("$exists",isNullExpression.isNot()));
-        } else if(AndExpression.class.isInstance(incomingExpression)) {
-            AndExpression andExpression = (AndExpression) incomingExpression;
-            final Expression leftExpression = andExpression.getLeftExpression();
-            final Expression rightExpression = andExpression.getRightExpression();
-            query.put("$and", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
         } else if(InExpression.class.isInstance(incomingExpression)) {
             final InExpression inExpression = (InExpression) incomingExpression;
             final Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();
@@ -98,12 +95,10 @@ public class WhereCauseProcessor {
                     }
                 }
             })));
+        } else if(AndExpression.class.isInstance(incomingExpression)) {
+            handleAndOr("$and", (BinaryExpression)incomingExpression, query);
         } else if(OrExpression.class.isInstance(incomingExpression)) {
-            OrExpression orExpression = (OrExpression) incomingExpression;
-            final Expression leftExpression = orExpression.getLeftExpression();
-            final Expression rightExpression = orExpression.getRightExpression();
-            query.put("$or", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression),
-                    parseExpression(new Document(), rightExpression, leftExpression)));
+            handleAndOr("$or", (BinaryExpression)incomingExpression, query);
         } else if(Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
             Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
@@ -124,6 +119,44 @@ public class WhereCauseProcessor {
             return SqlUtils.getValue(incomingExpression,otherSide, defaultFieldType, fieldNameToFieldTypeMapping);
         }
         return query;
+    }
+
+    private void handleAndOr(String key, BinaryExpression incomingExpression, Document query) throws ParseException {
+        final Expression leftExpression = incomingExpression.getLeftExpression();
+        final Expression rightExpression = incomingExpression.getRightExpression();
+
+        List result = flattenOrsOrAnds(new ArrayList(), leftExpression, leftExpression, rightExpression);
+
+        if (result != null) {
+            query.put(key, Lists.reverse(result));
+        } else {
+            query.put(key, Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression),
+                    parseExpression(new Document(), rightExpression, leftExpression)));
+        }
+    }
+
+    private List flattenOrsOrAnds(List arrayList, Expression firstExpression, Expression leftExpression, Expression rightExpression) throws ParseException {
+            if (firstExpression.getClass().isInstance(leftExpression) &&
+                    isOrAndExpression(leftExpression) && !isOrAndExpression(rightExpression)) {
+                Expression left = ((BinaryExpression)leftExpression).getLeftExpression();
+                Expression right = ((BinaryExpression)leftExpression).getRightExpression();
+                arrayList.add(parseExpression(new Document(), rightExpression, null));
+                List result = flattenOrsOrAnds(arrayList, firstExpression, left, right);
+                if (result != null) {
+                    return arrayList;
+                }
+            } else if (isOrAndExpression(firstExpression) && !isOrAndExpression(leftExpression) && !isOrAndExpression(rightExpression)) {
+                arrayList.add(parseExpression(new Document(), rightExpression, null));
+                arrayList.add(parseExpression(new Document(), leftExpression, null));
+                return arrayList;
+            } else {
+                return null;
+            }
+            return null;
+    }
+
+    private boolean isOrAndExpression(Expression expression) {
+        return OrExpression.class.isInstance(expression) || AndExpression.class.isInstance(expression);
     }
 
 }
