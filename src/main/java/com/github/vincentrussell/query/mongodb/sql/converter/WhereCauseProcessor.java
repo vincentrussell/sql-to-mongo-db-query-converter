@@ -80,7 +80,7 @@ public class WhereCauseProcessor {
             query.putAll(document);
         } else if(IsNullExpression.class.isInstance(incomingExpression)) {
             IsNullExpression isNullExpression = (IsNullExpression) incomingExpression;
-            query.put(isNullExpression.getLeftExpression().toString(),new Document("$exists",isNullExpression.isNot()));
+            query.put(SqlUtils.getStringValue(isNullExpression.getLeftExpression()),new Document("$exists",isNullExpression.isNot()));
         } else if(InExpression.class.isInstance(incomingExpression)) {
             final InExpression inExpression = (InExpression) incomingExpression;
             final Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();

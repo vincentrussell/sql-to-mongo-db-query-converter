@@ -787,6 +787,18 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void doubleQuotesAreRemoved() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where \"foo\" IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"foo\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
     public void writeWithoutProjections() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value IS NULL");
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
