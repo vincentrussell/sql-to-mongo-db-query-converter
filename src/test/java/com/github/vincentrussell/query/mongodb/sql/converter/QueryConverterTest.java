@@ -3,6 +3,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.junit.Before;
@@ -422,6 +423,42 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(documentValuesArray("$and", document("$QUICKSEARCH", "123"), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void objectIdFunctionTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where OBJECTID('_id') = '53102b43bf1044ed8b0ba36b' AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("_id", new ObjectId("53102b43bf1044ed8b0ba36b")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void objectIdFunctionNotTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where OBJECTID('_id') != '53102b43bf1044ed8b0ba36b' AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("_id", document("$ne", new ObjectId("53102b43bf1044ed8b0ba36b"))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void objectIdFunctionInTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where OBJECTID('_id') IN ('53102b43bf1044ed8b0ba36b', '54651022bffebc03098b4568') AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("_id", document("$in", Lists.newArrayList(new ObjectId("53102b43bf1044ed8b0ba36b"), new ObjectId("54651022bffebc03098b4568")))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void objectIdFunctionNotInTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where OBJECTID('_id') NOT IN ('53102b43bf1044ed8b0ba36b', '54651022bffebc03098b4568') AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("_id", document("$nin", Lists.newArrayList(new ObjectId("53102b43bf1044ed8b0ba36b"), new ObjectId("54651022bffebc03098b4568")))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
 
     @Test

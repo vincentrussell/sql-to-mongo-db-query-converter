@@ -1,6 +1,7 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.util.DateFunction;
+import com.github.vincentrussell.query.mongodb.sql.converter.util.ObjectIdFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.RegexFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.google.common.collect.Lists;
@@ -30,6 +31,7 @@ public class WhereCauseProcessor {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
             RegexFunction regexFunction = SqlUtils.isRegexFunction(incomingExpression);
             DateFunction dateFunction = SqlUtils.isDateFunction(incomingExpression);
+            ObjectIdFunction objectIdFunction = SqlUtils.isObjectIdFunction(this, incomingExpression);
             if (regexFunction != null) {
                 Document regexDocument = new Document("$regex", regexFunction.getRegex());
                 if (regexFunction.getOptions() != null) {
@@ -37,7 +39,10 @@ public class WhereCauseProcessor {
                 }
                 query.put(regexFunction.getColumn(), regexDocument);
             } else if (dateFunction!=null) {
-                query.put(dateFunction.getColumn(),new Document(dateFunction.getComparisonExpression(),dateFunction.getDate()));
+                query.put(dateFunction.getColumn(),
+                    new Document(dateFunction.getComparisonExpression(), dateFunction.getDate()));
+            } else if (objectIdFunction != null) {
+                query.put(objectIdFunction.getColumn(), objectIdFunction.toDocument());
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
@@ -85,16 +90,25 @@ public class WhereCauseProcessor {
             final InExpression inExpression = (InExpression) incomingExpression;
             final Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();
             final String leftExpressionAsString = SqlUtils.getStringValue(leftExpression);
-            query.put(leftExpressionAsString,new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(((ExpressionList)inExpression.getRightItemsList()).getExpressions(), new com.google.common.base.Function<Expression, Object>() {
-                @Override
-                public Object apply(Expression expression) {
-                    try {
-                        return parseExpression(new Document(),expression, leftExpression);
-                    } catch (ParseException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            })));
+            ObjectIdFunction objectIdFunction = SqlUtils.isObjectIdFunction(this, incomingExpression);
+
+            if (objectIdFunction != null) {
+                query.put(objectIdFunction.getColumn(), objectIdFunction.toDocument());
+            } else {
+                query.put(leftExpressionAsString,
+                    new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(
+                        ((ExpressionList) inExpression.getRightItemsList()).getExpressions(),
+                        new com.google.common.base.Function<Expression, Object>() {
+                            @Override public Object apply(Expression expression) {
+                                try {
+                                    return parseExpression(new Document(), expression,
+                                        leftExpression);
+                                } catch (ParseException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        })));
+            }
         } else if(AndExpression.class.isInstance(incomingExpression)) {
             handleAndOr("$and", (BinaryExpression)incomingExpression, query);
         } else if(OrExpression.class.isInstance(incomingExpression)) {

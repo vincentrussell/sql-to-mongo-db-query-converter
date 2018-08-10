@@ -3,6 +3,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import com.github.vincentrussell.query.mongodb.sql.converter.Token;
+import com.github.vincentrussell.query.mongodb.sql.converter.WhereCauseProcessor;
 import com.google.common.collect.Lists;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
@@ -13,6 +14,7 @@ import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
+import org.bson.Document;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -30,7 +32,8 @@ public class SqlUtils {
     private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
     private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private static final String REGEXMATCH_FUNCTION = "regexMatch";
-    private static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION);
+    private static final String OBJECTID_FUNCTION = "objectId";
+    private static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION, OBJECTID_FUNCTION);
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     private static final DateTimeFormatter YY_MM_DDFORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd");
@@ -303,6 +306,48 @@ public class SqlUtils {
         return new StringBuilder(source).replace(m.start(groupToReplace), m.end(groupToReplace), replacement).toString();
     }
 
+    public static ObjectIdFunction isObjectIdFunction(final WhereCauseProcessor whereCauseProcessor,
+        Expression incomingExpression) throws ParseException {
+        if (ComparisonOperator.class.isInstance(incomingExpression)) {
+            ComparisonOperator comparisonOperator = (ComparisonOperator)incomingExpression;
+            String rightExpression = getStringValue(comparisonOperator.getRightExpression());
+            if (Function.class.isInstance(comparisonOperator.getLeftExpression())) {
+                Function function = ((Function) comparisonOperator.getLeftExpression());
+                if ("objectid".equals(function.getName().toLowerCase())
+                    && (function.getParameters().getExpressions().size()==1)
+                    && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                    String column = getStringValue(function.getParameters().getExpressions().get(0));
+                    return new ObjectIdFunction(column, rightExpression, comparisonOperator);
+                }
+            }
+        } else if (InExpression.class.isInstance(incomingExpression)) {
+            InExpression inExpression = (InExpression)incomingExpression;
+            final Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();
+
+            if (Function.class.isInstance(inExpression.getLeftExpression())) {
+                Function function = ((Function) inExpression.getLeftExpression());
+                if ("objectid".equals(function.getName().toLowerCase())
+                    && (function.getParameters().getExpressions().size()==1)
+                    && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                    String column = getStringValue(function.getParameters().getExpressions().get(0));
+                    List<Object> rightExpression = Lists.transform(((ExpressionList)
+                            inExpression.getRightItemsList()).getExpressions(),
+                        new com.google.common.base.Function<Expression, Object>() {
+                            @Override
+                            public Object apply(Expression expression) {
+                                try {
+                                    return whereCauseProcessor.parseExpression(new Document(),expression, leftExpression);
+                                } catch (ParseException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        });
+                    return new ObjectIdFunction(column, rightExpression, inExpression);
+                }
+            }
+        }
+        return null;
+    }
 
     public static DateFunction isDateFunction(Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {

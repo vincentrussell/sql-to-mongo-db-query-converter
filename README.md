@@ -250,6 +250,28 @@ db.my_table.find({
 ```
 
 
+###ObjectId Support
+
+```
+select column1 from  where OBJECTID('_id') IN ('53102b43bf1044ed8b0ba36b', '54651022bffebc03098b4568')
+
+******Result:*********
+
+db.my_table.find({ 
+	"_id" : {$in: [{$oid: "53102b43bf1044ed8b0ba36b"},{$oid: "54651022bffebc03098b4568"}]}
+})
+```
+
+```
+select column1 from  where OBJECTID('_id') = '53102b43bf1044ed8b0ba36b'
+
+******Result:*********
+
+db.my_table.find({ 
+	"_id" : {$oid: "53102b43bf1044ed8b0ba36b"}
+})
+```
+
 ###Delete
 
 ```
@@ -373,6 +395,14 @@ more results? (y/n): y
 
 more results? (y/n): n
 ```
+
+# Change Log
+
+## [1.7](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.7) (2018-07-24)
+
+**Enhancements:**
+
+- Equals, Not Equals, In and Not In ObjectId query support
 
 # Change Log
 

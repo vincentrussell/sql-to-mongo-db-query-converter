@@ -24,6 +24,7 @@ import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.ObjectId;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -138,6 +139,44 @@ public class QueryConverterIT {
                 "\t\"name\" : \"Dj Reynolds Pub And Restaurant\",\n" +
                 "\t\"restaurant_id\" : \"30191841\"\n" +
                 "}", firstDocument.toJson(jsonWriterSettings));
+    }
+
+    @Test
+    public void objectIdQuery() throws ParseException {
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
+        try {
+            QueryConverter queryConverter = new QueryConverter("select _id from " + COLLECTION
+                + " where ObjectId('_id') = '54651022bffebc03098b4567'");
+            QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+            List<Document> documents = Lists.newArrayList(findIterable);
+            assertEquals(1, documents.size());
+            assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings));
+        } finally {
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
+        }
+    }
+
+    @Test
+    public void objectIdInQuery() throws ParseException {
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
+        try {
+            QueryConverter queryConverter = new QueryConverter("select _id from " + COLLECTION
+                + " where ObjectId('_id') IN ('54651022bffebc03098b4567','54651022bffebc03098b4568')");
+            QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+            List<Document> documents = Lists.newArrayList(findIterable);
+            assertEquals(2, documents.size());
+            assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings));
+            assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4568\"\n"
+                + "\t}\n" + "}", documents.get(1).toJson(jsonWriterSettings));
+        } finally {
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
+        }
     }
 
     @Test
