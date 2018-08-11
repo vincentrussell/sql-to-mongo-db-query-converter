@@ -4,7 +4,6 @@ import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
@@ -23,16 +22,6 @@ public class ObjectIdFunction {
         this.column = column;
         this.value = value;
         this.comparisonExpression = expression;
-    }
-
-    private String parseComparisonOperator(Expression expression)
-        throws ParseException {
-        if (EqualsTo.class.isInstance(expression)) {
-            return "$eq";
-        } if (NotEqualsTo.class.isInstance(expression)) {
-            return "$ne";
-        }
-        throw new ParseException("Count not parse comparisonOperator " + comparisonExpression.toString());
     }
 
     public String getColumn() {
