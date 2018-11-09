@@ -266,6 +266,15 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void regexMatchWithoutEquals() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where regexMatch(column,'^[ae\"gaf]+$')");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("column",document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void dateMatchGTE() throws ParseException {
         dateTest(">=","$gte");
     }

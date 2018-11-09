@@ -123,10 +123,20 @@ public class WhereCauseProcessor {
         } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
             Expression expression = ((NotExpression)incomingExpression).getExpression();
             return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));
-        } else if (Function.class.isInstance(incomingExpression) && !SqlUtils.isSpecialtyFunction(incomingExpression)) {
+        } else if (Function.class.isInstance(incomingExpression)) {
             Function function = ((Function)incomingExpression);
-            query.put("$"+ function.getName(), SqlUtils.parseFunctionArguments(function.getParameters(),
-                    defaultFieldType, fieldNameToFieldTypeMapping));
+            RegexFunction regexFunction = SqlUtils.isRegexFunction(incomingExpression);
+            if (regexFunction != null) {
+                Document regexDocument = new Document("$regex", regexFunction.getRegex());
+                if (regexFunction.getOptions() != null) {
+                    regexDocument.append("$options", regexFunction.getOptions());
+                }
+                query.put(regexFunction.getColumn(), regexDocument);
+            } else {
+                query.put("$" + function.getName(), SqlUtils
+                    .parseFunctionArguments(function.getParameters(), defaultFieldType,
+                        fieldNameToFieldTypeMapping));
+            }
         } else if (otherSide == null) {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
         } else {

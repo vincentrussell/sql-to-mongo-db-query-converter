@@ -383,28 +383,49 @@ public class SqlUtils {
                 if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size()==2
                         || function.getParameters().getExpressions().size()==3)
-                        && "true".equals(rightExpression)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
-                    final String column = getStringValue(function.getParameters().getExpressions().get(0));
-                    final String regex = fixDoubleSingleQuotes(((StringValue)(function.getParameters()
-                            .getExpressions().get(1))).getValue());
-                    try {
-                        Pattern.compile(regex);
-                    } catch (PatternSyntaxException e) {
-                        throw new ParseException(e.getMessage());
-                    }
-                    RegexFunction regexFunction = new RegexFunction(column,regex);
 
-                    if (function.getParameters().getExpressions().size()==3 && StringValue.class.isInstance(function.getParameters().getExpressions().get(2))) {
-                        regexFunction.setOptions(((StringValue)(function.getParameters().getExpressions().get(2))).getValue());
-                    }
+                    final Boolean rightExpressionValue = Boolean.valueOf(rightExpression);
 
+                    isTrue(rightExpressionValue, "false is not allowed for regexMatch function");
+
+                    RegexFunction regexFunction = getRegexFunction(function);
                     return regexFunction;
                 }
 
             }
+        } else if (Function.class.isInstance(incomingExpression)) {
+            Function function = ((Function)incomingExpression);
+            if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
+                && (function.getParameters().getExpressions().size()==2
+                || function.getParameters().getExpressions().size()==3)
+                && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
+
+                RegexFunction regexFunction = getRegexFunction(function);
+                return regexFunction;
+
+            }
         }
         return null;
+    }
+
+    private static RegexFunction getRegexFunction(Function function) throws ParseException {
+        final String column = getStringValue(function.getParameters().getExpressions().get(0));
+        final String regex = fixDoubleSingleQuotes(
+            ((StringValue) (function.getParameters().getExpressions().get(1))).getValue());
+        try {
+            Pattern.compile(regex);
+        } catch (PatternSyntaxException e) {
+            throw new ParseException(e.getMessage());
+        }
+        RegexFunction regexFunction = new RegexFunction(column, regex);
+
+        if (function.getParameters().getExpressions().size() == 3 && StringValue.class
+            .isInstance(function.getParameters().getExpressions().get(2))) {
+            regexFunction.setOptions(
+                ((StringValue) (function.getParameters().getExpressions().get(2))).getValue());
+        }
+        return regexFunction;
     }
 
     public static void isTrue(boolean expression, String message) throws ParseException {

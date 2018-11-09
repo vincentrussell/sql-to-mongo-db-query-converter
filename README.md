@@ -138,7 +138,7 @@ db.my_table.find({
 ###Regex
 
 ```
-select * from my_table where regexMatch(column,'^[ae"gaf]+$') = true
+select * from my_table where regexMatch(column,'^[ae"gaf]+$')
 
 
 ******Result:*********
@@ -403,6 +403,7 @@ more results? (y/n): n
 **Enhancements:**
 
 - Equals, Not Equals, In and Not In ObjectId query support
+- regexMatch function can be used with or without equals sign
 
 # Change Log
 
