@@ -46,11 +46,25 @@ public class WhereCauseProcessor {
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
-                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),parseExpression(new Document(), rightExpression, leftExpression));
+                if (Function.class.isInstance(leftExpression)) {
+                    query.put("$eq", new Document("arg1", parseExpression(new Document(), leftExpression, rightExpression))
+                    .append("arg2", parseExpression(new Document(), rightExpression, leftExpression)));
+                } else {
+                    query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
+                        parseExpression(new Document(), rightExpression, leftExpression));
+                }
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((NotEqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((NotEqualsTo) incomingExpression).getRightExpression();
-                query.put(SqlUtils.getStringValue(leftExpression), new Document("$ne", parseExpression(new Document(), rightExpression, leftExpression)));
+
+                if (Function.class.isInstance(leftExpression)) {
+                    query.put("$ne", new Document("arg1", parseExpression(new Document(), leftExpression, rightExpression))
+                        .append("arg2", parseExpression(new Document(), rightExpression, leftExpression)));
+                } else {
+                    query.put(SqlUtils.getStringValue(leftExpression), new Document("$ne", parseExpression(new Document(), rightExpression, leftExpression)));
+
+                }
+
             } else if (GreaterThan.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
