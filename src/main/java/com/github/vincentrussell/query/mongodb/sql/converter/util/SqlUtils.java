@@ -10,6 +10,7 @@ import com.joestelmach.natty.Parser;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.SignedExpression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
@@ -67,6 +68,8 @@ public class SqlUtils {
                 defaultFieldType) : FieldType.UNKNOWN;
         if (LongValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
+        } else if (SignedExpression.class.isInstance(incomingExpression)) {
+            return normalizeValue((((SignedExpression)incomingExpression).toString()),fieldType);
         } else if (StringValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((StringValue)incomingExpression).getValue()),fieldType);
         } else if (Column.class.isInstance(incomingExpression)) {

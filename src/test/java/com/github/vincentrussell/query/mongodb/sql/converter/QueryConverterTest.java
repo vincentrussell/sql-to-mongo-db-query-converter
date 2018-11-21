@@ -93,6 +93,19 @@ public class QueryConverterTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithNumberNegativeLong() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where value=-1057614563", new HashMap(){{
+            put("value",FieldType.NUMBER);
+        }}
+        );
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("value",-1057614563L),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithNumberGT() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where value > \"1\"", new HashMap(){{
             put("value",FieldType.NUMBER);
