@@ -444,6 +444,24 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void specialtyFunctionWithInTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where someFunction('field') IN (\"1234\") AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$fin", document("function", document("$someFunction", "field")).append("list", Lists.newArrayList("1234"))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void specialtyFunctionWithNotInTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where someFunction('field') NOT IN (\"1234\") AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$fnin", document("function", document("$someFunction", "field")).append("list", Lists.newArrayList("1234"))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void objectIdFunctionTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where OBJECTID('_id') = '53102b43bf1044ed8b0ba36b' AND (foo = 'bar')", FieldType.STRING);
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();

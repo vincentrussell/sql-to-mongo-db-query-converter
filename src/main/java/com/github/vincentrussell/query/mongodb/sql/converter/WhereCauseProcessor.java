@@ -109,9 +109,8 @@ public class WhereCauseProcessor {
             if (objectIdFunction != null) {
                 query.put(objectIdFunction.getColumn(), objectIdFunction.toDocument());
             } else {
-                query.put(leftExpressionAsString,
-                    new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(
-                        ((ExpressionList) inExpression.getRightItemsList()).getExpressions(),
+                List<Object> objectList = Lists
+                    .transform(((ExpressionList) inExpression.getRightItemsList()).getExpressions(),
                         new com.google.common.base.Function<Expression, Object>() {
                             @Override public Object apply(Expression expression) {
                                 try {
@@ -121,7 +120,16 @@ public class WhereCauseProcessor {
                                     throw new RuntimeException(e);
                                 }
                             }
-                        })));
+                        });
+
+                if (Function.class.isInstance(leftExpression)) {
+                    String mongoInFunction = inExpression.isNot() ? "$fnin" : "$fin";
+                    query.put(mongoInFunction, new Document("function", parseExpression(new Document(), leftExpression, otherSide)).append("list", objectList));
+                } else {
+                    String mongoInFunction = inExpression.isNot() ? "$nin" : "$in";
+                    query.put(leftExpressionAsString,
+                        new Document(mongoInFunction, objectList));
+                }
             }
         } else if(AndExpression.class.isInstance(incomingExpression)) {
             handleAndOr("$and", (BinaryExpression)incomingExpression, query);
