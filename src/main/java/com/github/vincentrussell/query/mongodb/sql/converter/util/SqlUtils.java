@@ -251,7 +251,6 @@ public class SqlUtils {
         }
     }
 
-
     public static ParseException convertParseException(net.sf.jsqlparser.parser.ParseException incomingException) {
         try {
             return new ParseException(new Token(incomingException.currentToken.kind,
@@ -261,7 +260,7 @@ public class SqlUtils {
             if (incomingException.getMessage().startsWith("Encountered \" \"(\" \"( \"\"")) {
                 return new ParseException("Only one simple table name is supported.");
             }
-            if (incomingException.getMessage().startsWith("Encountered \" \"=\" \"= \"\"")) {
+            if (incomingException.getMessage().startsWith("Encountered unexpected token: \"=\" \"=\"")) {
                 return new ParseException("unable to parse complete sql string. one reason for this is the use of double equals (==).");
             }
             if (incomingException.getMessage().contains("Was expecting:" + LINE_SEPARATOR +

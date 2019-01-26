@@ -398,6 +398,14 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.8](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.8) (2019-01-26)
+
+**Enhancements:**
+
+- Upgraded jsqlparser to version 1.4
+- Added support for deep nested queries; i.e: select * from my_table where a.b.c.d.e.key = value
+
+
 ## [1.7](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.7) (2018-11-13)
 
 **Enhancements:**
@@ -405,7 +413,6 @@ more results? (y/n): n
 - Equals, Not Equals, In and Not In ObjectId query support
 - regexMatch function can be used with or without equals sign
 
-# Change Log
 
 ## [1.6](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.6) (2018-07-24)
 

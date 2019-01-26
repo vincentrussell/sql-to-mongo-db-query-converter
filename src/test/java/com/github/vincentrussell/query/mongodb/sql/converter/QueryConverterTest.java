@@ -1041,25 +1041,7 @@ public class QueryConverterTest {
     @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage("Encountered unexpected token: \"=\" \"=\"\n" +
-                "    at line 1, column 34.\n" +
-                "\n" +
-                "Was expecting one of:\n" +
-                "\n" +
-                "    \".\"\n" +
-                "    \";\"\n" +
-                "    \"AND\"\n" +
-                "    \"CONNECT\"\n" +
-                "    \"EXCEPT\"\n" +
-                "    \"FOR\"\n" +
-                "    \"GROUP\"\n" +
-                "    \"HAVING\"\n" +
-                "    \"INTERSECT\"\n" +
-                "    \"MINUS\"\n" +
-                "    \"ORDER\"\n" +
-                "    \"START\"\n" +
-                "    \"UNION\"\n" +
-                "    <EOF>\n");
+        expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==).");
         QueryConverter queryConverter = new QueryConverter("select * from my_table where key == 'value1'");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
@@ -1139,6 +1121,15 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("booleanField",document("$ne", false)),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void deepNestedQuery() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where a.b.c.d.e.key = value");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("a.b.c.d.e.key", "value"),mongoDBQueryHolder.getQuery());
     }
 
     private static Document document(String key, Object... values) {
