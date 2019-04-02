@@ -155,9 +155,7 @@ public class WhereCauseProcessor {
                 }
                 query.put(regexFunction.getColumn(), regexDocument);
             } else {
-                query.put("$" + function.getName(), SqlUtils
-                    .parseFunctionArguments(function.getParameters(), defaultFieldType,
-                        fieldNameToFieldTypeMapping));
+                recurseFunctions(query, function, defaultFieldType, fieldNameToFieldTypeMapping);
             }
         } else if (otherSide == null) {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
@@ -165,6 +163,24 @@ public class WhereCauseProcessor {
             return SqlUtils.getValue(incomingExpression,otherSide, defaultFieldType, fieldNameToFieldTypeMapping);
         }
         return query;
+    }
+
+    private Object recurseFunctions(Document query, Object object, FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+        if (Function.class.isInstance(object)) {
+            Function function = (Function)object;
+            query.put("$" + function.getName(), recurseFunctions(new Document(), function.getParameters(), defaultFieldType, fieldNameToFieldTypeMapping));
+        } else if (ExpressionList.class.isInstance(object)) {
+            ExpressionList expressionList = (ExpressionList)object;
+            List<Object> objectList = new ArrayList<>();
+            for (Expression expression : expressionList.getExpressions()) {
+                objectList.add(recurseFunctions(new Document(), expression, defaultFieldType, fieldNameToFieldTypeMapping));
+            }
+            return objectList.size() == 1 ? objectList.get(0) : objectList;
+        } else if (Expression.class.isInstance(object)) {
+            return SqlUtils.getValue((Expression)object, null, defaultFieldType, fieldNameToFieldTypeMapping);
+        }
+
+        return query.isEmpty() ? null : query;
     }
 
     private void handleAndOr(String key, BinaryExpression incomingExpression, Document query) throws ParseException {

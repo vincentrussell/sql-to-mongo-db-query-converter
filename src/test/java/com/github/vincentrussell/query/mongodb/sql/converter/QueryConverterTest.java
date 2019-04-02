@@ -448,6 +448,15 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void specialtyFunctionRecursiveTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where toLower(toUpper('123')) AND (foo = 'bar')", FieldType.STRING);
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$toLower", document("$toUpper", "123")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void specialtyFunctionWithEqualsTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter("select * from my_table where someFunction('123') = \"1234\" AND (foo = 'bar')", FieldType.STRING);
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
