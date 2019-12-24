@@ -332,8 +332,8 @@ public class QueryConverterIT {
         		"	\"count\" : 51,\n" + 
         		"	\"borough\" : \"Missing\"\n" + 
         		"},{\n" + 
-        		"	\"count\" : 5656,\n" + 
-        		"	\"borough\" : \"Queens\"\n" + 
+        		"	\"count\" : 969,\n" + 
+        		"	\"borough\" : \"Staten Island\"\n" + 
         		"},{\n" + 
         		"	\"count\" : 10259,\n" + 
         		"	\"borough\" : \"Manhattan\"\n" + 
@@ -341,11 +341,11 @@ public class QueryConverterIT {
         		"	\"count\" : 6086,\n" + 
         		"	\"borough\" : \"Brooklyn\"\n" + 
         		"},{\n" + 
+        		"	\"count\" : 5656,\n" + 
+        		"	\"borough\" : \"Queens\"\n" + 
+        		"},{\n" + 
         		"	\"count\" : 2338,\n" + 
         		"	\"borough\" : \"Bronx\"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 969,\n" + 
-        		"	\"borough\" : \"Staten Island\"\n" + 
         		"}]",toJson(results));
     }
 
@@ -508,7 +508,7 @@ public class QueryConverterIT {
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(2, results.size());
         assertEquals(Arrays.asList(new Document("count",51).append("borough","Missing"),
-                new Document("count",5656).append("borough","Queens")
+                new Document("count",969).append("borough","Staten Island")
         ),results);
     }
 
@@ -527,37 +527,37 @@ public class QueryConverterIT {
         }));
 
         assertEquals("[{\n" + 
+        		"	\"count\" : 680,\n" + 
+        		"	\"borough\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
+        		"},{\n" + 
         		"	\"count\" : 510,\n" + 
         		"	\"borough\" : \"Manhattan\",\n" + 
         		"	\"cuisine\" : \"Chinese\"\n" + 
         		"},{\n" + 
-        		"	\"count\" : 1273,\n" + 
-        		"	\"borough\" : \"Brooklyn\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
+        		"	\"count\" : 728,\n" + 
+        		"	\"borough\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"Chinese\"\n" + 
         		"},{\n" + 
         		"	\"count\" : 1040,\n" + 
         		"	\"borough\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 3205,\n" + 
+        		"	\"borough\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 1273,\n" + 
+        		"	\"borough\" : \"Brooklyn\",\n" + 
         		"	\"cuisine\" : \"American \"\n" + 
         		"},{\n" + 
         		"	\"count\" : 763,\n" + 
         		"	\"borough\" : \"Brooklyn\",\n" + 
         		"	\"cuisine\" : \"Chinese\"\n" + 
         		"},{\n" + 
-        		"	\"count\" : 3205,\n" + 
-        		"	\"borough\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 728,\n" + 
-        		"	\"borough\" : \"Queens\",\n" + 
-        		"	\"cuisine\" : \"Chinese\"\n" + 
-        		"},{\n" + 
         		"	\"count\" : 621,\n" + 
         		"	\"borough\" : \"Manhattan\",\n" + 
         		"	\"cuisine\" : \"Italian\"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 680,\n" + 
-        		"	\"borough\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
         		"}]",toJson(filteredResults));
     }
     
@@ -576,37 +576,37 @@ public class QueryConverterIT {
         }));
 
         assertEquals("[{\n" + 
+        		"	\"co\" : 680,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
+        		"},{\n" + 
         		"	\"co\" : 510,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"cuisine\" : \"Chinese\"\n" + 
         		"},{\n" + 
-        		"	\"co\" : 1273,\n" + 
-        		"	\"b\" : \"Brooklyn\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
+        		"	\"co\" : 728,\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"Chinese\"\n" + 
         		"},{\n" + 
         		"	\"co\" : 1040,\n" + 
         		"	\"b\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 3205,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1273,\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
         		"	\"cuisine\" : \"American \"\n" + 
         		"},{\n" + 
         		"	\"co\" : 763,\n" + 
         		"	\"b\" : \"Brooklyn\",\n" + 
         		"	\"cuisine\" : \"Chinese\"\n" + 
         		"},{\n" + 
-        		"	\"co\" : 3205,\n" + 
-        		"	\"b\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
-        		"},{\n" + 
-        		"	\"co\" : 728,\n" + 
-        		"	\"b\" : \"Queens\",\n" + 
-        		"	\"cuisine\" : \"Chinese\"\n" + 
-        		"},{\n" + 
         		"	\"co\" : 621,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"cuisine\" : \"Italian\"\n" + 
-        		"},{\n" + 
-        		"	\"co\" : 680,\n" + 
-        		"	\"b\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
         		"}]",toJson(filteredResults));
     }
     
@@ -625,37 +625,37 @@ public class QueryConverterIT {
         }));
 
         assertEquals("[{\n" + 
+        		"	\"co\" : 680,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"Café/Coffee/Tea\"\n" + 
+        		"},{\n" + 
         		"	\"co\" : 510,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"c\" : \"Chinese\"\n" + 
         		"},{\n" + 
-        		"	\"co\" : 1273,\n" + 
-        		"	\"b\" : \"Brooklyn\",\n" + 
-        		"	\"c\" : \"American \"\n" + 
+        		"	\"co\" : 728,\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"c\" : \"Chinese\"\n" + 
         		"},{\n" + 
         		"	\"co\" : 1040,\n" + 
         		"	\"b\" : \"Queens\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 3205,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1273,\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
         		"	\"c\" : \"American \"\n" + 
         		"},{\n" + 
         		"	\"co\" : 763,\n" + 
         		"	\"b\" : \"Brooklyn\",\n" + 
         		"	\"c\" : \"Chinese\"\n" + 
         		"},{\n" + 
-        		"	\"co\" : 3205,\n" + 
-        		"	\"b\" : \"Manhattan\",\n" + 
-        		"	\"c\" : \"American \"\n" + 
-        		"},{\n" + 
-        		"	\"co\" : 728,\n" + 
-        		"	\"b\" : \"Queens\",\n" + 
-        		"	\"c\" : \"Chinese\"\n" + 
-        		"},{\n" + 
         		"	\"co\" : 621,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"c\" : \"Italian\"\n" + 
-        		"},{\n" + 
-        		"	\"co\" : 680,\n" + 
-        		"	\"b\" : \"Manhattan\",\n" + 
-        		"	\"c\" : \"Café/Coffee/Tea\"\n" + 
         		"}]",toJson(filteredResults));
     }
 
