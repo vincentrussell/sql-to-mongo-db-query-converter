@@ -9,6 +9,7 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.select.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,9 +24,10 @@ public class SQLCommandInfoHolder {
     private final List<Join> joins;
     private final List<String> groupBys;
     private final List<OrderByElement> orderByElements;
+    private final HashMap<String,String> aliasHash;
 
     public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause,
-                                boolean isDistinct, boolean isCountAll, String table, long limit, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements) {
+                                boolean isDistinct, boolean isCountAll, String table, long limit, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, HashMap<String,String> aliasHash) {
         this.sqlCommandType = sqlCommandType;
         this.whereClause = whereClause;
         this.isDistinct = isDistinct;
@@ -36,6 +38,7 @@ public class SQLCommandInfoHolder {
         this.joins = joins;
         this.groupBys = groupBys;
         this.orderByElements = orderByElements;
+        this.aliasHash = aliasHash;
     }
 
     public boolean isDistinct() {
@@ -78,7 +81,11 @@ public class SQLCommandInfoHolder {
         return sqlCommandType;
     }
 
-    public static class Builder {
+    public HashMap<String,String> getAliasHash() {
+		return aliasHash;
+	}
+
+	public static class Builder {
         private final FieldType defaultFieldType;
         private final Map<String, FieldType> fieldNameToFieldTypeMapping;
         private SQLCommandType sqlCommandType;
@@ -91,7 +98,7 @@ public class SQLCommandInfoHolder {
         private List<Join> joins = new ArrayList<>();
         private List<String> groupBys = new ArrayList<>();
         private List<OrderByElement> orderByElements1 = new ArrayList<>();
-
+        private HashMap<String,String> aliasHash;
 
         private Builder(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping){
             this.defaultFieldType = defaultFieldType;
@@ -115,6 +122,7 @@ public class SQLCommandInfoHolder {
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
                 groupBys = SqlUtils.getGroupByColumnReferences(plainSelect);
+                aliasHash = generateHashAliasFromSelectItems(selectItems);
                 SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
             } else if (Delete.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.DELETE;
@@ -125,10 +133,23 @@ public class SQLCommandInfoHolder {
             }
             return this;
         }
+        
+        private HashMap<String,String> generateHashAliasFromSelectItems(List<SelectItem> selectItems) {
+        	HashMap<String,String> aliasHashAux = new HashMap<String,String>();
+        	for(SelectItem sitem: selectItems) {
+        		if(!(sitem instanceof AllColumns)) {
+        			SelectExpressionItem seitem = (SelectExpressionItem) sitem;
+        			if(seitem.getAlias() != null) {
+		        		aliasHashAux.put( seitem.getExpression().toString(), seitem.getAlias().getName());
+        			}
+        		}
+        	}
+        	return aliasHashAux;
+        }
 
         public SQLCommandInfoHolder build() {
             return new SQLCommandInfoHolder(sqlCommandType, whereClause,
-                    isDistinct, isCountAll, table, limit, selectItems, joins, groupBys, orderByElements1);
+                    isDistinct, isCountAll, table, limit, selectItems, joins, groupBys, orderByElements1, aliasHash);
         }
 
         public static Builder create(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) {
