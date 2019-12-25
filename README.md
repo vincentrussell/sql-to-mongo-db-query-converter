@@ -311,6 +311,82 @@ db.my_collection.aggregate([{
   "$sort": {
     "count": -1
   }
+},{
+  "$project": {
+    "borough": "$_id.borough",
+    "cuisine": "$_id.cuisine",
+    "count": 1,
+    "_id": 0
+  }
+}])
+```
+
+###Alias
+
+```
+select object.key1 as key1, object2.key3 as key3, object1.key4 as key4 from my_collection where object.key2 = 34 AND object2.key4 > 5;
+
+
+******Mongo Query:*********
+
+db.Restaurants.aggregate([{
+  "$match": {
+    "$and": [
+      {
+        "Restaurant.cuisine": "American"
+      },
+      {
+        "Restaurant.borough": {
+          "$gt": "N"
+        }
+      }
+    ]
+  }
+},{
+  "$project": {
+    "_id": 0,
+    "key1": "$Restaurant.borough",
+    "key3": "$Restaurant.cuisine",
+    "key4": "$Restaurant.address.zipcode"
+  }
+}])
+```
+
+###Alias Group By (Aggregation)
+
+```
+select borough as b, cuisine as c, count(*) as co from my_collection WHERE borough LIKE 'Queens%' GROUP BY borough, cuisine ORDER BY count(*) DESC;
+
+
+******Mongo Query:*********
+
+db.my_collection.aggregate([{
+  "$match": {
+    "borough": {
+      "$regex": "^Queens.*$"
+    }
+  }
+},{
+  "$group": {
+    "_id": {
+      "borough": "$borough",
+      "cuisine": "$cuisine"
+    },
+    "co": {
+      "$sum": 1
+    }
+  }
+},{
+  "$sort": {
+    "co": -1
+  }
+},{
+  "$project": {
+    "b": "$_id.borough",
+    "c": "$_id.cuisine",
+    "co": 1,
+    "_id": 0
+  }
 }])
 ```
 
@@ -329,67 +405,47 @@ select borough, cuisine, count(*) from my_collection GROUP BY borough, cuisine O
 ******Query Results:*********
 
 [{
-	"_id" : {
-		"borough" : "Manhattan",
-		"cuisine" : "American "
-	},
+	"borough" : "Manhattan",
+	"cuisine" : "American ",
 	"count" : 3205
 },{
-	"_id" : {
-		"borough" : "Brooklyn",
-		"cuisine" : "American "
-	},
+	"borough" : "Brooklyn",
+	"cuisine" : "American ",
 	"count" : 1273
 },{
-	"_id" : {
-		"borough" : "Queens",
-		"cuisine" : "American "
-	},
+	"borough" : "Queens",
+	"cuisine" : "American ",
 	"count" : 1040
 },{
-	"_id" : {
-		"borough" : "Brooklyn",
-		"cuisine" : "Chinese"
-	},
+	"borough" : "Brooklyn",
+	"cuisine" : "Chinese",
 	"count" : 763
 },{
-	"_id" : {
-		"borough" : "Queens",
-		"cuisine" : "Chinese"
-	},
+	"borough" : "Queens",
+	"cuisine" : "Chinese",
 	"count" : 728
 }]
 
 more results? (y/n): y
 [{
-	"_id" : {
-		"borough" : "Manhattan",
-		"cuisine" : "Café/Coffee/Tea"
-	},
+	"borough" : "Manhattan",
+	"cuisine" : "Café/Coffee/Tea",
 	"count" : 680
 },{
-	"_id" : {
-		"borough" : "Manhattan",
-		"cuisine" : "Italian"
-	},
+	"borough" : "Manhattan",
+	"cuisine" : "Italian",
 	"count" : 621
 },{
-	"_id" : {
-		"borough" : "Manhattan",
-		"cuisine" : "Chinese"
-	},
+	"borough" : "Manhattan",
+	"cuisine" : "Chinese",
 	"count" : 510
 },{
-	"_id" : {
-		"borough" : "Manhattan",
-		"cuisine" : "Japanese"
-	},
+	"borough" : "Manhattan",
+	"cuisine" : "Japanese",
 	"count" : 438
 },{
-	"_id" : {
-		"borough" : "Bronx",
-		"cuisine" : "American "
-	},
+	"borough" : "Bronx",
+	"cuisine" : "American ",
 	"count" : 411
 }]
 

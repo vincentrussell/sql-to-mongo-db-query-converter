@@ -2,6 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import org.bson.Document;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +14,7 @@ public class MongoDBQueryHolder {
     private Document query = new Document();
     private Document projection = new Document();
     private Document sort = new Document();
+    private Document aliasProjection = new Document();
     private boolean distinct = false;
     private boolean countAll = false;
     private List<String> groupBys = new ArrayList<>();
@@ -95,6 +97,14 @@ public class MongoDBQueryHolder {
     public List<String> getGroupBys() {
         return groupBys;
     }
+    
+	public Document getAliasProjection() {
+		return aliasProjection;
+	}
+
+	public void setAliasProjection(Document aliasProjection) {
+		this.aliasProjection = aliasProjection;
+	}
 
     public long getLimit() {
         return limit;
@@ -107,4 +117,5 @@ public class MongoDBQueryHolder {
     public SQLCommandType getSqlCommandType() {
         return sqlCommandType;
     }
+    
 }

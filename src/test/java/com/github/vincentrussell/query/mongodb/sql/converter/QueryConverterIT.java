@@ -25,9 +25,11 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
+import org.json.JSONException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -201,60 +203,304 @@ public class QueryConverterIT {
         assertEquals(5, results.size());
         assertEquals(Arrays.asList("Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island"),results);
     }
+    
+    @Test
+    public void selectQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" limit 6");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Bakery\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Brooklyn\",\n" + 
+        		"	\"cuisine\" : \"Hamburgers\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"Irish\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Brooklyn\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"Jewish/Kosher\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"}]",toJson(results));
+    }
+    
+    @Test
+    public void selectQueryAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" limit 6");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"Bakery\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
+        		"	\"c\" : \"Hamburgers\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"Irish\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"c\" : \"Jewish/Kosher\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"}]",toJson(results));
+    }
+    
+    @Test
+    public void selectOrderByQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 10");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(10, results.size());
+        assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Thai\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Thai\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"}]",toJson(results));
+    }
+    
+    @Test
+    public void selectOrderByAliasQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,cuisine asc limit 6");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"}]",toJson(results));
+    }
 
     @Test
-    public void countGroupByQuery() throws ParseException, IOException {
+    public void countGroupByQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" +
-                "\t\"_id\" : \"Missing\",\n" +
-                "\t\"count\" : 51\n" +
-                "},{\n" +
-                "\t\"_id\" : \"Staten Island\",\n" +
-                "\t\"count\" : 969\n" +
-                "},{\n" +
-                "\t\"_id\" : \"Manhattan\",\n" +
-                "\t\"count\" : 10259\n" +
-                "},{\n" +
-                "\t\"_id\" : \"Bronx\",\n" +
-                "\t\"count\" : 2338\n" +
-                "},{\n" +
-                "\t\"_id\" : \"Queens\",\n" +
-                "\t\"count\" : 5656\n" +
-                "},{\n" +
-                "\t\"_id\" : \"Brooklyn\",\n" +
-                "\t\"count\" : 6086\n" +
-                "}]",toJson(results));
+        JSONAssert.assertEquals("[{\n" +
+        		"	\"count\" : 51,\n" + 
+        		"	\"borough\" : \"Missing\"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 969,\n" + 
+        		"	\"borough\" : \"Staten Island\"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 10259,\n" + 
+        		"	\"borough\" : \"Manhattan\"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 6086,\n" + 
+        		"	\"borough\" : \"Brooklyn\"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 5656,\n" + 
+        		"	\"borough\" : \"Queens\"\n" + 
+        		"},{\n" + 
+        		"	\"count\" : 2338,\n" + 
+        		"	\"borough\" : \"Bronx\"\n" + 
+        		"}]",toJson(results), false);
     }
 
     @Test
-    public void countGroupByQuerySortByCount() throws ParseException, IOException {
+    public void countGroupBySortByCountQuery() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough\n" +
                 "ORDER BY count(borough) DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
         assertEquals("[{\n" +
-                "\t\"_id\" : \"Manhattan\",\n" +
-                "\t\"count\" : 10259\n" +
+                "\t\"count\" : 10259,\n" +
+                "\t\"borough\" : \"Manhattan\"\n" +
                 "},{\n" +
-                "\t\"_id\" : \"Brooklyn\",\n" +
-                "\t\"count\" : 6086\n" +
+                "\t\"count\" : 6086,\n" +
+                "\t\"borough\" : \"Brooklyn\"\n" +
                 "},{\n" +
-                "\t\"_id\" : \"Queens\",\n" +
-                "\t\"count\" : 5656\n" +
+                "\t\"count\" : 5656,\n" +
+                "\t\"borough\" : \"Queens\"\n" +
                 "},{\n" +
-                "\t\"_id\" : \"Bronx\",\n" +
-                "\t\"count\" : 2338\n" +
+                "\t\"count\" : 2338,\n" +
+                "\t\"borough\" : \"Bronx\"\n" +
                 "},{\n" +
-                "\t\"_id\" : \"Staten Island\",\n" +
-                "\t\"count\" : 969\n" +
+                "\t\"count\" : 969,\n" +
+                "\t\"borough\" : \"Staten Island\"\n" +
                 "},{\n" +
-                "\t\"_id\" : \"Missing\",\n" +
-                "\t\"count\" : 51\n" +
+                "\t\"count\" : 51,\n" +
+                "\t\"borough\" : \"Missing\"\n" +
                 "}]",toJson(results));
+    }
+    
+    @Test
+    public void countGroupBySortByCountAliasMixedQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" +
+                "\t\"co\" : 10259,\n" +
+                "\t\"borough\" : \"Manhattan\"\n" +
+                "},{\n" +
+                "\t\"co\" : 6086,\n" +
+                "\t\"borough\" : \"Brooklyn\"\n" +
+                "},{\n" +
+                "\t\"co\" : 5656,\n" +
+                "\t\"borough\" : \"Queens\"\n" +
+                "},{\n" +
+                "\t\"co\" : 2338,\n" +
+                "\t\"borough\" : \"Bronx\"\n" +
+                "},{\n" +
+                "\t\"co\" : 969,\n" +
+                "\t\"borough\" : \"Staten Island\"\n" +
+                "},{\n" +
+                "\t\"co\" : 51,\n" +
+                "\t\"borough\" : \"Missing\"\n" +
+                "}]",toJson(results));
+    }
+    
+    @Test
+    public void countGroupBySortByCountAliasAllQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough b, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" +
+                "\t\"co\" : 10259,\n" +
+                "\t\"b\" : \"Manhattan\"\n" +
+                "},{\n" +
+                "\t\"co\" : 6086,\n" +
+                "\t\"b\" : \"Brooklyn\"\n" +
+                "},{\n" +
+                "\t\"co\" : 5656,\n" +
+                "\t\"b\" : \"Queens\"\n" +
+                "},{\n" +
+                "\t\"co\" : 2338,\n" +
+                "\t\"b\" : \"Bronx\"\n" +
+                "},{\n" +
+                "\t\"co\" : 969,\n" +
+                "\t\"b\" : \"Staten Island\"\n" +
+                "},{\n" +
+                "\t\"co\" : 51,\n" +
+                "\t\"b\" : \"Missing\"\n" +
+                "}]",toJson(results));
+    }
+    
+    @Test
+    public void countGroupByNestedFieldSortByCountAliasAllQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 6\n" +
+                "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"az\" : \"\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"az\" : \"07005\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"az\" : \"10000\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 520,\n" + 
+        		"	\"az\" : \"10001\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 471,\n" + 
+        		"	\"az\" : \"10002\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 686,\n" + 
+        		"	\"az\" : \"10003\"\n" + 
+        		"}]",toJson(results));
+    }
+    
+    @Test
+    public void countGroupByNestedFieldSortByCountQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select address.zipcode, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode limit 6\n" +
+                "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        assertEquals("[{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"07005\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10000\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 520,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10001\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 471,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10002\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 686,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10003\"\n" + 
+        		"	}\n" + 
+        		"}]",toJson(results));
     }
 
     @Test
@@ -263,13 +509,14 @@ public class QueryConverterIT {
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(2, results.size());
-        assertEquals(Arrays.asList(new Document("_id","Missing").append("count",51),
-                new Document("_id","Staten Island").append("count",969)
+        assertEquals(Arrays.asList(new Document("count",51).append("borough","Missing"),
+                new Document("count",969).append("borough","Staten Island")
         ),results);
     }
 
     @Test
-    public void countGroupByQueryMultipleColumns() throws ParseException, IOException {
+    public void countGroupByQueryMultipleColumns() throws ParseException, IOException,
+        JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, cuisine, count(*) from "+COLLECTION+" GROUP BY borough, cuisine");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
@@ -282,55 +529,139 @@ public class QueryConverterIT {
             }
         }));
 
-        assertEquals("[{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Manhattan\",\n" +
-                "\t\t\"cuisine\" : \"Chinese\"\n" +
-                "\t},\n" +
-                "\t\"count\" : 510\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Queens\",\n" +
-                "\t\t\"cuisine\" : \"American \"\n" +
-                "\t},\n" +
-                "\t\"count\" : 1040\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Manhattan\",\n" +
-                "\t\t\"cuisine\" : \"Café/Coffee/Tea\"\n" +
-                "\t},\n" +
-                "\t\"count\" : 680\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Manhattan\",\n" +
-                "\t\t\"cuisine\" : \"Italian\"\n" +
-                "\t},\n" +
-                "\t\"count\" : 621\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Brooklyn\",\n" +
-                "\t\t\"cuisine\" : \"American \"\n" +
-                "\t},\n" +
-                "\t\"count\" : 1273\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Manhattan\",\n" +
-                "\t\t\"cuisine\" : \"American \"\n" +
-                "\t},\n" +
-                "\t\"count\" : 3205\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Queens\",\n" +
-                "\t\t\"cuisine\" : \"Chinese\"\n" +
-                "\t},\n" +
-                "\t\"count\" : 728\n" +
-                "},{\n" +
-                "\t\"_id\" : {\n" +
-                "\t\t\"borough\" : \"Brooklyn\",\n" +
-                "\t\t\"cuisine\" : \"Chinese\"\n" +
-                "\t},\n" +
-                "\t\"count\" : 763\n" +
-                "}]",toJson(filteredResults));
+        JSONAssert.assertEquals("[{\n" +
+            "	\"count\" : 680,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"Café/Coffee/Tea\"\n" +
+            "},{\n" +
+            "	\"count\" : 510,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"Chinese\"\n" +
+            "},{\n" +
+            "	\"count\" : 728,\n" +
+            "	\"borough\" : \"Queens\",\n" +
+            "	\"cuisine\" : \"Chinese\"\n" +
+            "},{\n" +
+            "	\"count\" : 1040,\n" +
+            "	\"borough\" : \"Queens\",\n" +
+            "	\"cuisine\" : \"American \"\n" +
+            "},{\n" +
+            "	\"count\" : 3205,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"American \"\n" +
+            "},{\n" +
+            "	\"count\" : 1273,\n" +
+            "	\"borough\" : \"Brooklyn\",\n" +
+            "	\"cuisine\" : \"American \"\n" +
+            "},{\n" +
+            "	\"count\" : 763,\n" +
+            "	\"borough\" : \"Brooklyn\",\n" +
+            "	\"cuisine\" : \"Chinese\"\n" +
+            "},{\n" +
+            "	\"count\" : 621,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"Italian\"\n" +
+            "}]", toJson(filteredResults), false);
+    }
+    
+    @Test
+    public void countGroupByQueryMultipleColumnsAliasMixed()
+        throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(365, results.size());
+
+        List<Document> filteredResults = Lists.newArrayList(Collections2.filter(results, new Predicate<Document>() {
+            @Override
+            public boolean apply(Document document) {
+                return document.getInteger("co") > 500;
+            }
+        }));
+
+        JSONAssert.assertEquals("[{\n" +
+        		"	\"co\" : 680,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 510,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 728,\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1040,\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 3205,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1273,\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
+        		"	\"cuisine\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 763,\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
+        		"	\"cuisine\" : \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 621,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"cuisine\" : \"Italian\"\n" + 
+        		"}]",toJson(filteredResults), false);
+    }
+    
+    @Test
+    public void countGroupByQueryMultipleColumnsAliasAll()
+        throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(365, results.size());
+
+        List<Document> filteredResults = Lists.newArrayList(Collections2.filter(results, new Predicate<Document>() {
+            @Override
+            public boolean apply(Document document) {
+                return document.getInteger("co") > 500;
+            }
+        }));
+
+        JSONAssert.assertEquals("[{\n" +
+        		"	\"co\" : 680,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"Café/Coffee/Tea\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 510,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 728,\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"c\" : \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1040,\n" + 
+        		"	\"b\" : \"Queens\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 3205,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1273,\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
+        		"	\"c\" : \"American \"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 763,\n" + 
+        		"	\"b\" : \"Brooklyn\",\n" + 
+        		"	\"c\" : \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 621,\n" + 
+        		"	\"b\" : \"Manhattan\",\n" + 
+        		"	\"c\" : \"Italian\"\n" + 
+        		"}]",toJson(filteredResults), false);
     }
 
     @Test

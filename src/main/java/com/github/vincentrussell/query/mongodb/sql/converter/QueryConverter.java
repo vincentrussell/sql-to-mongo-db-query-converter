@@ -17,6 +17,8 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
+
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -32,6 +34,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -174,18 +177,23 @@ public class QueryConverter {
             mongoDBQueryHolder.setGroupBys(sqlCommandInfoHolder.getGoupBys());
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(sqlCommandInfoHolder.getSelectItems(),
                     sqlCommandInfoHolder.getGoupBys()));
+            mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(sqlCommandInfoHolder.getSelectItems(),
+                    sqlCommandInfoHolder.getGoupBys()));
         } else if (sqlCommandInfoHolder.isCountAll()) {
             mongoDBQueryHolder.setCountAll(sqlCommandInfoHolder.isCountAll());
         } else if (!SqlUtils.isSelectAll(sqlCommandInfoHolder.getSelectItems())) {
             document.put("_id",0);
             for (SelectItem selectItem : sqlCommandInfoHolder.getSelectItems()) {
-                document.put(selectItem.toString(),1);
+            	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
+                String columnName = SqlUtils.getStringValue(selectExpressionItem.getExpression());
+                Alias alias = selectExpressionItem.getAlias();
+                document.put((alias != null ? alias.getName() : columnName ),(alias != null ? "$" + columnName : 1 ));
             }
             mongoDBQueryHolder.setProjection(document);
         }
 
         if (sqlCommandInfoHolder.getOrderByElements()!=null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
-            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(sqlCommandInfoHolder.getOrderByElements()));
+            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(sqlCommandInfoHolder.getOrderByElements(),sqlCommandInfoHolder.getAliasHash(),sqlCommandInfoHolder.getGoupBys()));
         }
 
         if (sqlCommandInfoHolder.getWhereClause()!=null) {
@@ -198,7 +206,7 @@ public class QueryConverter {
         return mongoDBQueryHolder;
     }
 
-    private Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements) throws ParseException {
+    private Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements, HashMap<String,String> aliasHash, List<String> groupBys) throws ParseException {
         Document document = new Document();
         if (orderByElements==null && orderByElements.size()==0) {
             return document;
@@ -228,12 +236,29 @@ public class QueryConverter {
         Document sortItems = new Document();
         for (OrderByElement orderByElement : orderByElements) {
             if (nonFunctionItems.contains(orderByElement)) {
-                sortItems.put(SqlUtils.getStringValue(orderByElement.getExpression()), orderByElement.isAsc() ? 1 : -1);
+            	String sortField = SqlUtils.getStringValue(orderByElement.getExpression());
+            	if(!groupBys.isEmpty()) {
+            		if(groupBys.size() > 1) {
+            			sortField = "_id." + sortField.replaceAll("\\.", "_");
+            		}
+            		else {
+            			sortField = "_id";
+            		}
+            	}
+                sortItems.put(sortField, orderByElement.isAsc() ? 1 : -1);
             } else {
                 Function function = (Function) orderByElement.getExpression();
-                Document parseFunctionDocument = new Document();
-                parseFunctionForAggregation(function,parseFunctionDocument,Collections.<String>emptyList());
-                sortItems.put(Iterables.get(parseFunctionDocument.keySet(),0),orderByElement.isAsc() ? 1 : -1);
+                String sortKey;
+                String alias = aliasHash.get(function.toString());
+                if(alias!=null && !alias.equals(function.toString())) {
+                	sortKey = alias;
+                }
+                else {
+	                Document parseFunctionDocument = new Document();
+	                parseFunctionForAggregation(function,parseFunctionDocument,Collections.<String>emptyList(),null);
+	                sortKey = Iterables.get(parseFunctionDocument.keySet(),0);
+                }
+                sortItems.put(sortKey,orderByElement.isAsc() ? 1 : -1);
             }
         }
 
@@ -272,24 +297,84 @@ public class QueryConverter {
         SqlUtils.isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
 
 
+        
+        
         Document idDocument = new Document();
         for (SelectItem selectItem : nonFunctionItems) {
-            Column column = (Column) ((SelectExpressionItem) selectItem).getExpression();
+        	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
+            Column column = (Column) selectExpressionItem.getExpression();
             String columnName = SqlUtils.getStringValue(column);
-            idDocument.put(columnName,"$" + columnName);
+            idDocument.put(columnName.replaceAll("\\.", "_"),"$" + columnName);
         }
 
         document.append("_id", idDocument.size() == 1 ? Iterables.get(idDocument.values(),0) : idDocument);
 
         for (SelectItem selectItem : functionItems) {
             Function function = (Function) ((SelectExpressionItem)selectItem).getExpression();
-            parseFunctionForAggregation(function,document,groupBys);
+            parseFunctionForAggregation(function,document,groupBys,((SelectExpressionItem)selectItem).getAlias());
         }
 
         return document;
     }
 
-    private void parseFunctionForAggregation(Function function, Document document, List<String> groupBys) throws ParseException {
+    private Document createAliasProjectionForGroupItems(List<SelectItem> selectItems, List<String> groupBys) throws ParseException {
+    	Document document = new Document();
+    	
+    	final List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
+            @Override
+            public boolean apply(SelectItem selectItem) {
+                try {
+                    if (SelectExpressionItem.class.isInstance(selectItem)
+                            && Function.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
+                        return true;
+                    }
+                } catch (NullPointerException e) {
+                    return false;
+                }
+                return false;
+            }
+        }));
+        final List<SelectItem> nonFunctionItems = Lists.newArrayList(Collections2.filter(selectItems, new Predicate<SelectItem>() {
+            @Override
+            public boolean apply(SelectItem selectItem) {
+                return !functionItems.contains(selectItem);
+            }
+
+        }));
+        
+        if(nonFunctionItems.size() == 1) {
+        	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) nonFunctionItems.get(0));
+        	Column column = (Column) selectExpressionItem.getExpression();
+            String columnName = SqlUtils.getStringValue(column);
+            Alias alias = selectExpressionItem.getAlias();
+            String nameOrAlias = (alias != null ? alias.getName() : columnName);
+        	document.put(nameOrAlias, "$_id");
+        }
+        else {
+	        for (SelectItem selectItem : nonFunctionItems) {
+	        	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
+	        	Column column = (Column) selectExpressionItem.getExpression();
+	            String columnName = SqlUtils.getStringValue(column);
+	            Alias alias = selectExpressionItem.getAlias();
+	            String nameOrAlias = (alias != null ? alias.getName() : columnName);
+	        	document.put(nameOrAlias, "$_id." + columnName.replaceAll("\\.","_"));
+	        }
+        }
+        
+        for (SelectItem selectItem : functionItems) {
+        	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
+        	String columnName = ((Function) selectExpressionItem.getExpression()).getName().toLowerCase();
+            Alias alias = selectExpressionItem.getAlias();
+            String nameOrAlias = (alias != null ? alias.getName() : columnName);
+        	document.put(nameOrAlias, 1);
+        }
+        
+        document.put("_id", 0);
+    	
+    	return document;
+    }
+    
+    private void parseFunctionForAggregation(Function function, Document document, List<String> groupBys, Alias alias) throws ParseException {
         List<String> parameters = function.getParameters()== null ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(), new com.google.common.base.Function<Expression, String>() {
             @Override
             public String apply(Expression expression) {
@@ -303,13 +388,13 @@ public class QueryConverter {
         if ("sum".equals(function.getName().toLowerCase())) {
             createFunction("sum",field, document,"$"+ field);
         } else if ("avg".equals(function.getName().toLowerCase())) {
-            createFunction("avg",field, document,"$"+ field);
+            createFunction((alias == null?"avg":alias.getName()),field, document,"$"+ field);
         } else if ("count".equals(function.getName().toLowerCase())) {
-            document.put("count",new Document("$sum",1));
+            document.put((alias == null?"count":alias.getName()),new Document("$sum",1));
         } else if ("min".equals(function.getName().toLowerCase())) {
-            createFunction("min",field, document,"$"+ field);
+            createFunction((alias == null?"min":alias.getName()),field, document,"$"+ field);
         } else if ("max".equals(function.getName().toLowerCase())) {
-            createFunction("max",field, document,"$"+ field);
+            createFunction((alias == null?"max":alias.getName()),field, document,"$"+ field);
         } else {
             throw new ParseException("could not understand function:" + function.getName());
         }
@@ -333,19 +418,32 @@ public class QueryConverter {
             IOUtils.write("\""+getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
             IOUtils.write(" , ", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
-        } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
+        } else if (!sqlCommandInfoHolder.getAliasHash().isEmpty() || sqlCommandInfoHolder.getGoupBys().size() > 0) {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".aggregate(", outputStream);
             IOUtils.write("[", outputStream);
             List<Document> documents = new ArrayList<>();
             documents.add(new Document("$match",mongoDBQueryHolder.getQuery()));
-            documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
-
+            
+            if(!sqlCommandInfoHolder.getGoupBys().isEmpty()) {
+            	documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
+            }
+            
             if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
                 documents.add(new Document("$sort",mongoDBQueryHolder.getSort()));
             }
 
             if (mongoDBQueryHolder.getLimit()!= -1) {
                 documents.add(new Document("$limit",mongoDBQueryHolder.getLimit()));
+            }
+            
+            Document aliasProjection = mongoDBQueryHolder.getAliasProjection();
+            if(!aliasProjection.isEmpty()) {
+            	documents.add(new Document("$project",aliasProjection));
+            }
+            
+            if(sqlCommandInfoHolder.getGoupBys().isEmpty()) {//Alias no group
+            	Document projection = mongoDBQueryHolder.getProjection();
+            	documents.add(new Document("$project",projection));
             }
 
             IOUtils.write(Joiner.on(",").join(Lists.transform(documents, new com.google.common.base.Function<Document, String>() {
@@ -386,7 +484,7 @@ public class QueryConverter {
         IOUtils.write(")", outputStream);
 
         if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0
-                && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct() && sqlCommandInfoHolder.getGoupBys().isEmpty()) {
+                && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct() && sqlCommandInfoHolder.getGoupBys().isEmpty() && sqlCommandInfoHolder.getAliasHash().isEmpty()) {
             IOUtils.write(".sort(", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson()), outputStream);
             IOUtils.write(")", outputStream);
@@ -394,7 +492,7 @@ public class QueryConverter {
 
         if (mongoDBQueryHolder.getLimit()!=-1
                 && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct()
-                && sqlCommandInfoHolder.getGoupBys().isEmpty()) {
+                && sqlCommandInfoHolder.getGoupBys().isEmpty() && sqlCommandInfoHolder.getAliasHash().isEmpty()) {
             IOUtils.write(".limit(", outputStream);
             IOUtils.write(mongoDBQueryHolder.getLimit()+"", outputStream);
             IOUtils.write(")", outputStream);
@@ -423,18 +521,31 @@ public class QueryConverter {
                 return (T) new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
             } else if (mongoDBQueryHolder.isCountAll()) {
                 return (T) Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
-            } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
+            } else if (!sqlCommandInfoHolder.getAliasHash().isEmpty() || sqlCommandInfoHolder.getGoupBys().size() > 0) {
                 List<Document> documents = new ArrayList<>();
                 if (mongoDBQueryHolder.getQuery() != null && mongoDBQueryHolder.getQuery().size() > 0) {
                     documents.add(new Document("$match", mongoDBQueryHolder.getQuery()));
                 }
-                documents.add(new Document("$group", mongoDBQueryHolder.getProjection()));
+                if(!sqlCommandInfoHolder.getGoupBys().isEmpty()) {
+                	documents.add(new Document("$group", mongoDBQueryHolder.getProjection()));
+                }
                 if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
                     documents.add(new Document("$sort", mongoDBQueryHolder.getSort()));
                 }
                 if (mongoDBQueryHolder.getLimit() != -1) {
                     documents.add(new Document("$limit", mongoDBQueryHolder.getLimit()));
                 }
+                
+                Document aliasProjection = mongoDBQueryHolder.getAliasProjection();
+                if(!aliasProjection.isEmpty()) {//Alias Group by
+                	documents.add(new Document("$project",aliasProjection));
+                }
+                
+                if(sqlCommandInfoHolder.getGoupBys().isEmpty()) {//Alias no group
+                	Document projection = mongoDBQueryHolder.getProjection();
+                	documents.add(new Document("$project",projection));
+                }
+                
                 AggregateIterable aggregate = mongoCollection.aggregate(documents);
 
                 if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {

@@ -966,6 +966,12 @@ public class QueryConverterTest {
                 "      \"$sum\": \"$advance_amount\"\n" +
                 "    }\n" +
                 "  }\n" +
+                "},{\n" +
+				"  \"$project\": {\n" +
+				"    \"agent_code\": \"$_id\",\n" +
+				"    \"sum\": 1,\n" +
+				"    \"_id\": 0\n" +
+				"  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
     }
 
@@ -992,6 +998,12 @@ public class QueryConverterTest {
                 "    \"sum_advance_amount\": {\n" +
                 "      \"$sum\": \"$advance_amount\"\n" +
                 "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"agent_code\": \"$_id\",\n" +
+                "    \"sum\": 1,\n" +
+                "    \"_id\": 0\n" +
                 "  }\n" +
                 "}],{\n" +
                 "  \"allowDiskUse\": true,\n" +
@@ -1028,9 +1040,215 @@ public class QueryConverterTest {
                 "  \"$sort\": {\n" +
                 "    \"count\": -1\n" +
                 "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"agent_code\": \"$_id\",\n" +
+                "    \"count\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeSumGroupByWithSortWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
+                "COUNT (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY COUNT (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeSumGroupByWithSortCountWithMultiAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code as cc,  \n" +
+                "COUNT (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code, city_code\n" +
+                "ORDER BY COUNT (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"agent_code\": \"$agent_code\",\n" +
+                "      \"city_code\": \"$city_code\"\n" +
+                "    },\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.agent_code\",\n" +
+                "    \"cc\": \"$_id.city_code\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeSumGroupByWithSortFieldsWithMultiAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code as cc,  \n" +
+                "COUNT (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code, city_code\n" +
+                "ORDER BY agent_code asc, city_code DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"agent_code\": \"$agent_code\",\n" +
+                "      \"city_code\": \"$city_code\"\n" +
+                "    },\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"_id.agent_code\": 1,\n" +
+                "    \"_id.city_code\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.agent_code\",\n" +
+                "    \"cc\": \"$_id.city_code\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeSumGroupByWithSortFieldsWithPartialAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code,  \n" +
+                "COUNT (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code, city_code\n" +
+                "ORDER BY agent_code asc, city_code DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"agent_code\": \"$agent_code\",\n" +
+                "      \"city_code\": \"$city_code\"\n" +
+                "    },\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"_id.agent_code\": 1,\n" +
+                "    \"_id.city_code\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.agent_code\",\n" +
+                "    \"city_code\": \"$_id.city_code\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
     }
 
+    
+    @Test
+    public void writeSumGroupByWithSortFieldsWithPartialAliasNoCount() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code,  \n" +
+                "COUNT (advance_amount) \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code, city_code\n" +
+                "ORDER BY agent_code asc, city_code DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"agent_code\": \"$agent_code\",\n" +
+                "      \"city_code\": \"$city_code\"\n" +
+                "    },\n" +
+                "    \"count\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"_id.agent_code\": 1,\n" +
+                "    \"_id.city_code\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.agent_code\",\n" +
+                "    \"city_code\": \"$_id.city_code\",\n" +
+                "    \"count\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
     @Test
     public void writeWithProjections() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("select column1, column2 from my_table where value IS NULL");
@@ -1046,7 +1264,121 @@ public class QueryConverterTest {
                 "  \"column2\": 1\n" +
                 "})",byteArrayOutputStream.toString("UTF-8"));
     }
+    
+    @Test
+    public void writeWithProjectionsAliasSingle() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 from my_table where value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 as c2 from my_table where value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"c2\": \"$column2\"\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortSingle() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 from my_table where value IS NULL order by column1 asc");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortMixed() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 from my_table where value IS NULL order by column1 asc, column2");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1,\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
 
+    @Test
+    public void writeWithProjectionsAliasAllSortAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 as c2 from my_table where value IS NULL order by column1 asc, column2 asc");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1,\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"c2\": \"$column2\"\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
     @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
@@ -1139,6 +1471,67 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("a.b.c.d.e.key", "value"),mongoDBQueryHolder.getQuery());
+    }
+    
+    @Test
+    public void aliasPlainQuery() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc from my_table where aa = value and cc = value");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("_id",0).append("bb","$aa").append("cc",1),mongoDBQueryHolder.getProjection());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("$and",document("aa","value"),document("cc","value")),mongoDBQueryHolder.getQuery());
+    }
+    
+    @Test
+    public void aliasGroupQuerySingleGroup() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, count(*) as dd from my_table where aa = value group by aa");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id","$aa").append("dd", document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals(3,mongoDBQueryHolder.getAliasProjection().size());
+        assertEquals(document("bb","$_id").append("_id", 0).append("dd", 1),mongoDBQueryHolder.getAliasProjection());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("aa","value"),mongoDBQueryHolder.getQuery());
+        assertEquals(Arrays.asList(new String[]{"aa"}),mongoDBQueryHolder.getGroupBys());
+    }
+    
+    @Test
+    public void aliasGroupQueryAliasAndNot() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc, count(*) as dd from my_table where aa = value group by aa, cc");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("dd", document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals(4,mongoDBQueryHolder.getAliasProjection().size());
+        assertEquals(document("bb","$_id.aa").append("cc", "$_id.cc").append("_id", 0).append("dd", 1),mongoDBQueryHolder.getAliasProjection());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("aa","value"),mongoDBQueryHolder.getQuery());
+        assertEquals(Arrays.asList(new String[]{"aa","cc"}),mongoDBQueryHolder.getGroupBys());
+    }
+    
+    @Test
+    public void aliasGroupQueryNoGroupAlias() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc, count(*) from my_table where aa = value group by aa, cc");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("count", document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals(4,mongoDBQueryHolder.getAliasProjection().size());
+        assertEquals(document("bb","$_id.aa").append("cc", "$_id.cc").append("_id", 0).append("count", 1),mongoDBQueryHolder.getAliasProjection());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("aa","value"),mongoDBQueryHolder.getQuery());
+        assertEquals(Arrays.asList(new String[]{"aa","cc"}),mongoDBQueryHolder.getGroupBys());
+    }
+    
+    @Test
+    public void aliasGroupQueryAllAlias() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc as dd, count(*) as ee from my_table where aa = value group by aa, cc");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("ee", document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals(4,mongoDBQueryHolder.getAliasProjection().size());
+        assertEquals(document("bb","$_id.aa").append("dd", "$_id.cc").append("_id", 0).append("ee", 1),mongoDBQueryHolder.getAliasProjection());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("aa","value"),mongoDBQueryHolder.getQuery());
+        assertEquals(Arrays.asList(new String[]{"aa","cc"}),mongoDBQueryHolder.getGroupBys());
     }
 
     private static Document document(String key, Object... values) {
