@@ -25,9 +25,11 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
+import org.json.JSONException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -323,12 +325,12 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void countGroupByQuery() throws ParseException, IOException {
+    public void countGroupByQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" +
         		"	\"count\" : 51,\n" + 
         		"	\"borough\" : \"Missing\"\n" + 
         		"},{\n" + 
@@ -346,7 +348,7 @@ public class QueryConverterIT {
         		"},{\n" + 
         		"	\"count\" : 2338,\n" + 
         		"	\"borough\" : \"Bronx\"\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results), false);
     }
 
     @Test
@@ -513,7 +515,8 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void countGroupByQueryMultipleColumns() throws ParseException, IOException {
+    public void countGroupByQueryMultipleColumns() throws ParseException, IOException,
+        JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, cuisine, count(*) from "+COLLECTION+" GROUP BY borough, cuisine");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
@@ -526,43 +529,44 @@ public class QueryConverterIT {
             }
         }));
 
-        assertEquals("[{\n" + 
-        		"	\"count\" : 680,\n" + 
-        		"	\"borough\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 510,\n" + 
-        		"	\"borough\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"Chinese\"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 728,\n" + 
-        		"	\"borough\" : \"Queens\",\n" + 
-        		"	\"cuisine\" : \"Chinese\"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 1040,\n" + 
-        		"	\"borough\" : \"Queens\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 3205,\n" + 
-        		"	\"borough\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 1273,\n" + 
-        		"	\"borough\" : \"Brooklyn\",\n" + 
-        		"	\"cuisine\" : \"American \"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 763,\n" + 
-        		"	\"borough\" : \"Brooklyn\",\n" + 
-        		"	\"cuisine\" : \"Chinese\"\n" + 
-        		"},{\n" + 
-        		"	\"count\" : 621,\n" + 
-        		"	\"borough\" : \"Manhattan\",\n" + 
-        		"	\"cuisine\" : \"Italian\"\n" + 
-        		"}]",toJson(filteredResults));
+        JSONAssert.assertEquals("[{\n" +
+            "	\"count\" : 680,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"Café/Coffee/Tea\"\n" +
+            "},{\n" +
+            "	\"count\" : 510,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"Chinese\"\n" +
+            "},{\n" +
+            "	\"count\" : 728,\n" +
+            "	\"borough\" : \"Queens\",\n" +
+            "	\"cuisine\" : \"Chinese\"\n" +
+            "},{\n" +
+            "	\"count\" : 1040,\n" +
+            "	\"borough\" : \"Queens\",\n" +
+            "	\"cuisine\" : \"American \"\n" +
+            "},{\n" +
+            "	\"count\" : 3205,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"American \"\n" +
+            "},{\n" +
+            "	\"count\" : 1273,\n" +
+            "	\"borough\" : \"Brooklyn\",\n" +
+            "	\"cuisine\" : \"American \"\n" +
+            "},{\n" +
+            "	\"count\" : 763,\n" +
+            "	\"borough\" : \"Brooklyn\",\n" +
+            "	\"cuisine\" : \"Chinese\"\n" +
+            "},{\n" +
+            "	\"count\" : 621,\n" +
+            "	\"borough\" : \"Manhattan\",\n" +
+            "	\"cuisine\" : \"Italian\"\n" +
+            "}]", toJson(filteredResults), false);
     }
     
     @Test
-    public void countGroupByQueryMultipleColumnsAliasMixed() throws ParseException, IOException {
+    public void countGroupByQueryMultipleColumnsAliasMixed()
+        throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
@@ -575,7 +579,7 @@ public class QueryConverterIT {
             }
         }));
 
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" +
         		"	\"co\" : 680,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"cuisine\" : \"Café/Coffee/Tea\"\n" + 
@@ -607,11 +611,12 @@ public class QueryConverterIT {
         		"	\"co\" : 621,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"cuisine\" : \"Italian\"\n" + 
-        		"}]",toJson(filteredResults));
+        		"}]",toJson(filteredResults), false);
     }
     
     @Test
-    public void countGroupByQueryMultipleColumnsAliasAll() throws ParseException, IOException {
+    public void countGroupByQueryMultipleColumnsAliasAll()
+        throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
@@ -624,7 +629,7 @@ public class QueryConverterIT {
             }
         }));
 
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" +
         		"	\"co\" : 680,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"c\" : \"Café/Coffee/Tea\"\n" + 
@@ -656,7 +661,7 @@ public class QueryConverterIT {
         		"	\"co\" : 621,\n" + 
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"c\" : \"Italian\"\n" + 
-        		"}]",toJson(filteredResults));
+        		"}]",toJson(filteredResults), false);
     }
 
     @Test

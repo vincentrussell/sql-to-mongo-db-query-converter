@@ -454,11 +454,17 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.10](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.10) (2019-12-24)
+
+**Enhancements:**
+
+- Added the ability to use sql aliases that will do a mongo $project.
+
 ## [1.9](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.9) (2019-04-02)
 
 **Enhancements:**
 
-- Added the capability for nested custom fuctions
+- Added the capability for nested custom functions
 
 ## [1.8](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.8) (2019-02-01)
 
