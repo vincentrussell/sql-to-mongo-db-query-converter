@@ -39,6 +39,7 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(-1,mongoDBQueryHolder.getLimit());
+        assertEquals(-1,mongoDBQueryHolder.getOffset());
         assertEquals(0,mongoDBQueryHolder.getQuery().size());
     }
 
@@ -50,6 +51,31 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(10,mongoDBQueryHolder.getLimit());
+        assertEquals(-1,mongoDBQueryHolder.getOffset());
+        assertEquals(0,mongoDBQueryHolder.getQuery().size());
+    }
+    
+    @Test
+    public void selectAllFromTableWithoutWhereClauseOffset() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table\n" +
+                "offset 10");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(-1,mongoDBQueryHolder.getLimit());
+        assertEquals(10,mongoDBQueryHolder.getOffset());
+        assertEquals(0,mongoDBQueryHolder.getQuery().size());
+    }
+    
+    @Test
+    public void selectAllFromTableWithoutWhereClauseLimitOffset() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter("select * from my_table\n" +
+                "limit 10 offset 10");
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(10,mongoDBQueryHolder.getLimit());
+        assertEquals(10,mongoDBQueryHolder.getOffset());
         assertEquals(0,mongoDBQueryHolder.getQuery().size());
     }
 
@@ -1376,6 +1402,97 @@ public class QueryConverterTest {
         		"    \"c1\": \"$column1\",\n" + 
         		"    \"c2\": \"$column2\"\n" + 
         		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortAllLimit() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 as c2 from my_table where value IS NULL order by column1 asc, column2 asc limit 3");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1,\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$limit\": {\n" + 
+        		"    \"$numberLong\": \"3\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"c2\": \"$column2\"\n" + 
+        		"  }\n" +
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortAllOffset() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 as c2 from my_table where value IS NULL order by column1 asc, column2 asc offset 3");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1,\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$skip\": {\n" + 
+        		"    \"$numberLong\": \"3\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"c2\": \"$column2\"\n" + 
+        		"  }\n" +
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortAllLimitOffset() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select column1 as c1, column2 as c2 from my_table where value IS NULL order by column1 asc, column2 asc limit 4 offset 3");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1,\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$skip\": {\n" + 
+        		"    \"$numberLong\": \"3\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$limit\": {\n" + 
+        		"    \"$numberLong\": \"4\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"c2\": \"$column2\"\n" + 
+        		"  }\n" +
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
