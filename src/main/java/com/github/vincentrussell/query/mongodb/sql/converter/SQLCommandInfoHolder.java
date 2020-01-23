@@ -1,9 +1,13 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.TablesHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
+
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.select.*;
@@ -17,7 +21,7 @@ public class SQLCommandInfoHolder {
     private final SQLCommandType sqlCommandType;
     private final boolean isDistinct;
     private final boolean isCountAll;
-    private final String table;
+    private final TablesHolder tables;
     private final long limit;
     private final Expression whereClause;
     private final List<SelectItem> selectItems;
@@ -27,12 +31,12 @@ public class SQLCommandInfoHolder {
     private final HashMap<String,String> aliasHash;
 
     public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause,
-                                boolean isDistinct, boolean isCountAll, String table, long limit, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, HashMap<String,String> aliasHash) {
+                                boolean isDistinct, boolean isCountAll, TablesHolder tables, long limit, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, HashMap<String,String> aliasHash) {
         this.sqlCommandType = sqlCommandType;
         this.whereClause = whereClause;
         this.isDistinct = isDistinct;
         this.isCountAll = isCountAll;
-        this.table = table;
+        this.tables = tables;
         this.limit = limit;
         this.selectItems = selectItems;
         this.joins = joins;
@@ -50,7 +54,15 @@ public class SQLCommandInfoHolder {
     }
 
     public String getTable() {
-        return table;
+        return this.tables.getBaseTable();
+    }
+    
+    public TablesHolder getTablesHolder() {
+        return this.tables;
+    }
+    
+    public String getAliasTable() {
+    	return this.tables.getAlias(this.tables.getBaseTable());
     }
 
     public long getLimit() {
@@ -92,7 +104,7 @@ public class SQLCommandInfoHolder {
         private Expression whereClause;
         private boolean isDistinct = false;
         private boolean isCountAll = false;
-        private String table;
+        private TablesHolder tables;
         private long limit = -1;
         private List<SelectItem> selectItems = new ArrayList<>();
         private List<Join> joins = new ArrayList<>();
@@ -103,6 +115,38 @@ public class SQLCommandInfoHolder {
         private Builder(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping){
             this.defaultFieldType = defaultFieldType;
             this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
+        }
+        
+        private TablesHolder generateTableHolder(String baseTable) {
+        	TablesHolder tholder = new TablesHolder();
+        	tholder.addTable(baseTable,null);
+        	return tholder;
+        }
+        
+        private TablesHolder generateTableHolder(TablesHolder tholder, FromItem fromItem, List<Join> ljoin) throws ParseException {
+        	if (fromItem instanceof Table) {
+        		Table t = (Table)fromItem;
+        		Alias alias = t.getAlias();
+        		tholder.addTable(t.getName(),(alias != null ? t.getAlias().getName() : null));
+        	}
+        	else if(fromItem instanceof SubSelect){
+        		throw new ParseException("Subselect not supported");
+        	}
+        	else {
+        		throw new ParseException("SubJoin not supported");
+        	}
+        	
+        	if(ljoin != null) {
+	        	for (Join j : ljoin) {
+	        		if(j.isInner()) {
+	        			tholder = generateTableHolder(tholder,j.getRightItem(),null);
+	        		}	
+	        		else{
+	        			throw new ParseException("Join type not suported");
+	        		}
+	        	}
+        	}
+        	return tholder;
         }
 
         public Builder setJSqlParser(CCJSqlParser jSqlParser) throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
@@ -116,7 +160,7 @@ public class SQLCommandInfoHolder {
                 isDistinct = (plainSelect.getDistinct() != null);
                 isCountAll = SqlUtils.isCountAll(plainSelect.getSelectItems());
                 SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
-                table = plainSelect.getFromItem().toString();
+                tables = generateTableHolder(new TablesHolder(),plainSelect.getFromItem(),plainSelect.getJoins());
                 limit = SqlUtils.getLimit(plainSelect.getLimit());
                 orderByElements1 = plainSelect.getOrderByElements();
                 selectItems = plainSelect.getSelectItems();
@@ -128,7 +172,7 @@ public class SQLCommandInfoHolder {
                 sqlCommandType = SQLCommandType.DELETE;
                 Delete delete = (Delete)statement;
                 SqlUtils.isTrue(delete.getTables().size() == 0, "there should only be on table specified for deletes");
-                table = delete.getTable().toString();
+                tables = generateTableHolder(delete.getTable().toString());
                 whereClause = delete.getWhere();
             }
             return this;
@@ -149,7 +193,7 @@ public class SQLCommandInfoHolder {
 
         public SQLCommandInfoHolder build() {
             return new SQLCommandInfoHolder(sqlCommandType, whereClause,
-                    isDistinct, isCountAll, table, limit, selectItems, joins, groupBys, orderByElements1, aliasHash);
+                    isDistinct, isCountAll, tables, limit, selectItems, joins, groupBys, orderByElements1, aliasHash);
         }
 
         public static Builder create(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) {

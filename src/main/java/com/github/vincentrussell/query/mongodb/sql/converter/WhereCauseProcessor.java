@@ -47,9 +47,15 @@ public class WhereCauseProcessor {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
                 if (Function.class.isInstance(leftExpression)) {
-                    query.put("$eq", new Document("arg1", parseExpression(new Document(), leftExpression, rightExpression))
-                    .append("arg2", parseExpression(new Document(), rightExpression, leftExpression)));
-                } else {
+                	Document eq = new Document();
+                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
+                	query.put("$expr", eq);
+                } else if (leftExpression instanceof Column && rightExpression instanceof Column){//$eq operator
+                	Document eq = new Document();
+                	eq.put("$eq",Arrays.asList(((Column)leftExpression).getName(false), ((Column)rightExpression).getName(false)));
+                	query.put("$expr", eq);
+                }
+                else{
                     query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
                         parseExpression(new Document(), rightExpression, leftExpression));
                 }

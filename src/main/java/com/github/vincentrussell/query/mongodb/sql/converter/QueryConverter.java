@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.JoinProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
@@ -154,7 +155,7 @@ public class QueryConverter {
                 && sqlCommandInfoHolder.isDistinct(),"cannot run distinct one more than one column");
         SqlUtils.isFalse(sqlCommandInfoHolder.getGoupBys().size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
                 && !SqlUtils.isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
-        SqlUtils.isTrue(sqlCommandInfoHolder.getJoins()==null || sqlCommandInfoHolder.getJoins().isEmpty(),"Joins are not supported.  Only one simple table name is supported.");
+        //SqlUtils.isTrue(sqlCommandInfoHolder.getJoins()==null || sqlCommandInfoHolder.getJoins().isEmpty(),"Joins are not supported.  Only one simple table name is supported.");
     }
 
     /**
@@ -174,7 +175,9 @@ public class QueryConverter {
             mongoDBQueryHolder.setProjection(document);
             mongoDBQueryHolder.setDistinct(sqlCommandInfoHolder.isDistinct());
         } else if (sqlCommandInfoHolder.getGoupBys().size() > 0) {
-            mongoDBQueryHolder.setGroupBys(sqlCommandInfoHolder.getGoupBys());
+        	if(sqlCommandInfoHolder.getGoupBys().size() > 0) {
+        		mongoDBQueryHolder.setGroupBys(sqlCommandInfoHolder.getGoupBys());
+        	}
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(sqlCommandInfoHolder.getSelectItems(),
                     sqlCommandInfoHolder.getGoupBys()));
             mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(sqlCommandInfoHolder.getSelectItems(),
@@ -185,11 +188,27 @@ public class QueryConverter {
             document.put("_id",0);
             for (SelectItem selectItem : sqlCommandInfoHolder.getSelectItems()) {
             	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
-                String columnName = SqlUtils.getStringValue(selectExpressionItem.getExpression());
-                Alias alias = selectExpressionItem.getAlias();
-                document.put((alias != null ? alias.getName() : columnName ),(alias != null ? "$" + columnName : 1 ));
+            	if(selectExpressionItem.getExpression() instanceof Column) {
+            		String table = ((Column)selectExpressionItem.getExpression()).getTable().getName();
+            		String columnName;//If we found alias of base table we ignore it because basetable doesn't need alias, it's itself
+            		if(table != null && table.equals(sqlCommandInfoHolder.getTablesHolder().getBaseAliasTable())) {
+            			columnName = ((Column)selectExpressionItem.getExpression()).getColumnName();
+            		}
+            		else {
+            			columnName = SqlUtils.getStringValue(selectExpressionItem.getExpression());
+            		}
+                    Alias alias = selectExpressionItem.getAlias();
+                    document.put((alias != null ? alias.getName() : columnName ),(alias != null ? "$" + columnName : 1 ));
+            	}
+            	else {
+            		throw new ParseException("Unsupported project expression");
+            	}
             }
             mongoDBQueryHolder.setProjection(document);
+        }
+        
+        if (sqlCommandInfoHolder.getJoins() != null) {
+        	mongoDBQueryHolder.setJoinPipeline(JoinProcessor.toPipelineSteps(sqlCommandInfoHolder.getTablesHolder(), sqlCommandInfoHolder.getJoins()));
         }
 
         if (sqlCommandInfoHolder.getOrderByElements()!=null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
@@ -293,8 +312,8 @@ public class QueryConverter {
 
         }));
 
-        SqlUtils.isTrue(functionItems.size() > 0, "there must be at least one group by function specified in the select clause");
-        SqlUtils.isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
+        //SqlUtils.isTrue(functionItems.size() > 0, "there must be at least one group by function specified in the select clause");
+        //SqlUtils.isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
 
 
         
@@ -423,6 +442,10 @@ public class QueryConverter {
             IOUtils.write("[", outputStream);
             List<Document> documents = new ArrayList<>();
             documents.add(new Document("$match",mongoDBQueryHolder.getQuery()));
+            
+            if(!sqlCommandInfoHolder.getJoins().isEmpty()) {
+            	documents.addAll(mongoDBQueryHolder.getJoinPipeline());
+            }
             
             if(!sqlCommandInfoHolder.getGoupBys().isEmpty()) {
             	documents.add(new Document("$group",mongoDBQueryHolder.getProjection()));
