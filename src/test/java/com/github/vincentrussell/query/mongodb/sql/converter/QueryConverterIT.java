@@ -18,11 +18,7 @@ import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongoCmdOptionsBuilder;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.distribution.Feature;
 import de.flapdoodle.embed.mongo.distribution.Version;
-import de.flapdoodle.embed.mongo.distribution.Versions;
-import de.flapdoodle.embed.process.distribution.GenericVersion;
-
 import org.apache.commons.io.IOUtils;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -36,9 +32,18 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.ServerSocket;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
@@ -59,7 +64,7 @@ public class QueryConverterIT {
     @BeforeClass
     public static void beforeClass() throws IOException {
         IMongodConfig mongodConfig = new MongodConfigBuilder()
-                .version(Versions.withFeatures(new GenericVersion("2012plus-4.2.2"),Feature.SYNC_DELAY,Feature.NO_HTTP_INTERFACE_ARG))
+                .version(Version.Main.PRODUCTION)
                 .cmdOptions(new MongoCmdOptionsBuilder()
             		.useNoPrealloc(false)
             		.useSmallFiles(false)
