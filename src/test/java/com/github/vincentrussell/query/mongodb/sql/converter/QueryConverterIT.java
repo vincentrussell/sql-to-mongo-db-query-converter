@@ -15,6 +15,7 @@ import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
 import de.flapdoodle.embed.mongo.config.IMongodConfig;
+import de.flapdoodle.embed.mongo.config.MongoCmdOptionsBuilder;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version;
@@ -31,9 +32,18 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.ServerSocket;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
@@ -55,6 +65,10 @@ public class QueryConverterIT {
     public static void beforeClass() throws IOException {
         IMongodConfig mongodConfig = new MongodConfigBuilder()
                 .version(Version.Main.PRODUCTION)
+                .cmdOptions(new MongoCmdOptionsBuilder()
+            		.useNoPrealloc(false)
+            		.useSmallFiles(false)
+            		.build())
                 .net(new Net("localhost",port, false))
                 .build();
 
@@ -97,14 +111,14 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void likeQuery() throws ParseException {
+    public void likeQuery() throws ParseException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select * from "+COLLECTION+" where address.street LIKE '%Street'");
         QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
         List<Document> documents = Lists.newArrayList(findIterable);
         assertEquals(7499, documents.size());
         Document firstDocument = documents.get(0);
         firstDocument.remove("_id");
-        assertEquals("{\n" +
+        JSONAssert.assertEquals("{\n" +
                 "\t\"address\" : {\n" +
                 "\t\t\"building\" : \"351\",\n" +
                 "\t\t\"coord\" : [-73.98513559999999, 40.7676919],\n" +
@@ -140,11 +154,11 @@ public class QueryConverterIT {
                 "\t\t}],\n" +
                 "\t\"name\" : \"Dj Reynolds Pub And Restaurant\",\n" +
                 "\t\"restaurant_id\" : \"30191841\"\n" +
-                "}", firstDocument.toJson(jsonWriterSettings));
+                "}", firstDocument.toJson(jsonWriterSettings),false);
     }
 
     @Test
-    public void objectIdQuery() throws ParseException {
+    public void objectIdQuery() throws ParseException, JSONException {
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
         try {
@@ -153,8 +167,8 @@ public class QueryConverterIT {
             QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
             List<Document> documents = Lists.newArrayList(findIterable);
             assertEquals(1, documents.size());
-            assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
-                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings));
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings),false);
         } finally {
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
@@ -162,7 +176,7 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void objectIdInQuery() throws ParseException {
+    public void objectIdInQuery() throws ParseException, JSONException {
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
         try {
@@ -171,10 +185,10 @@ public class QueryConverterIT {
             QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
             List<Document> documents = Lists.newArrayList(findIterable);
             assertEquals(2, documents.size());
-            assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
-                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings));
-            assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4568\"\n"
-                + "\t}\n" + "}", documents.get(1).toJson(jsonWriterSettings));
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings),false);
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4568\"\n"
+                + "\t}\n" + "}", documents.get(1).toJson(jsonWriterSettings),false);
         } finally {
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
@@ -182,17 +196,17 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void likeQueryWithProjection() throws ParseException {
+    public void likeQueryWithProjection() throws ParseException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select address.building, address.coord from "+COLLECTION+" where address.street LIKE '%Street'");
         QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
         List<Document> documents = Lists.newArrayList(findIterable);
         assertEquals(7499, documents.size());
-        assertEquals("{\n" +
+        JSONAssert.assertEquals("{\n" +
                 "\t\"address\" : {\n" +
                 "\t\t\"building\" : \"351\",\n" +
                 "\t\t\"coord\" : [-73.98513559999999, 40.7676919]\n" +
                 "\t}\n" +
-                "}",documents.get(0).toJson(jsonWriterSettings));
+                "}",documents.get(0).toJson(jsonWriterSettings),false);
     }
 
     @Test
@@ -201,16 +215,17 @@ public class QueryConverterIT {
         QueryResultIterator<String> distinctIterable = queryConverter.run(mongoDatabase);
         List<String> results = Lists.newArrayList(distinctIterable);
         assertEquals(5, results.size());
-        assertEquals(Arrays.asList("Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island"),results);
+        Collections.sort(results);
+        assertEquals(Arrays.asList("Bronx", "Brooklyn", "Manhattan", "Queens", "Staten Island"),results);
     }
     
     @Test
-    public void selectQuery() throws ParseException, IOException {
+    public void selectQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" limit 6");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" + 
         		"	\"borough\" : \"Bronx\",\n" + 
         		"	\"cuisine\" : \"Bakery\"\n" + 
         		"},{\n" + 
@@ -228,16 +243,16 @@ public class QueryConverterIT {
         		"},{\n" + 
         		"	\"borough\" : \"Queens\",\n" + 
         		"	\"cuisine\" : \"American \"\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results),false);
     }
     
     @Test
-    public void selectQueryAlias() throws ParseException, IOException {
+    public void selectQueryAlias() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" limit 6");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" + 
         		"	\"b\" : \"Bronx\",\n" + 
         		"	\"c\" : \"Bakery\"\n" + 
         		"},{\n" + 
@@ -255,16 +270,16 @@ public class QueryConverterIT {
         		"},{\n" + 
         		"	\"b\" : \"Queens\",\n" + 
         		"	\"c\" : \"American \"\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results),false);
     }
     
     @Test
-    public void selectOrderByQuery() throws ParseException, IOException {
+    public void selectOrderByQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 10");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(10, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" + 
         		"	\"borough\" : \"Bronx\",\n" + 
         		"	\"cuisine\" : \"Thai\"\n" + 
         		"},{\n" + 
@@ -294,16 +309,40 @@ public class QueryConverterIT {
         		"},{\n" + 
         		"	\"borough\" : \"Bronx\",\n" + 
         		"	\"cuisine\" : \"Tex-Mex\"\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results),false);
     }
     
     @Test
-    public void selectOrderByAliasQuery() throws ParseException, IOException {
+    public void selectOrderByQueryOffset() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 5 offset 5");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(5, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"},{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Tex-Mex\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void selectOrderByAliasQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,cuisine asc limit 6");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" + 
         		"	\"b\" : \"Bronx\",\n" + 
         		"	\"c\" : \"African\"\n" + 
         		"},{\n" + 
@@ -321,7 +360,7 @@ public class QueryConverterIT {
         		"},{\n" + 
         		"	\"b\" : \"Bronx\",\n" + 
         		"	\"c\" : \"African\"\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results),false);
     }
 
     @Test
@@ -352,13 +391,13 @@ public class QueryConverterIT {
     }
 
     @Test
-    public void countGroupBySortByCountQuery() throws ParseException, IOException {
+    public void countGroupBySortByCountQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough\n" +
                 "ORDER BY count(borough) DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" +
+        JSONAssert.assertEquals("[{\n" +
                 "\t\"count\" : 10259,\n" +
                 "\t\"borough\" : \"Manhattan\"\n" +
                 "},{\n" +
@@ -376,17 +415,17 @@ public class QueryConverterIT {
                 "},{\n" +
                 "\t\"count\" : 51,\n" +
                 "\t\"borough\" : \"Missing\"\n" +
-                "}]",toJson(results));
+                "}]",toJson(results),false);
     }
     
     @Test
-    public void countGroupBySortByCountAliasMixedQuery() throws ParseException, IOException {
+    public void countGroupBySortByCountAliasMixedQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
                 "ORDER BY count(borough) DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" +
+        JSONAssert.assertEquals("[{\n" +
                 "\t\"co\" : 10259,\n" +
                 "\t\"borough\" : \"Manhattan\"\n" +
                 "},{\n" +
@@ -404,17 +443,17 @@ public class QueryConverterIT {
                 "},{\n" +
                 "\t\"co\" : 51,\n" +
                 "\t\"borough\" : \"Missing\"\n" +
-                "}]",toJson(results));
+                "}]",toJson(results),false);
     }
     
     @Test
-    public void countGroupBySortByCountAliasAllQuery() throws ParseException, IOException {
+    public void countGroupBySortByCountAliasAllQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough b, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
                 "ORDER BY count(borough) DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" +
+        JSONAssert.assertEquals("[{\n" +
                 "\t\"co\" : 10259,\n" +
                 "\t\"b\" : \"Manhattan\"\n" +
                 "},{\n" +
@@ -432,17 +471,17 @@ public class QueryConverterIT {
                 "},{\n" +
                 "\t\"co\" : 51,\n" +
                 "\t\"b\" : \"Missing\"\n" +
-                "}]",toJson(results));
+                "}]",toJson(results),false);
     }
     
     @Test
-    public void countGroupByNestedFieldSortByCountAliasAllQuery() throws ParseException, IOException {
+    public void countGroupByNestedFieldSortByCountAliasAllQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 6\n" +
                 "ORDER BY count(borough) DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" + 
         		"	\"co\" : 1,\n" + 
         		"	\"az\" : \"\"\n" + 
         		"},{\n" + 
@@ -460,17 +499,36 @@ public class QueryConverterIT {
         		"},{\n" + 
         		"	\"co\" : 686,\n" + 
         		"	\"az\" : \"10003\"\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results),false);
     }
     
     @Test
-    public void countGroupByNestedFieldSortByCountQuery() throws ParseException, IOException {
+    public void countGroupByNestedFieldSortByCountAliasAllQueryOffset() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 3 offset 3\n" +
+                "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(3, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"co\" : 520,\n" + 
+        		"	\"az\" : \"10001\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 471,\n" + 
+        		"	\"az\" : \"10002\"\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 686,\n" + 
+        		"	\"az\" : \"10003\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void countGroupByNestedFieldSortByCountQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select address.zipcode, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode limit 6\n" +
                 "ORDER BY count(borough) DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
-        assertEquals("[{\n" + 
+        JSONAssert.assertEquals("[{\n" + 
         		"	\"co\" : 1,\n" + 
         		"	\"address\" : {\n" + 
         		"		\"zipcode\" : \"\"\n" + 
@@ -500,18 +558,28 @@ public class QueryConverterIT {
         		"	\"address\" : {\n" + 
         		"		\"zipcode\" : \"10003\"\n" + 
         		"	}\n" + 
-        		"}]",toJson(results));
+        		"}]",toJson(results),false);
     }
 
     @Test
-    public void countGroupByQueryLimit() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough LIMIT 2");
+    public void countGroupByQueryLimit() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough order by borough asc LIMIT 2");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(2, results.size());
-        assertEquals(Arrays.asList(new Document("count",51).append("borough","Missing"),
-                new Document("count",969).append("borough","Staten Island")
-        ),results);
+        JSONAssert.assertEquals(toJson(Arrays.asList(new Document("count",2338).append("borough","Bronx"),
+                new Document("count",6086).append("borough","Brooklyn")
+        )),toJson(results),false);
+    }
+    
+    @Test
+    public void countGroupByQueryLimitOffset() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough order by borough asc LIMIT 1 OFFSET 1");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals(toJson(Arrays.asList(new Document("count",6086).append("borough","Brooklyn")
+        )),toJson(results),false);
     }
 
     @Test

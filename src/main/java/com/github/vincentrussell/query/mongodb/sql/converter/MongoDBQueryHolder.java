@@ -19,6 +19,7 @@ public class MongoDBQueryHolder {
     private boolean countAll = false;
     private List<String> groupBys = new ArrayList<>();
     private long limit = -1;
+    private long offset = -1;
 
     /**
      * Pojo to hold the MongoDB data
@@ -112,6 +113,14 @@ public class MongoDBQueryHolder {
 
     public void setLimit(long limit) {
         this.limit = limit;
+    }
+    
+    public long getOffset() {
+        return offset;
+    }
+
+    public void setOffset(long offset) {
+        this.offset = offset;
     }
 
     public SQLCommandType getSqlCommandType() {
