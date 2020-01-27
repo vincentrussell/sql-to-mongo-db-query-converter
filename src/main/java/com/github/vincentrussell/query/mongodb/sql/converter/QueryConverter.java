@@ -201,6 +201,9 @@ public class QueryConverter {
                     Alias alias = selectExpressionItem.getAlias();
                     document.put((alias != null ? alias.getName() : columnName ),(alias != null ? "$" + columnName : 1 ));
             	}
+            	else if (selectExpressionItem.getExpression() instanceof SubSelect){
+            		throw new ParseException("Unsupported subselect expression");
+            	}
             	else {
             		throw new ParseException("Unsupported project expression");
             	}
