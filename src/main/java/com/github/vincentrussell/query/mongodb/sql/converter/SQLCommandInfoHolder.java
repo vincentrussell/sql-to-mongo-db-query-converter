@@ -19,6 +19,7 @@ public class SQLCommandInfoHolder {
     private final boolean isCountAll;
     private final String table;
     private final long limit;
+    private final long offset;
     private final Expression whereClause;
     private final List<SelectItem> selectItems;
     private final List<Join> joins;
@@ -27,13 +28,14 @@ public class SQLCommandInfoHolder {
     private final HashMap<String,String> aliasHash;
 
     public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause,
-                                boolean isDistinct, boolean isCountAll, String table, long limit, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, HashMap<String,String> aliasHash) {
+                                boolean isDistinct, boolean isCountAll, String table, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, HashMap<String,String> aliasHash) {
         this.sqlCommandType = sqlCommandType;
         this.whereClause = whereClause;
         this.isDistinct = isDistinct;
         this.isCountAll = isCountAll;
         this.table = table;
         this.limit = limit;
+        this.offset = offset;
         this.selectItems = selectItems;
         this.joins = joins;
         this.groupBys = groupBys;
@@ -55,6 +57,10 @@ public class SQLCommandInfoHolder {
 
     public long getLimit() {
         return limit;
+    }
+    
+    public long getOffset() {
+        return offset;
     }
 
     public Expression getWhereClause() {
@@ -94,6 +100,7 @@ public class SQLCommandInfoHolder {
         private boolean isCountAll = false;
         private String table;
         private long limit = -1;
+        private long offset = -1;
         private List<SelectItem> selectItems = new ArrayList<>();
         private List<Join> joins = new ArrayList<>();
         private List<String> groupBys = new ArrayList<>();
@@ -118,6 +125,7 @@ public class SQLCommandInfoHolder {
                 SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
                 table = plainSelect.getFromItem().toString();
                 limit = SqlUtils.getLimit(plainSelect.getLimit());
+                offset = SqlUtils.getOffset(plainSelect.getOffset());
                 orderByElements1 = plainSelect.getOrderByElements();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
@@ -149,7 +157,7 @@ public class SQLCommandInfoHolder {
 
         public SQLCommandInfoHolder build() {
             return new SQLCommandInfoHolder(sqlCommandType, whereClause,
-                    isDistinct, isCountAll, table, limit, selectItems, joins, groupBys, orderByElements1, aliasHash);
+                    isDistinct, isCountAll, table, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHash);
         }
 
         public static Builder create(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) {

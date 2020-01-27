@@ -144,13 +144,23 @@ public class SqlUtils {
         }
         throw new ParseException("could not normalize value:" + value);
     }
+    
+    private static long getLongFromStringIfInteger(String svalue) throws ParseException {
+        BigInteger bigInt = new BigInteger(svalue);
+        isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, svalue + ": value is too large");
+        return bigInt.longValue();
+    }
 
     public static long getLimit(Limit limit) throws ParseException {
         if (limit!=null) {
-            String rowCountString = SqlUtils.getStringValue(limit.getRowCount());
-            BigInteger bigInt = new BigInteger(rowCountString);
-            isFalse(bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0, rowCountString + ": value is too large");
-            return bigInt.longValue();
+        	return getLongFromStringIfInteger(SqlUtils.getStringValue(limit.getRowCount()));
+        }
+        return -1;
+    }
+    
+    public static long getOffset(Offset offset) {
+        if (offset!=null) {
+            return offset.getOffset();
         }
         return -1;
     }
