@@ -488,7 +488,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(documentValuesArray("$and", document("$eq", document("arg1", document("$someFunction", "123")).append("arg2", "1234")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+        assertEquals(documentValuesArray("$and", document("$expr",documentValuesArray("$eq", document("$someFunction", "123"), "1234")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -773,7 +773,7 @@ public class QueryConverterTest {
     @Test
     public void selectWithSubQuery() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Only column names supported"));
+        expectedException.expectMessage(containsString("Unsupported subselect expression"));
         new QueryConverter("select (select id from table2), column2 from my_table where value=\"theValue\"");
     }
 
@@ -804,7 +804,7 @@ public class QueryConverterTest {
     @Test
     public void selectFromMultipleTables() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Only one simple table name is supported."));
+        expectedException.expectMessage(containsString("Join type not suported"));
         new QueryConverter("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value=\"theValue\"");
     }
 
@@ -1583,7 +1583,7 @@ public class QueryConverterTest {
 
     @Test
     public void deepNestedQuery() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select * from my_table where a.b.c.d.e.key = value");
+        QueryConverter queryConverter = new QueryConverter("select * from my_table where a.b.c.d.e.key = \"value\"");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1592,7 +1592,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasPlainQuery() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc from my_table where aa = value and cc = value");
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc from my_table where aa = \"value\" and cc = \"value\"");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(document("_id",0).append("bb","$aa").append("cc",1),mongoDBQueryHolder.getProjection());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1601,7 +1601,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQuerySingleGroup() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select aa as bb, count(*) as dd from my_table where aa = value group by aa");
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, count(*) as dd from my_table where aa = \"value\" group by aa");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id","$aa").append("dd", document("$sum",1)),mongoDBQueryHolder.getProjection());
@@ -1614,7 +1614,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQueryAliasAndNot() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc, count(*) as dd from my_table where aa = value group by aa, cc");
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc, count(*) as dd from my_table where aa = \"value\" group by aa, cc");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("dd", document("$sum",1)),mongoDBQueryHolder.getProjection());
@@ -1627,7 +1627,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQueryNoGroupAlias() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc, count(*) from my_table where aa = value group by aa, cc");
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc, count(*) from my_table where aa = \"value\" group by aa, cc");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("count", document("$sum",1)),mongoDBQueryHolder.getProjection());
@@ -1640,7 +1640,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQueryAllAlias() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc as dd, count(*) as ee from my_table where aa = value group by aa, cc");
+        QueryConverter queryConverter = new QueryConverter("select aa as bb, cc as dd, count(*) as ee from my_table where aa = \"value\" group by aa, cc");
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("ee", document("$sum",1)),mongoDBQueryHolder.getProjection());
