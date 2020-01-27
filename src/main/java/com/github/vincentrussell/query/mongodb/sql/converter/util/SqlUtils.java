@@ -451,5 +451,9 @@ public class SqlUtils {
             throw new ParseException(message);
         }
     }
+    
+    public static boolean isColumn(Expression e) {
+    	return (e instanceof Column && !((Column) e).getName(false).matches("^(\".*\"|true|false)$"));
+    }
 
 }

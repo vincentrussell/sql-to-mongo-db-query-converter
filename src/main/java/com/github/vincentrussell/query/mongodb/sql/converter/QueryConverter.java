@@ -25,6 +25,7 @@ import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
 import org.apache.commons.io.IOUtils;
 import org.bson.Document;
@@ -189,7 +190,7 @@ public class QueryConverter {
             for (SelectItem selectItem : sqlCommandInfoHolder.getSelectItems()) {
             	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
             	if(selectExpressionItem.getExpression() instanceof Column) {
-            		String table = ((Column)selectExpressionItem.getExpression()).getTable().getName();
+            		Table table = ((Column)selectExpressionItem.getExpression()).getTable();
             		String columnName;//If we found alias of base table we ignore it because basetable doesn't need alias, it's itself
             		if(table != null && table.equals(sqlCommandInfoHolder.getTablesHolder().getBaseAliasTable())) {
             			columnName = ((Column)selectExpressionItem.getExpression()).getColumnName();
@@ -445,7 +446,7 @@ public class QueryConverter {
             List<Document> documents = new ArrayList<>();
             documents.add(new Document("$match",mongoDBQueryHolder.getQuery()));
             
-            if(!sqlCommandInfoHolder.getJoins().isEmpty()) {
+            if(sqlCommandInfoHolder.getJoins() != null && !sqlCommandInfoHolder.getJoins().isEmpty()) {
             	documents.addAll(mongoDBQueryHolder.getJoinPipeline());
             }
             

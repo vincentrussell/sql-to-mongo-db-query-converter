@@ -50,7 +50,7 @@ public class WhereCauseProcessor {
                 	Document eq = new Document();
                 	eq.put("$eq", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
                 	query.put("$expr", eq);
-                } else if (leftExpression instanceof Column && rightExpression instanceof Column){//$eq operator
+                } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)){//$eq operator
                 	Document eq = new Document();
                 	eq.put("$eq",Arrays.asList(((Column)leftExpression).getName(false), ((Column)rightExpression).getName(false)));
                 	query.put("$expr", eq);
