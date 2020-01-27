@@ -390,6 +390,19 @@ db.my_collection.aggregate([{
 }])
 ```
 
+###Offset
+
+```
+select * from table limit 3 offset 4
+or
+select a, count(*) from table group by a limit 3 offset 4
+
+
+******Result:*********
+
+is equivalent to the $skip function in mongodb json query language
+```
+
 ###Direct Mongo Integration
 
 You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
@@ -454,11 +467,12 @@ more results? (y/n): n
 
 # Change Log
 
-## [1.10](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.10) (2019-12-24)
+## [1.10](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.10) (XXXX-XX-XX)
 
 **Enhancements:**
 
 - Added the ability to use sql aliases that will do a mongo $project.
+- Added the ability to use offset syntax in sql to skip records
 
 ## [1.9](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.9) (2019-04-02)
 

@@ -221,7 +221,9 @@ public class QueryConverter {
             mongoDBQueryHolder.setQuery((Document) whereCauseProcessor
                     .parseExpression(new Document(), sqlCommandInfoHolder.getWhereClause(), null));
         }
+        mongoDBQueryHolder.setOffset(sqlCommandInfoHolder.getOffset());
         mongoDBQueryHolder.setLimit(sqlCommandInfoHolder.getLimit());
+        
         return mongoDBQueryHolder;
     }
 
@@ -454,6 +456,10 @@ public class QueryConverter {
             if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
                 documents.add(new Document("$sort",mongoDBQueryHolder.getSort()));
             }
+            
+            if (mongoDBQueryHolder.getOffset()!= -1) {
+                documents.add(new Document("$skip",mongoDBQueryHolder.getOffset()));
+            }
 
             if (mongoDBQueryHolder.getLimit()!= -1) {
                 documents.add(new Document("$limit",mongoDBQueryHolder.getLimit()));
@@ -512,6 +518,14 @@ public class QueryConverter {
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson()), outputStream);
             IOUtils.write(")", outputStream);
         }
+        
+        if (mongoDBQueryHolder.getOffset()!=-1
+                && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct()
+                && sqlCommandInfoHolder.getGoupBys().isEmpty() && sqlCommandInfoHolder.getAliasHash().isEmpty()) {
+            IOUtils.write(".skip(", outputStream);
+            IOUtils.write(mongoDBQueryHolder.getOffset()+"", outputStream);
+            IOUtils.write(")", outputStream);
+        }
 
         if (mongoDBQueryHolder.getLimit()!=-1
                 && !sqlCommandInfoHolder.isCountAll() && !sqlCommandInfoHolder.isDistinct()
@@ -555,6 +569,9 @@ public class QueryConverter {
                 if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
                     documents.add(new Document("$sort", mongoDBQueryHolder.getSort()));
                 }
+                if (mongoDBQueryHolder.getOffset() != -1) {
+                    documents.add(new Document("$skip", mongoDBQueryHolder.getOffset()));
+                }
                 if (mongoDBQueryHolder.getLimit() != -1) {
                     documents.add(new Document("$limit", mongoDBQueryHolder.getLimit()));
                 }
@@ -584,6 +601,9 @@ public class QueryConverter {
                 FindIterable findIterable = mongoCollection.find(mongoDBQueryHolder.getQuery()).projection(mongoDBQueryHolder.getProjection());
                 if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
                     findIterable.sort(mongoDBQueryHolder.getSort());
+                }
+                if (mongoDBQueryHolder.getOffset() != -1) {
+                    findIterable.skip((int) mongoDBQueryHolder.getOffset());
                 }
                 if (mongoDBQueryHolder.getLimit() != -1) {
                     findIterable.limit((int) mongoDBQueryHolder.getLimit());
