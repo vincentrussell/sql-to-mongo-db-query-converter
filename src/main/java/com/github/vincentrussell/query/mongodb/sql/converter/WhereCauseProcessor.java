@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.FunctionProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.DateFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.ObjectIdFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.RegexFunction;
@@ -174,7 +175,7 @@ public class WhereCauseProcessor {
     private Object recurseFunctions(Document query, Object object, FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
         if (Function.class.isInstance(object)) {
             Function function = (Function)object;
-            query.put("$" + function.getName(), recurseFunctions(new Document(), function.getParameters(), defaultFieldType, fieldNameToFieldTypeMapping));
+            query.put("$" + FunctionProcessor.transcriptFunctionName(function.getName()), recurseFunctions(new Document(), function.getParameters(), defaultFieldType, fieldNameToFieldTypeMapping));
         } else if (ExpressionList.class.isInstance(object)) {
             ExpressionList expressionList = (ExpressionList)object;
             List<Object> objectList = new ArrayList<>();

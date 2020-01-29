@@ -1496,6 +1496,192 @@ public class QueryConverterTest {
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
+    
+    @Test
+    public void writeWithProjectionsTableAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select c.column1, c.column2 from my_table as c where c.value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"value\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "} , {\n" +
+                "  \"_id\": 0,\n" +
+                "  \"column1\": 1,\n" +
+                "  \"column2\": 1\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasSingleTableAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select c.column1 as c1, c.column2 from my_table as c where c.value IS NULL");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortAllLimitOffsetTableAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select c.column1 as c1, c.column2 as c2 from my_table as c where c.value IS NULL order by c.column1 asc, c.column2 asc limit 4 offset 3");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"column1\": 1,\n" + 
+        		"    \"column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$skip\": {\n" + 
+        		"    \"$numberLong\": \"3\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$limit\": {\n" + 
+        		"    \"$numberLong\": \"4\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$column1\",\n" + 
+        		"    \"c2\": \"$column2\"\n" + 
+        		"  }\n" +
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeWithProjectionsAliasAllSortAllLimitOffsetTableAliasNestedFields() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select c.sub1.column1 as c1, c.sub2.column2 as c2 from my_table as c where c.value IS NULL order by c.sub1.column1 asc, c.sub2.column2 asc limit 4 offset 3");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"value\": {\n" + 
+        		"      \"$exists\": false\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"sub1.column1\": 1,\n" + 
+        		"    \"sub2.column2\": 1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$skip\": {\n" + 
+        		"    \"$numberLong\": \"3\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$limit\": {\n" + 
+        		"    \"$numberLong\": \"4\"\n" +  
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"c1\": \"$sub1.column1\",\n" + 
+        		"    \"c2\": \"$sub2.column2\"\n" + 
+        		"  }\n" +
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeSumGroupByWithSortFieldsWithPartialAliasNoCountTableAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT c.agent_code as ac, c.city_code,  \n" +
+                "COUNT (c.advance_amount) \n" +
+                "FROM orders as c\n " +
+                "WHERE c.agent_code LIKE 'AW_%'\n" +
+                "GROUP BY c.agent_code, c.city_code\n" +
+                "ORDER BY c.agent_code asc, c.city_code DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"agent_code\": \"$agent_code\",\n" +
+                "      \"city_code\": \"$city_code\"\n" +
+                "    },\n" +
+                "    \"count\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"_id.agent_code\": 1,\n" +
+                "    \"_id.city_code\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.agent_code\",\n" +
+                "    \"city_code\": \"$_id.city_code\",\n" +
+                "    \"count\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeSumGroupByWithSortFieldsWithPartialAliasNoCountTableAliasNestedFields() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT c.sub1.agent_code as ac, c.sub2.city_code,  \n" +
+                "COUNT (c.advance_amount) \n" +
+                "FROM orders as c\n " +
+                "WHERE c.sub1.agent_code LIKE 'AW_%'\n" +
+                "GROUP BY c.sub1.agent_code, c.sub2.city_code\n" +
+                "ORDER BY c.sub1.agent_code asc, c.sub2.city_code DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"sub1.agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"sub1_agent_code\": \"$sub1.agent_code\",\n" +
+                "      \"sub2_city_code\": \"$sub2.city_code\"\n" +
+                "    },\n" +
+                "    \"count\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"_id.sub1_agent_code\": 1,\n" +
+                "    \"_id.sub2_city_code\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.sub1_agent_code\",\n" +
+                "    \"sub2.city_code\": \"$_id.sub2_city_code\",\n" +
+                "    \"count\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
     @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
