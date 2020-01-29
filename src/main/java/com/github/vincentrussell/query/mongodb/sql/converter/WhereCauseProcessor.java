@@ -49,13 +49,18 @@ public class WhereCauseProcessor {
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
                 if (Function.class.isInstance(leftExpression)) {
                 	Document eq = new Document();
-                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), parseExpression(new Document(), rightExpression, leftExpression)));
+                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), (SqlUtils.isColumn(rightExpression)&&!rightExpression.toString().startsWith("$")?"$":"") + parseExpression(new Document(), rightExpression, leftExpression)));
                 	query.put("$expr", eq);
                 } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)){//$eq operator
                 	Document eq = new Document();
                 	eq.put("$eq",Arrays.asList(((Column)leftExpression).getName(false), ((Column)rightExpression).getName(false)));
                 	query.put("$expr", eq);
                 }
+                else if (Function.class.isInstance(rightExpression)){
+                	Document eq = new Document();
+                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), rightExpression, leftExpression), (SqlUtils.isColumn(leftExpression)&&!leftExpression.toString().startsWith("$")?"$":"") + parseExpression(new Document(), leftExpression, rightExpression)));
+                	query.put("$expr", eq);
+                } 
                 else{
                     query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
                         parseExpression(new Document(), rightExpression, leftExpression));
