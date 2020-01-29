@@ -116,7 +116,7 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
 		}
     	else {
     		expr.getRightExpression().accept(this);
-            if(this.isBaseAliasOrValue) {
+            if(this.isBaseAliasOrValue && !(expr instanceof AndExpression || expr instanceof OrExpression)) {
     			this.setOrAndExpression(outputMatch,expr);
     		}
     	}

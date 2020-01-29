@@ -842,7 +842,89 @@ public class QueryConverterJoinTest {
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
-    
+    @Test
+    public void writeTwoJoinByOneNestedFieldWhereNestedInBothTablesWithOr() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("select t1.Column1, t2.Column2 from my_table as t1 join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where (t1.nested1.whereColumn1 = \"whereValue1\" and t2.nested2.whereColumn2 = \"whereValue2\") or t3.nested3.whereColumn3 = \"whereValue3\"");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.aggregate([{\n" + 
+        		"  \"$match\": {}\n" + 
+        		"},{\n" + 
+        		"  \"$lookup\": {\n" + 
+        		"    \"from\": \"my_table2\",\n" + 
+        		"    \"let\": {\n" + 
+        		"      \"nested1_column\": \"$nested1.Column\"\n" + 
+        		"    },\n" + 
+        		"    \"pipeline\": [\n" + 
+        		"      {\n" + 
+        		"        \"$match\": {\n" + 
+        		"          \"$expr\": {\n" + 
+        		"            \"$eq\": [\n" + 
+        		"              \"$$nested1_column\",\n" + 
+        		"              \"$nested2.Column\"\n" + 
+        		"            ]\n" + 
+        		"          }\n" + 
+        		"        }\n" + 
+        		"      }\n" + 
+        		"    ],\n" + 
+        		"    \"as\": \"t2\"\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$unwind\": {\n" + 
+        		"    \"path\": \"$t2\",\n" + 
+        		"    \"preserveNullAndEmptyArrays\": false\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$lookup\": {\n" + 
+        		"    \"from\": \"my_table3\",\n" + 
+        		"    \"let\": {\n" + 
+        		"      \"nested1_column\": \"$nested1.Column\"\n" + 
+        		"    },\n" + 
+        		"    \"pipeline\": [\n" + 
+        		"      {\n" + 
+        		"        \"$match\": {\n" + 
+        		"          \"$expr\": {\n" + 
+        		"            \"$eq\": [\n" + 
+        		"              \"$$nested1_column\",\n" + 
+        		"              \"$nested3.Column\"\n" + 
+        		"            ]\n" + 
+        		"          }\n" + 
+        		"        }\n" + 
+        		"      }\n" + 
+        		"    ],\n" + 
+        		"    \"as\": \"t3\"\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$unwind\": {\n" + 
+        		"    \"path\": \"$t3\",\n" + 
+        		"    \"preserveNullAndEmptyArrays\": false\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$or\": [\n" + 
+        		"      {\n" + 
+        		"        \"$and\": [\n" + 
+        		"          {\n" + 
+        		"            \"nested1.whereColumn1\": \"whereValue1\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"t2.nested2.whereColumn2\": \"whereValue2\"\n" + 
+        		"          }\n" + 
+        		"        ]\n" + 
+        		"      },\n" + 
+        		"      {\n" + 
+        		"        \"t3.nested3.whereColumn3\": \"whereValue3\"\n" + 
+        		"      }\n" + 
+        		"    ]\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"Column1\": 1,\n" + 
+        		"    \"t2.Column2\": 1\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
     
     private static Document document(String key, Object... values) {
         Document document = new Document();

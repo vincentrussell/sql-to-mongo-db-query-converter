@@ -144,7 +144,8 @@ public class SQLCommandInfoHolder {
         	
         	if(ljoin != null) {
 	        	for (Join j : ljoin) {
-	        		if(j.isInner()) {
+	        		SqlUtils.updateJoinType(j);
+	        		if(j.isInner() || j.isLeft()) {
 	        			tholder = generateTableHolder(tholder,j.getRightItem(),null);
 	        		}	
 	        		else{

@@ -489,4 +489,10 @@ public class SqlUtils {
 		return columnName.startsWith(tableAlias); 
     }
 
+	public static void updateJoinType(Join j) {
+		if(j.toString().toLowerCase().startsWith("join ")) {
+			j.setInner(true);
+		}
+	}
+
 }
