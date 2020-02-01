@@ -123,7 +123,6 @@ public class QueryConverter {
             StreamProvider streamProvider = new StreamProvider(inputStream, Charsets.UTF_8.name());
             CCJSqlParser jSqlParser = new CCJSqlParser(streamProvider);
             this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
-            //final PlainSelect plainSelect = jSqlParser.PlainSelect();
             this.sqlCommandInfoHolder = SQLCommandInfoHolder.Builder
                     .create(defaultFieldType, fieldNameToFieldTypeMapping)
                     .setJSqlParser(jSqlParser)
@@ -165,7 +164,6 @@ public class QueryConverter {
                 && sqlCommandInfoHolder.isDistinct(),"cannot run distinct one more than one column");
         SqlUtils.isFalse(sqlCommandInfoHolder.getGoupBys().size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
                 && !SqlUtils.isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
-        //SqlUtils.isTrue(sqlCommandInfoHolder.getJoins()==null || sqlCommandInfoHolder.getJoins().isEmpty(),"Joins are not supported.  Only one simple table name is supported.");
     }
 
     /**
@@ -373,12 +371,6 @@ public class QueryConverter {
 
         }));
 
-        //SqlUtils.isTrue(functionItems.size() > 0, "there must be at least one group by function specified in the select clause");
-        //SqlUtils.isTrue(nonFunctionItems.size() > 0, "there must be at least one non-function column specified");
-
-
-        
-        
         Document idDocument = new Document();
         for (SelectItem selectItem : nonFunctionItems) {
         	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
