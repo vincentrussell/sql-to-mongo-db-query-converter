@@ -321,6 +321,150 @@ db.my_collection.aggregate([{
 }])
 ```
 
+###Joins
+
+```
+select t1.column1, t2.column2 from my_table as t1 inner join my_table2 as t2 on t1.column = t2.column
+
+
+******Result:*********
+
+db.my_table.aggregate([
+                   {
+                     "$match": {}
+                   },
+                   {
+                     "$lookup": {
+                       "from": "my_table2",
+                       "let": {
+                         "column": "$column"
+                       },
+                       "pipeline": [
+                         {
+                           "$match": {
+                             "$expr": {
+                               "$eq": [
+                                 "$$column",
+                                 "$column"
+                               ]
+                             }
+                           }
+                         }
+                       ],
+                       "as": "t2"
+                     }
+                   },
+                   {
+                     "$unwind": {
+                       "path": "$t2",
+                       "preserveNullAndEmptyArrays": false
+                     }
+                   },
+                   {
+                     "$project": {
+                       "_id": 0,
+                       "column1": 1,
+                       "t2.column2": 1
+                     }
+                   }
+                 ])
+
+
+or
+
+select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column inner join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where t1.nested1.whereColumn1 = "whereValue1" and t2.nested2.whereColumn2 = "whereValue2" and t3.nested3.whereColumn3 = "whereValue3"
+
+
+******Result:*********
+
+db.my_table.aggregate([
+                        {
+                          "$match": {
+                            "nested1.whereColumn1": "whereValue1"
+                          }
+                        },
+                        {
+                          "$lookup": {
+                            "from": "my_table2",
+                            "let": {
+                              "nested1_column": "$nested1.Column"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$and": [
+                                    {
+                                      "$expr": {
+                                        "$eq": [
+                                          "$$nested1_column",
+                                          "$nested2.Column"
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "nested2.whereColumn2": "whereValue2"
+                                    }
+                                  ]
+                                }
+                              }
+                            ],
+                            "as": "t2"
+                          }
+                        },
+                        {
+                          "$unwind": {
+                            "path": "$t2",
+                            "preserveNullAndEmptyArrays": false
+                          }
+                        },
+                        {
+                          "$lookup": {
+                            "from": "my_table3",
+                            "let": {
+                              "nested1_column": "$nested1.Column"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$and": [
+                                    {
+                                      "$expr": {
+                                        "$eq": [
+                                          "$$nested1_column",
+                                          "$nested3.Column"
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "nested3.whereColumn3": "whereValue3"
+                                    }
+                                  ]
+                                }
+                              }
+                            ],
+                            "as": "t3"
+                          }
+                        },
+                        {
+                          "$unwind": {
+                            "path": "$t3",
+                            "preserveNullAndEmptyArrays": false
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": 0,
+                            "c1": "$Column1",
+                            "c2": "$t2.Column2",
+                            "c3": "$t3.Column3"
+                          }
+                        }
+                      ])
+
+
+```
+
+
 ###Alias
 
 ```
@@ -473,6 +617,8 @@ more results? (y/n): n
 
 - Added the ability to use sql aliases that will do a mongo $project.
 - Added the ability to use offset syntax in sql to skip records
+- Added the ability to use lookup-let-pipeline strategy of mongo 3.6 and $expr for performing joins.
+- Added the ablility to join multiple tables and use them in where or project clause. In the new test class are many examples.
 
 ## [1.9](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.9) (2019-04-02)
 
