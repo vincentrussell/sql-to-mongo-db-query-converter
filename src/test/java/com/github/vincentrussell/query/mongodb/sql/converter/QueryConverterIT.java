@@ -20,6 +20,7 @@ import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version;
 import org.apache.commons.io.IOUtils;
+import org.bson.BSON;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
@@ -49,7 +50,10 @@ import static org.junit.Assert.assertEquals;
 
 public class QueryConverterIT {
 
-    private static final int TOTAL_TEST_RECORDS = 25359;
+    private static final int TOTAL_TEST_RECORDS_PRIMER = 25359;
+    private static final int TOTAL_TEST_RECORDS_CUSTOMERS = 599;
+    private static final int TOTAL_TEST_RECORDS_FILMS = 1000;
+    private static final int TOTAL_TEST_RECORDS_STORES = 2;
     private static MongodStarter starter = MongodStarter.getDefaultInstance();
     private static MongodProcess mongodProcess;
     private static MongodExecutable mongodExecutable;
@@ -57,10 +61,38 @@ public class QueryConverterIT {
     private static MongoClient mongoClient;
     private static final String DATABASE = "local";
     private static final String COLLECTION = "my_collection";
+    private static final String COLLECTION_CUSTOMERS = "my_collection_customers";
+    private static final String COLLECTION_FILMS = "my_collection_films";
+    private static final String COLLECTION_STORES = "my_collection_stores";
+    private static final String DATASET_PRIMER = "primer-dataset";
+    private static final String DATASET_FILMS = "films";
+    private static final String DATASET_CUSTOMERS = "customers";
+    private static final String DATASET_STORES = "stores";
     private static MongoDatabase mongoDatabase;
     private static MongoCollection mongoCollection;
     private static JsonWriterSettings jsonWriterSettings = new JsonWriterSettings(JsonMode.STRICT, "\t", "\n");
 
+    private static void loadRecords(int totalRecords, String dataset, MongoCollection mc) throws IOException {
+    	List<Document> documents = new ArrayList<>(totalRecords);
+        try(InputStream inputStream = QueryConverterIT.class.getResourceAsStream("/" + dataset + ".json");
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
+
+            String line;
+            while ((line = bufferedReader.readLine())!=null) {
+                documents.add(Document.parse(line));
+            }
+        }
+
+        for (Iterator<List<WriteModel>> iterator = Iterables.partition(Lists.transform(documents, new Function<Document, WriteModel>() {
+            @Override
+            public WriteModel apply(Document document) {
+                return new InsertOneModel(document);
+            }
+        }),10000).iterator(); iterator.hasNext();) {
+            mc.bulkWrite(iterator.next());
+        }
+    }
+    
     @BeforeClass
     public static void beforeClass() throws IOException {
         IMongodConfig mongodConfig = new MongodConfigBuilder()
@@ -78,29 +110,32 @@ public class QueryConverterIT {
 
 
         mongoDatabase = mongoClient.getDatabase(DATABASE);
+        
+        
+        mongoCollection = mongoDatabase.getCollection(COLLECTION_CUSTOMERS);
+
+        mongoCollection.deleteMany(new Document());
+        loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_CUSTOMERS,mongoCollection);
+        assertEquals(TOTAL_TEST_RECORDS_CUSTOMERS,mongoCollection.count());
+        
+        mongoCollection = mongoDatabase.getCollection(COLLECTION_FILMS);
+
+        mongoCollection.deleteMany(new Document());
+        loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_FILMS,mongoCollection);
+        assertEquals(TOTAL_TEST_RECORDS_FILMS,mongoCollection.count());
+        
+        mongoCollection = mongoDatabase.getCollection(COLLECTION_STORES);
+
+        mongoCollection.deleteMany(new Document());
+        loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_STORES,mongoCollection);
+        assertEquals(TOTAL_TEST_RECORDS_STORES,mongoCollection.count());
+
         mongoCollection = mongoDatabase.getCollection(COLLECTION);
 
-        List<Document> documents = new ArrayList<>(TOTAL_TEST_RECORDS);
-        try(InputStream inputStream = QueryConverterIT.class.getResourceAsStream("/primer-dataset.json");
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
-
-            String line;
-            while ((line = bufferedReader.readLine())!=null) {
-                documents.add(Document.parse(line));
-            }
-        }
-
-        for (Iterator<List<WriteModel>> iterator = Iterables.partition(Lists.transform(documents, new Function<Document, WriteModel>() {
-            @Override
-            public WriteModel apply(Document document) {
-                return new InsertOneModel(document);
-            }
-        }),10000).iterator(); iterator.hasNext();) {
-            mongoCollection.bulkWrite(iterator.next());
-        }
-
-        assertEquals(TOTAL_TEST_RECORDS,mongoCollection.count());
-
+        mongoCollection.deleteMany(new Document());
+        loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_PRIMER,mongoCollection);
+        assertEquals(TOTAL_TEST_RECORDS_PRIMER,mongoCollection.count());
+        
     }
 
     @AfterClass
@@ -730,6 +765,96 @@ public class QueryConverterIT {
         		"	\"b\" : \"Manhattan\",\n" + 
         		"	\"c\" : \"Italian\"\n" + 
         		"}]",toJson(filteredResults), false);
+    }
+    
+    @Test
+    public void simpleTableAlias() throws ParseException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select c.address.building, c.address.coord from "+COLLECTION+" as c where c.address.street LIKE '%Street'");
+        QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+        List<Document> documents = Lists.newArrayList(findIterable);
+        assertEquals(7499, documents.size());
+        JSONAssert.assertEquals("{\n" +
+                "\t\"address\" : {\n" +
+                "\t\t\"building\" : \"351\",\n" +
+                "\t\t\"coord\" : [-73.98513559999999, 40.7676919]\n" +
+                "\t}\n" +
+                "}",documents.get(0).toJson(jsonWriterSettings),false);
+    }
+    
+    @Test
+    public void simpleTableAliasGroup() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select c.address.zipcode, count(c.borough) as co from "+COLLECTION+" as c GROUP BY c.address.zipcode order by c.address.zipcode limit 6\n" +
+                "ORDER BY count(c.borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"07005\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 1,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10000\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 520,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10001\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 471,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10002\"\n" + 
+        		"	}\n" + 
+        		"},{\n" + 
+        		"	\"co\" : 686,\n" + 
+        		"	\"address\" : {\n" + 
+        		"		\"zipcode\" : \"10003\"\n" + 
+        		"	}\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleInnerJoin() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select t1.Phone as Phonet1, t2.managerStaffId as managerStaffIdt2 from "+COLLECTION_CUSTOMERS+" as t1 inner join " + COLLECTION_STORES + " as t2 on t1.Country = t2.Country");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+    	List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(5, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"Phonet1\": \"247646995453\",\n" + 
+        		"	\"managerStaffIdt2\": \"1\"\n" + 
+        		"},{\n" + 
+        		"	\"Phonet1\": \"615964523510\",\n" + 
+        		"	\"managerStaffIdt2\": \"1\"\n" + 
+        		"},{\n" + 
+        		"	\"Phonet1\": \"145720452260\",\n" + 
+        		"	\"managerStaffIdt2\": \"1\"\n" + 
+        		"},{\n" + 
+        		"	\"Phonet1\": \"164414772677\",\n" + 
+        		"	\"managerStaffIdt2\": \"1\"\n" + 
+        		"},{\n" + 
+        		"	\"Phonet1\": \"856872225376\",\n" + 
+        		"	\"managerStaffIdt2\": \"1\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleInnerJoinByTwoFields() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select t1.Phone as Phonet1, t2.managerStaffId as managerStaffIdt2 from "+COLLECTION_CUSTOMERS+" as t1 inner join " + COLLECTION_STORES + " as t2 on t1.Country = t2.Country and t1.City = t2.City");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+    	List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"Phonet1\": \"247646995453\",\n" + 
+        		"	\"managerStaffIdt2\": \"1\"\n" + 
+        		"}]",toJson(results),false);
     }
 
     @Test

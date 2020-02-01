@@ -15,6 +15,7 @@ public class MongoDBQueryHolder {
     private Document projection = new Document();
     private Document sort = new Document();
     private Document aliasProjection = new Document();
+    private List<Document> joinPipeline = new ArrayList<Document>();
     private boolean distinct = false;
     private boolean countAll = false;
     private List<String> groupBys = new ArrayList<>();
@@ -126,5 +127,13 @@ public class MongoDBQueryHolder {
     public SQLCommandType getSqlCommandType() {
         return sqlCommandType;
     }
+
+	public List<Document> getJoinPipeline() {
+		return joinPipeline;
+	}
+
+	public void setJoinPipeline(List<Document> joinPipeline) {
+		this.joinPipeline = joinPipeline;
+	}
     
 }

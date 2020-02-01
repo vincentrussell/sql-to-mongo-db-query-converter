@@ -451,5 +451,48 @@ public class SqlUtils {
             throw new ParseException(message);
         }
     }
+    
+    public static boolean isColumn(Expression e) {
+    	return (e instanceof Column && !((Column) e).getName(false).matches("^(\".*\"|true|false)$"));
+    }
+    
+    public static Column removeAliasFromColumn(Column c, String aliasBase){
+    	c.setColumnName(c.getName(false).startsWith(aliasBase + ".") ? c.getName(false).substring(aliasBase.length()+1) : c.getName(false));
+    	c.setTable(null);
+    	return c;
+    }
+    
+    //For nested fields we need it
+    public static String getColumnNameFromColumn(Column c, String aliasBase){
+    	return c.getName(false).startsWith(aliasBase + ".") ? c.getName(false).substring(aliasBase.length()+1) : c.getName(false);
+    }
+    
+    //For nested fields we need it, no alias, clear first part "t1."column1.nested1, alias is mandatory
+    public static String getColumnNameFromColumn(Column c){
+    	String [] splitedNestedField = c.getName(false).split("\\.");
+    	if(splitedNestedField.length > 2) {
+    		return String.join(".", Arrays.copyOfRange(splitedNestedField, 1, splitedNestedField.length));
+    	}
+    	else {
+    		return splitedNestedField[splitedNestedField.length-1];
+    	}
+    }
+    
+    public static String getBaseAliasTable(Column c){
+    	String [] splitedNestedField = c.getName(false).split("\\.");
+    	return splitedNestedField[0];
+    	
+    }
+    
+    public static boolean isTableAliasOfColumn(Column column, String tableAlias) {
+    	String columnName = column.getName(false);
+		return columnName.startsWith(tableAlias); 
+    }
+
+	public static void updateJoinType(Join j) {
+		if(j.toString().toLowerCase().startsWith("join ")) {
+			j.setInner(true);
+		}
+	}
 
 }
