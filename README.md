@@ -10,7 +10,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 <dependency>
    <groupId>com.github.vincentrussell</groupId>
    <artifactId>sql-to-mongo-db-query-converter</artifactId>
-   <version>1.9</version>
+   <version>1.10</version>
 </dependency>
 ```
 
@@ -31,7 +31,7 @@ Document sort = mongoDBQueryHolder.getSort();
 ## Running it as a standalone jar
 
 ```
-java -jar sql-to-mongo-db-query-converter-1.9-standalone.jar -s sql.file -d destination.json
+java -jar sql-to-mongo-db-query-converter-1.10-standalone.jar -s sql.file -d destination.json
 ```
 ### Options
 
@@ -66,7 +66,7 @@ To specify an initial batch size for the cursor
 ## Interactive mode
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.9-standalone.jar -i
+java -jar target/sql-to-mongo-db-query-converter-1.10-standalone.jar -i
 Enter input sql:
 
 
@@ -321,6 +321,150 @@ db.my_collection.aggregate([{
 }])
 ```
 
+###Joins
+
+```
+select t1.column1, t2.column2 from my_table as t1 inner join my_table2 as t2 on t1.column = t2.column
+
+
+******Result:*********
+
+db.my_table.aggregate([
+                   {
+                     "$match": {}
+                   },
+                   {
+                     "$lookup": {
+                       "from": "my_table2",
+                       "let": {
+                         "column": "$column"
+                       },
+                       "pipeline": [
+                         {
+                           "$match": {
+                             "$expr": {
+                               "$eq": [
+                                 "$$column",
+                                 "$column"
+                               ]
+                             }
+                           }
+                         }
+                       ],
+                       "as": "t2"
+                     }
+                   },
+                   {
+                     "$unwind": {
+                       "path": "$t2",
+                       "preserveNullAndEmptyArrays": false
+                     }
+                   },
+                   {
+                     "$project": {
+                       "_id": 0,
+                       "column1": 1,
+                       "t2.column2": 1
+                     }
+                   }
+                 ])
+
+
+or
+
+select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column inner join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where t1.nested1.whereColumn1 = "whereValue1" and t2.nested2.whereColumn2 = "whereValue2" and t3.nested3.whereColumn3 = "whereValue3"
+
+
+******Result:*********
+
+db.my_table.aggregate([
+                        {
+                          "$match": {
+                            "nested1.whereColumn1": "whereValue1"
+                          }
+                        },
+                        {
+                          "$lookup": {
+                            "from": "my_table2",
+                            "let": {
+                              "nested1_column": "$nested1.Column"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$and": [
+                                    {
+                                      "$expr": {
+                                        "$eq": [
+                                          "$$nested1_column",
+                                          "$nested2.Column"
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "nested2.whereColumn2": "whereValue2"
+                                    }
+                                  ]
+                                }
+                              }
+                            ],
+                            "as": "t2"
+                          }
+                        },
+                        {
+                          "$unwind": {
+                            "path": "$t2",
+                            "preserveNullAndEmptyArrays": false
+                          }
+                        },
+                        {
+                          "$lookup": {
+                            "from": "my_table3",
+                            "let": {
+                              "nested1_column": "$nested1.Column"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$and": [
+                                    {
+                                      "$expr": {
+                                        "$eq": [
+                                          "$$nested1_column",
+                                          "$nested3.Column"
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "nested3.whereColumn3": "whereValue3"
+                                    }
+                                  ]
+                                }
+                              }
+                            ],
+                            "as": "t3"
+                          }
+                        },
+                        {
+                          "$unwind": {
+                            "path": "$t3",
+                            "preserveNullAndEmptyArrays": false
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": 0,
+                            "c1": "$Column1",
+                            "c2": "$t2.Column2",
+                            "c3": "$t3.Column3"
+                          }
+                        }
+                      ])
+
+
+```
+
+
 ###Alias
 
 ```
@@ -408,7 +552,7 @@ is equivalent to the $skip function in mongodb json query language
 You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.9-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
+java -jar target/sql-to-mongo-db-query-converter-1.10-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
 Enter input sql:
 
 
@@ -467,12 +611,14 @@ more results? (y/n): n
 
 # Change Log
 
-## [1.10](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.10) (XXXX-XX-XX)
+## [1.10](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.10) (2020-02-01)
 
 **Enhancements:**
 
 - Added the ability to use sql aliases that will do a mongo $project.
 - Added the ability to use offset syntax in sql to skip records
+- Added the ability to use lookup-let-pipeline strategy of mongo 3.6 and $expr for performing joins.
+- Added the ablility to join multiple tables and use them in where or project clause. In the new test class are many examples.
 
 ## [1.9](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.9) (2019-04-02)
 

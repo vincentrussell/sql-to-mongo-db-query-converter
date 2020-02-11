@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.FunctionProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.DateFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.ObjectIdFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.RegexFunction;
@@ -47,9 +48,20 @@ public class WhereCauseProcessor {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
                 if (Function.class.isInstance(leftExpression)) {
-                    query.put("$eq", new Document("arg1", parseExpression(new Document(), leftExpression, rightExpression))
-                    .append("arg2", parseExpression(new Document(), rightExpression, leftExpression)));
-                } else {
+                	Document eq = new Document();
+                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), (SqlUtils.isColumn(rightExpression)&&!rightExpression.toString().startsWith("$")?"$":"") + parseExpression(new Document(), rightExpression, leftExpression)));
+                	query.put("$expr", eq);
+                } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)){//$eq operator
+                	Document eq = new Document();
+                	eq.put("$eq",Arrays.asList(((Column)leftExpression).getName(false), ((Column)rightExpression).getName(false)));
+                	query.put("$expr", eq);
+                }
+                else if (Function.class.isInstance(rightExpression)){
+                	Document eq = new Document();
+                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), rightExpression, leftExpression), (SqlUtils.isColumn(leftExpression)&&!leftExpression.toString().startsWith("$")?"$":"") + parseExpression(new Document(), leftExpression, rightExpression)));
+                	query.put("$expr", eq);
+                } 
+                else{
                     query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
                         parseExpression(new Document(), rightExpression, leftExpression));
                 }
@@ -168,7 +180,7 @@ public class WhereCauseProcessor {
     private Object recurseFunctions(Document query, Object object, FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
         if (Function.class.isInstance(object)) {
             Function function = (Function)object;
-            query.put("$" + function.getName(), recurseFunctions(new Document(), function.getParameters(), defaultFieldType, fieldNameToFieldTypeMapping));
+            query.put("$" + FunctionProcessor.transcriptFunctionName(function.getName()), recurseFunctions(new Document(), function.getParameters(), defaultFieldType, fieldNameToFieldTypeMapping));
         } else if (ExpressionList.class.isInstance(object)) {
             ExpressionList expressionList = (ExpressionList)object;
             List<Object> objectList = new ArrayList<>();
