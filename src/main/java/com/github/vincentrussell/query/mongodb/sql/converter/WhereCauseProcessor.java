@@ -5,6 +5,8 @@ import com.github.vincentrussell.query.mongodb.sql.converter.util.DateFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.ObjectIdFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.RegexFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
+import com.github.vincentrussell.query.mongodb.sql.converter.util.BinaryDataObject;
+import com.github.vincentrussell.query.mongodb.sql.converter.util.DateObject;
 import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
@@ -33,6 +35,9 @@ public class WhereCauseProcessor {
             RegexFunction regexFunction = SqlUtils.isRegexFunction(incomingExpression);
             DateFunction dateFunction = SqlUtils.isDateFunction(incomingExpression);
             ObjectIdFunction objectIdFunction = SqlUtils.isObjectIdFunction(this, incomingExpression);
+
+            BinaryDataObject binaryDataObject = SqlUtils.isNewBindataObject(this,incomingExpression);
+            DateObject dateObject = SqlUtils.isDateObject(this,incomingExpression);
             if (regexFunction != null) {
                 Document regexDocument = new Document("$regex", regexFunction.getRegex());
                 if (regexFunction.getOptions() != null) {
@@ -44,6 +49,10 @@ public class WhereCauseProcessor {
                     new Document(dateFunction.getComparisonExpression(), dateFunction.getDate()));
             } else if (objectIdFunction != null) {
                 query.put(objectIdFunction.getColumn(), objectIdFunction.toDocument());
+            } else if(binaryDataObject !=null){
+                query.put(binaryDataObject.getColumn(), binaryDataObject.getValue());
+            } else if(dateObject !=null){
+                query.put(dateObject.getColumn(), dateObject.getValue());
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();

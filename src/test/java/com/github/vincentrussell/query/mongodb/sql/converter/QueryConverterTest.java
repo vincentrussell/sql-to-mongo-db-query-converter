@@ -1681,6 +1681,125 @@ public class QueryConverterTest {
                 "  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
     }
+
+    @Test
+    public void writeDateFilters() throws ParseException, IOException {
+        String query ="select status, count(ObjectId) as cnt from orders "
+            + "where merchantId in ('f48fdd16-92db-4188-854d-1ecd9b62d066') and timeStamp >= date('2020-01-01') "
+            + "and timeStamp <= date('2020-03-02')  "
+            + " group by status ";
+        QueryConverter queryConverter = new QueryConverter(query);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+//        assertEquals("",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.orders.aggregate([{\n" + "  \"$match\": {\n" + "    \"$and\": [\n" + "      {\n"
+            + "        \"merchantId\": {\n" + "          \"$in\": [\n"
+            + "            \"f48fdd16-92db-4188-854d-1ecd9b62d066\"\n" + "          ]\n" + "        }\n" + "      },\n"
+            + "      {\n" + "        \"timeStamp\": {\n" + "          \"$gte\": {\n"
+            + "            \"$date\": 1577817000000\n" + "          }\n" + "        }\n" + "      },\n" + "      {\n"
+            + "        \"timeStamp\": {\n" + "          \"$lte\": {\n" + "            \"$date\": 1583087400000\n"
+            + "          }\n" + "        }\n" + "      }\n" + "    ]\n" + "  }\n" + "},{\n" + "  \"$group\": {\n"
+            + "    \"_id\": \"$status\",\n" + "    \"cnt\": {\n" + "      \"$sum\": 1\n" + "    }\n" + "  }\n" + "},{\n"
+            + "  \"$project\": {\n" + "    \"status\": \"$_id\",\n" + "    \"cnt\": 1,\n" + "    \"_id\": 0\n" + "  }\n"
+            + "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void writeCaseWhenBinaryDataFilterSubtraction() throws ParseException, IOException {
+        String query = "select EventType, case when ObjectType=1 then 'SMS' when ObjectType=0 then 'EMAIL' ELSE 'email' end  "
+            + "as `event type`, "
+            +" code - total as duration, "
+            +" 100 - 60 as constduration "
+            + " from "
+            + " orders "
+            + "Where  MerchantId = Bindata('f48fdd16-92db-4188-854d-1ecd9b62d066') "
+            +" and InsertDateAndTime >= date('2020-01-01') and InsertDateAndTime <= date('2020-03-02')"
+            +" limit 10";
+        QueryConverter queryConverter = new QueryConverter(query);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" + "  \"$match\": {\n" + "    \"$and\": [\n" + "      {\n"
+            + "        \"MerchantId\": {\n" + "          \"$eq\": {\n"
+            + "            \"$binary\": \"Ft2P9NuSiEGFTR7Nm2LQZg\\u003d\\u003d\",\n" + "            \"$type\": \"03\"\n"
+            + "          }\n" + "        }\n" + "      },\n" + "      {\n" + "        \"InsertDateAndTime\": {\n"
+            + "          \"$gte\": {\n" + "            \"$date\": 1577817000000\n" + "          }\n" + "        }\n"
+            + "      },\n" + "      {\n" + "        \"InsertDateAndTime\": {\n" + "          \"$lte\": {\n"
+            + "            \"$date\": 1583087400000\n" + "          }\n" + "        }\n" + "      }\n" + "    ]\n"
+            + "  }\n" + "},{\n" + "  \"$limit\": {\n" + "    \"$numberLong\": \"10\"\n" + "  }\n" + "},{\n"
+            + "  \"$project\": {\n" + "    \"_id\": 0,\n" + "    \"EventType\": 1,\n" + "    \"`event type`\": {\n"
+            + "      \"$switch\": {\n" + "        \"branches\": [\n" + "          {\n" + "            \"case\": {\n"
+            + "              \"$eq\": [\n" + "                \"$_id.ObjectType\",\n" + "                {\n"
+            + "                  \"$numberLong\": \"1\"\n" + "                }\n" + "              ]\n"
+            + "            },\n" + "            \"then\": \"SMS\"\n" + "          },\n" + "          {\n"
+            + "            \"case\": {\n" + "              \"$eq\": [\n" + "                \"$_id.ObjectType\",\n"
+            + "                {\n" + "                  \"$numberLong\": \"0\"\n" + "                }\n"
+            + "              ]\n" + "            },\n" + "            \"then\": \"EMAIL\"\n" + "          }\n"
+            + "        ],\n" + "        \"default\": \"email\"\n" + "      }\n" + "    },\n" + "    \"duration\": {\n"
+            + "      \"$subtract\": [\n" + "        \"$code\",\n" + "        \"$total\"\n" + "      ]\n" + "    },\n"
+            + "    \"constduration\": {\n" + "      \"$subtract\": [\n" + "        {\n"
+            + "          \"$numberLong\": \"100\"\n" + "        },\n" + "        {\n"
+            + "          \"$numberLong\": \"60\"\n" + "        }\n" + "      ]\n" + "    }\n" + "  }\n" + "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void writeMaxMinCaseWhen() throws ParseException, IOException {
+        String query = "select EventType, EventStatus,"
+            + "case when CommunicationType=1 then 'SMS' when CommunicationType=0 then 'EMAIL' ELSE 'Unknown' end  "
+            + "as `communication_type`,"
+            + "case when ObjectType=1 then 'Order' when ObjectType=0 then 'User' ELSE 'Unknown' end "
+            + "as `object type`,"
+            + "count(ObjectType) as cnt, "
+            + "count( distinct ObjectType) as dist_cnt, "
+            + " sum(ObjectType) as total_sum, "
+            + " max(ObjectType) as max_obj_type, "
+            + " min(ObjectType) as min_obj_type "
+            + "from "
+            + "orders "
+            + "Where  MerchantId = Bindata('f48fdd16-92db-4188-854d-1ecd9b62d066') "
+            +" and InsertDateAndTime >= date('2020-01-01') and InsertDateAndTime <= date('2020-03-02')"
+            + "group by "
+            + "EventType,EventStatus,CommunicationType,ObjectType";
+        QueryConverter queryConverter = new QueryConverter(query);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" + "  \"$match\": {\n" + "    \"$and\": [\n" + "      {\n"
+            + "        \"MerchantId\": {\n" + "          \"$eq\": {\n"
+            + "            \"$binary\": \"Ft2P9NuSiEGFTR7Nm2LQZg\\u003d\\u003d\",\n" + "            \"$type\": \"03\"\n"
+            + "          }\n" + "        }\n" + "      },\n" + "      {\n" + "        \"InsertDateAndTime\": {\n"
+            + "          \"$gte\": {\n" + "            \"$date\": 1577817000000\n" + "          }\n" + "        }\n"
+            + "      },\n" + "      {\n" + "        \"InsertDateAndTime\": {\n" + "          \"$lte\": {\n"
+            + "            \"$date\": 1583087400000\n" + "          }\n" + "        }\n" + "      }\n" + "    ]\n"
+            + "  }\n" + "},{\n" + "  \"$group\": {\n" + "    \"_id\": {\n" + "      \"EventType\": \"$EventType\",\n"
+            + "      \"EventStatus\": \"$EventStatus\",\n" + "      \"CommunicationType\": \"$CommunicationType\",\n"
+            + "      \"ObjectType\": \"$ObjectType\"\n" + "    },\n" + "    \"cnt\": {\n" + "      \"$sum\": 1\n"
+            + "    },\n" + "    \"dist_cnt\": {\n" + "      \"$sum\": 1\n" + "    },\n" + "    \"total_sum\": {\n"
+            + "      \"$sum\": \"$ObjectType\"\n" + "    },\n" + "    \"max_obj_type\": {\n"
+            + "      \"$max\": \"$ObjectType\"\n" + "    },\n" + "    \"min_obj_type\": {\n"
+            + "      \"$min\": \"$ObjectType\"\n" + "    }\n" + "  }\n" + "},{\n" + "  \"$project\": {\n"
+            + "    \"EventType\": \"$_id.EventType\",\n" + "    \"EventStatus\": \"$_id.EventStatus\",\n"
+            + "    \"`communication_type`\": {\n" + "      \"$switch\": {\n" + "        \"branches\": [\n"
+            + "          {\n" + "            \"case\": {\n" + "              \"$eq\": [\n"
+            + "                \"$_id.CommunicationType\",\n" + "                {\n"
+            + "                  \"$numberLong\": \"1\"\n" + "                }\n" + "              ]\n"
+            + "            },\n" + "            \"then\": \"SMS\"\n" + "          },\n" + "          {\n"
+            + "            \"case\": {\n" + "              \"$eq\": [\n"
+            + "                \"$_id.CommunicationType\",\n" + "                {\n"
+            + "                  \"$numberLong\": \"0\"\n" + "                }\n" + "              ]\n"
+            + "            },\n" + "            \"then\": \"EMAIL\"\n" + "          }\n" + "        ],\n"
+            + "        \"default\": \"Unknown\"\n" + "      }\n" + "    },\n" + "    \"`object type`\": {\n"
+            + "      \"$switch\": {\n" + "        \"branches\": [\n" + "          {\n" + "            \"case\": {\n"
+            + "              \"$eq\": [\n" + "                \"$_id.ObjectType\",\n" + "                {\n"
+            + "                  \"$numberLong\": \"1\"\n" + "                }\n" + "              ]\n"
+            + "            },\n" + "            \"then\": \"Order\"\n" + "          },\n" + "          {\n"
+            + "            \"case\": {\n" + "              \"$eq\": [\n" + "                \"$_id.ObjectType\",\n"
+            + "                {\n" + "                  \"$numberLong\": \"0\"\n" + "                }\n"
+            + "              ]\n" + "            },\n" + "            \"then\": \"User\"\n" + "          }\n"
+            + "        ],\n" + "        \"default\": \"Unknown\"\n" + "      }\n" + "    },\n" + "    \"cnt\": 1,\n"
+            + "    \"dist_cnt\": 1,\n" + "    \"total_sum\": 1,\n" + "    \"max_obj_type\": 1,\n"
+            + "    \"min_obj_type\": 1,\n" + "    \"_id\": 0\n" + "  }\n" + "}])", byteArrayOutputStream.toString("UTF-8"));
+    }
+
+
     
     @Test
     public void doubleEquals() throws ParseException {
