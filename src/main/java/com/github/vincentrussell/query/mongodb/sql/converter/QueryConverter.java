@@ -22,10 +22,11 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
-
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.CaseExpression;
+import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
 import net.sf.jsqlparser.schema.Column;
@@ -149,8 +150,10 @@ public class QueryConverter {
             public boolean apply(SelectItem selectItem) {
                 try {
                     if (SelectExpressionItem.class.isInstance(selectItem)
-                            && Column.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
-                        return true;
+                            && (Column.class.isInstance(((SelectExpressionItem) selectItem).getExpression())
+                            || CaseExpression.class.isInstance(((SelectExpressionItem) selectItem).getExpression())
+                            || Subtraction.class.isInstance(((SelectExpressionItem) selectItem).getExpression()))) {
+                            return true;
                     }
                 } catch (NullPointerException e) {
                     return false;
@@ -202,7 +205,14 @@ public class QueryConverter {
             		String columnName = SqlUtils.removeAliasFromColumn(c, sqlCommandInfoHolder.getTablesHolder().getBaseAliasTable()).getColumnName();
                     Alias alias = selectExpressionItem.getAlias();
                     document.put((alias != null ? alias.getName() : columnName ),(alias != null ? "$" + columnName : 1 ));
-            	}
+            	} else if(CaseExpression.class.isInstance(selectExpressionItem.getExpression())) {
+                    Document swithStatement = SqlUtils.getSwitchStatement(selectExpressionItem.getExpression());
+                    document.put(selectExpressionItem.getAlias().getName().replaceAll("\\.", "_"),swithStatement);
+                } else if(selectExpressionItem.getExpression() instanceof Subtraction){
+            	    Subtraction subtraction = (Subtraction)selectExpressionItem.getExpression();
+            	    Object subtractionDoc = SqlUtils.getSubtractionDocument(subtraction);
+            	    document.put(selectExpressionItem.getAlias().getName(),subtractionDoc);
+                }
             	else if (selectExpressionItem.getExpression() instanceof SubSelect){
             		throw new ParseException("Unsupported subselect expression");
             	}
@@ -374,9 +384,26 @@ public class QueryConverter {
         Document idDocument = new Document();
         for (SelectItem selectItem : nonFunctionItems) {
         	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
-            Column column = (Column) selectExpressionItem.getExpression();
-            String columnName = SqlUtils.getStringValue(column);
-            idDocument.put(columnName.replaceAll("\\.", "_"),"$" + columnName);
+            if(CaseExpression.class.isInstance(selectExpressionItem.getExpression())) {
+                String columnName = SqlUtils.getGroupByColName(selectExpressionItem.getAlias(),   groupBys);
+                if(columnName != null){
+                    idDocument.put(columnName, "$" + columnName);
+                }
+            } else {
+                Column column = (Column) selectExpressionItem.getExpression();
+                String columnName = SqlUtils.getStringValue(column);
+                idDocument.put(columnName.replaceAll("\\.", "_"), "$" + columnName);
+            }
+        }
+
+        for (String grpKey:groupBys
+             ) {
+            String projectKey = grpKey.replaceAll("\\.","_");
+            if(idDocument.get(grpKey) == null && idDocument.get(projectKey)==null){
+                idDocument.put(grpKey,"$" + grpKey);
+            } else if(idDocument.get(grpKey) == null && idDocument.get(projectKey)!=null){
+                idDocument.put(projectKey,"$" + grpKey);
+            }
         }
 
         document.append("_id", idDocument.size() == 1 ? Iterables.get(idDocument.values(),0) : idDocument);
@@ -425,11 +452,16 @@ public class QueryConverter {
         else {
 	        for (SelectItem selectItem : nonFunctionItems) {
 	        	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
-	        	Column column = (Column) selectExpressionItem.getExpression();
-	            String columnName = SqlUtils.getStringValue(column);
-	            Alias alias = selectExpressionItem.getAlias();
-	            String nameOrAlias = (alias != null ? alias.getName() : columnName);
-	        	document.put(nameOrAlias, "$_id." + columnName.replaceAll("\\.","_"));
+                Alias alias = selectExpressionItem.getAlias();
+                if(CaseExpression.class.isInstance(selectExpressionItem.getExpression())) {
+                    Document swithStatement = SqlUtils.getSwitchStatement(selectExpressionItem.getExpression());
+                    document.put(selectExpressionItem.getAlias().getName().replaceAll("\\.", "_"),swithStatement);
+                } else {
+                    Column column = (Column) selectExpressionItem.getExpression();
+                    String columnName = SqlUtils.getStringValue(column);
+                    String nameOrAlias = (alias != null ? alias.getName() : columnName);
+                    document.put(nameOrAlias, "$_id." + columnName.replaceAll("\\.", "_"));
+                }
 	        }
         }
         
@@ -458,23 +490,24 @@ public class QueryConverter {
         }
         String field = parameters.size() > 0 ? Iterables.get(parameters, 0).replaceAll("\\.","_") : null;
         if ("sum".equals(function.getName().toLowerCase())) {
-            createFunction("sum",field, document,"$"+ field);
+            createFunction( alias,"sum",field, document,"$"+ field);
         } else if ("avg".equals(function.getName().toLowerCase())) {
-            createFunction((alias == null?"avg":alias.getName()),field, document,"$"+ field);
+            createFunction(alias,(alias == null?"avg":alias.getName()),field, document,"$"+ field);
         } else if ("count".equals(function.getName().toLowerCase())) {
             document.put((alias == null?"count":alias.getName()),new Document("$sum",1));
         } else if ("min".equals(function.getName().toLowerCase())) {
-            createFunction((alias == null?"min":alias.getName()),field, document,"$"+ field);
+            createFunction(alias,"min",field, document,"$"+ field);
         } else if ("max".equals(function.getName().toLowerCase())) {
-            createFunction((alias == null?"max":alias.getName()),field, document,"$"+ field);
+            createFunction(alias,"max",field, document,"$"+ field);
         } else {
             throw new ParseException("could not understand function:" + function.getName());
         }
     }
 
-    private void createFunction(String functionName, String field, Document document, Object value) throws ParseException {
+    private void createFunction(Alias alias, String functionName, String field, Document document, Object value) throws ParseException {
+        String keyName = alias == null?functionName + "_"+field:alias.getName();
         SqlUtils.isTrue(field!=null,"function "+ functionName + " must contain a single field to run on");
-        document.put(functionName + "_"+field,new Document("$"+functionName,value));
+        document.put(keyName,new Document("$"+functionName,value));
     }
 
 

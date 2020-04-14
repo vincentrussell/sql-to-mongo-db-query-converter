@@ -12,6 +12,11 @@ import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.SignedExpression;
 import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.CaseExpression;
+import net.sf.jsqlparser.expression.WhenClause;
+import net.sf.jsqlparser.expression.DoubleValue;
+import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
@@ -361,11 +366,51 @@ public class SqlUtils {
         return null;
     }
 
+    public static BinaryDataObject isNewBindataObject(final WhereCauseProcessor whereCauseProcessor,
+        Expression incomingExpression) throws ParseException {
+        if (ComparisonOperator.class.isInstance(incomingExpression)) {
+            ComparisonOperator comparisonOperator = (ComparisonOperator)incomingExpression;
+
+            String column = getStringValue(comparisonOperator.getLeftExpression());
+
+            if (Function.class.isInstance(comparisonOperator.getRightExpression())) {
+                Function function = ((Function) comparisonOperator.getRightExpression());
+                if (("new bindata".equals(function.getName().toLowerCase()) || "bindata".equals(function.getName().toLowerCase()))
+                    && (function.getParameters().getExpressions().size()>0)
+                    && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                    return new BinaryDataObject(column, function , comparisonOperator);
+                }
+            }
+        }
+        return null;
+    }
+
+
+    public static DateObject isDateObject(final WhereCauseProcessor whereCauseProcessor,
+        Expression incomingExpression) throws ParseException {
+        if (ComparisonOperator.class.isInstance(incomingExpression)) {
+            ComparisonOperator comparisonOperator = (ComparisonOperator)incomingExpression;
+            String column = getStringValue(comparisonOperator.getLeftExpression());
+
+            if (Function.class.isInstance(comparisonOperator.getRightExpression())) {
+                Function function = ((Function) comparisonOperator.getRightExpression());
+                if ("date".equals(function.getName().toLowerCase())
+                    && (function.getParameters().getExpressions().size()==1)
+                    && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                    return new DateObject(column, function , comparisonOperator);
+                }
+            }
+        }
+        return null;
+    }
+
+
+
     public static DateFunction isDateFunction(Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
             ComparisonOperator comparisonOperator = (ComparisonOperator)incomingExpression;
-            String rightExpression = getStringValue(comparisonOperator.getRightExpression());
             if (Function.class.isInstance(comparisonOperator.getLeftExpression())) {
+                String rightExpression = getStringValue(comparisonOperator.getRightExpression());
                 Function function = ((Function)comparisonOperator.getLeftExpression());
                 if ("date".equals(function.getName().toLowerCase())
                         && (function.getParameters().getExpressions().size()==2)
@@ -389,8 +434,8 @@ public class SqlUtils {
     public static RegexFunction isRegexFunction(Expression incomingExpression) throws ParseException {
         if (EqualsTo.class.isInstance(incomingExpression)) {
             EqualsTo equalsTo = (EqualsTo)incomingExpression;
-            String rightExpression = equalsTo.getRightExpression().toString();
             if (Function.class.isInstance(equalsTo.getLeftExpression())) {
+                String rightExpression = equalsTo.getRightExpression().toString();
                 Function function = ((Function)equalsTo.getLeftExpression());
                 if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size()==2
@@ -404,7 +449,6 @@ public class SqlUtils {
                     RegexFunction regexFunction = getRegexFunction(function);
                     return regexFunction;
                 }
-
             }
         } else if (Function.class.isInstance(incomingExpression)) {
             Function function = ((Function)incomingExpression);
@@ -495,4 +539,124 @@ public class SqlUtils {
 		}
 	}
 
+    public static String trimQuatation(String dateStr) {
+        if ( dateStr.startsWith( "\"" ) && dateStr.endsWith( "\"" ) ) {
+            return dateStr.substring(1, dateStr.length() - 1);
+        } else if ( dateStr.startsWith( "'" ) && dateStr.endsWith( "'" ) ) {
+            return dateStr.substring(1, dateStr.length() - 1);
+        } else
+            return dateStr;
+    }
+
+
+    public static Document getSwitchStatement(Expression selectExpressionItem) {
+        CaseExpression caseExpression = (CaseExpression) selectExpressionItem;
+        List<Document> branches = new ArrayList<>();
+        for (WhenClause whenClause: caseExpression.getWhenClauses()
+        ) {
+            Document caseThenDocument = new Document();
+            caseThenDocument = getWhenCaseDocumentFromWhenClause(whenClause);
+            branches.add(caseThenDocument);
+        }
+        Object elseDocument = getOperandExpression(caseExpression.getElseExpression());
+        Document swithDocument = new Document();
+        swithDocument.put("branches", branches);
+        swithDocument.put("default",elseDocument);
+        return  new Document("$switch",swithDocument);
+    }
+
+
+    private static Document getWhenCaseDocumentFromWhenClause(WhenClause whenClause) {
+        Expression whenExpression = whenClause.getWhenExpression();
+        Expression thenExpression = whenClause.getThenExpression();
+        Document caseThenDocument = new Document();
+        String oprator = "$eq";
+        Expression leftExpr=null;
+        Expression rightExpr=null;
+
+        if (EqualsTo.class.isInstance(whenExpression)) {
+            EqualsTo expr = (EqualsTo)whenExpression;
+            leftExpr = expr.getLeftExpression();
+            rightExpr = expr.getRightExpression();
+            oprator = "$eq";
+
+        } else if (GreaterThan.class.isInstance(whenExpression)) {
+            EqualsTo expr = (EqualsTo)whenExpression;
+            leftExpr = expr.getLeftExpression();
+            rightExpr = expr.getRightExpression();
+            oprator = "$gt";
+        }else if (GreaterThanEquals.class.isInstance(whenExpression)) {
+            GreaterThanEquals expr = (GreaterThanEquals)whenExpression;
+            leftExpr = expr.getLeftExpression();
+            rightExpr = expr.getRightExpression();
+            oprator = "$gte";
+        } else if (MinorThan.class.isInstance(whenExpression)) {
+            MinorThan expr = (MinorThan)whenExpression;
+            leftExpr = expr.getLeftExpression();
+            rightExpr = expr.getRightExpression();
+            oprator = "$lt";
+        } else {
+            MinorThanEquals expr = (MinorThanEquals)whenExpression;
+            leftExpr = expr.getLeftExpression();
+            rightExpr = expr.getRightExpression();
+            oprator = "$lte";
+        }
+        Object leftOperand = getOperandExpression(leftExpr);
+        if(Column.class.isInstance(leftExpr)) {
+            leftOperand = "$_id."+leftOperand.toString();
+        }
+        Object rightOperand = getOperandExpression(rightExpr);
+        if(Column.class.isInstance(rightExpr)) {
+            rightOperand = "$_id."+leftOperand.toString();
+        }
+        caseThenDocument.put("case",new Document(oprator,
+            Arrays.asList(leftOperand, rightOperand)));
+        Object thenDoc = getOperandExpression(thenExpression);
+        caseThenDocument.put("then",thenDoc);
+        return caseThenDocument;
+    }
+
+     private static Object getOperandExpression(Expression expr) {
+        if(CaseExpression.class.isInstance(expr)) {
+            return getSwitchStatement(expr);
+        }else if(Column.class.isInstance(expr)){
+            Column column = (Column)expr;
+           return column.getColumnName();
+        } else if(LongValue.class.isInstance(expr)){
+            LongValue longValue = (LongValue) expr;
+           return longValue.getValue();
+        } else if(DoubleValue.class.isInstance(expr)){
+            DoubleValue longValue = (DoubleValue) expr;
+            return longValue.getValue();
+        } else {
+            StringValue stringValue = (StringValue) expr;
+            return stringValue.getValue();
+        }
+    }
+
+    public static String getGroupByColName(Alias alias, List<String> groupBys) {
+        String aliasName = "";
+        if(alias != null){
+            aliasName=alias.getName();
+        }
+        for (String gr:groupBys){
+            if(gr.equals(aliasName)){
+                return gr;
+            }
+        }
+
+        return null;
+    }
+
+    public static Object getSubtractionDocument(Subtraction subtraction) {
+        Object leftOperand = getOperandExpression(subtraction.getLeftExpression());
+        Object rightOperand = getOperandExpression(subtraction.getRightExpression());
+        if(Column.class.isInstance(subtraction.getLeftExpression())) {
+            leftOperand = "$"+leftOperand.toString();
+        }
+        if(Column.class.isInstance(subtraction.getRightExpression())) {
+            rightOperand = "$"+rightOperand.toString();
+        }
+        return new Document("$subtract",Arrays.asList(leftOperand,rightOperand));
+    }
 }
