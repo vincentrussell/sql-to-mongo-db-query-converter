@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -856,6 +857,388 @@ public class QueryConverterIT {
         		"	\"managerStaffIdt2\": \"1\"\n" + 
         		"}]",toJson(results),false);
     }
+    
+    @Test
+    public void simpleSubquery() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select * from(select borough, cuisine from "+COLLECTION+" limit 1)");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Bakery\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAlias() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select * from(select borough, cuisine from "+COLLECTION+" limit 1) as c");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\",\n" + 
+        		"	\"cuisine\" : \"Bakery\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAlias_Project() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.borough from(select borough, cuisine from "+COLLECTION+" limit 1) as c");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\"\n" +  
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAlias_ProjectLimit() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.borough from(select borough, cuisine from "+COLLECTION+" limit 2) as c limit 1");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"borough\" : \"Bronx\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAlias_WhereProject() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine from(select borough, cuisine from "+COLLECTION+" limit 6) as c where c.cuisine = 'Hamburgers'");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\" : \"Hamburgers\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAliasGroup_WhereProject() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine limit 6000) as c where c.cuisine = 'Hamburgers' and c.borough ='Manhattan'");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\" : \"Hamburgers\",\n" +
+        		"	\"c\" : 124\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAliasGroupWhere_WhereProject() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" where cuisine = 'Hamburgers' group by borough, cuisine limit 6000) as c where c.borough ='Manhattan'");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\" : \"Hamburgers\",\n" +
+        		"	\"c\" : 124\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAliasGroup_WhereProjectGroup() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.cuisine = 'Italian' group by cuisine");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\" : \"Italian\",\n" +
+        		"	\"c\" : 1069\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAliasGroupSort_WhereProjectGroup() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine order by count(*) asc, borough, cuisine limit 300) as c where c.c > 100 group by cuisine");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(3, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"c\": 104,\n" + 
+        		"	\"cuisine\": \"Asian\"\n" + 
+        		"},{\n" + 
+        		"	\"c\": 102,\n" + 
+        		"	\"cuisine\": \"Pizza/Italian\"\n" + 
+        		"},{\n" + 
+        		"	\"c\": 102,\n" + 
+        		"	\"cuisine\": \"Hamburgers\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAliasGroup_WhereProjectGroupSort() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.c > 500 group by c.cuisine order by cuisine desc ");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(4, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"c\": 621,\n" + 
+        		"	\"cuisine\": \"Italian\"\n" + 
+        		"},{\n" + 
+        		"	\"c\": 2001,\n" + 
+        		"	\"cuisine\": \"Chinese\"\n" + 
+        		"},{\n" + 
+        		"	\"c\": 680,\n" + 
+        		"	\"cuisine\": \"Café/Coffee/Tea\"\n" + 
+        		"},{\n" + 
+        		"	\"c\": 5518,\n" + 
+        		"	\"cuisine\": \"American \"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void simpleSubqueryAliasGroupSort_WhereProjectGroupSort() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine order by count(*) desc, borough asc, cuisine desc limit 3) as c where c.c > 1000 group by cuisine order by cuisine asc");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\" : \"American \",\n" +
+        		"	\"c\" : 5518\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    
+    @Test
+    public void subqueryJoinByOneGetMaxOfGroup() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats asc, cuisine asc limit 15");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(15, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Californian\",\n" + 
+        		"	\"total\": 1\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Chilean\",\n" + 
+        		"	\"total\": 1\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Creole/Cajun\",\n" + 
+        		"	\"total\": 1\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Polynesian\",\n" + 
+        		"	\"total\": 1\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"CafÃ©/Coffee/Tea\",\n" + 
+        		"	\"total\": 2\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"CafÃ©/Coffee/Tea\",\n" + 
+        		"	\"total\": 2\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Iranian\",\n" + 
+        		"	\"total\": 2\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Iranian\",\n" + 
+        		"	\"total\": 2\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Hawaiian\",\n" + 
+        		"	\"total\": 3\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Hawaiian\",\n" + 
+        		"	\"total\": 3\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Hawaiian\",\n" + 
+        		"	\"total\": 3\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Soups\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Soups\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Soups\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Soups\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    
+    @Test
+    public void subqueryJoinByTwoGetMaxOfGroup() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, r.borough as borough, brest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, borough, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by r.cuisine asc, r.borough asc limit 15");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(15, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Brooklyn\",\n" + 
+        		"	\"total\": 1\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"African\",\n" + 
+        		"	\"borough\": \"Bronx\",\n" + 
+        		"	\"total\": 31\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    
+    @Test
+    public void twoSubqueriesJoinByOneAndTwoGetMaxOfTwoGroups() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total, brest.totalrestaurats as local from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine inner join (select cuisine, borough, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by cuisine asc, r.borough asc limit 15");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(15, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Brooklyn\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 1\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Manhattan\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 4\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"Afghan\",\n" + 
+        		"	\"borough\": \"Queens\",\n" + 
+        		"	\"total\": 14,\n" + 
+        		"	\"local\": 9\n" + 
+        		"},{\n" + 
+        		"	\"cuisine\": \"African\",\n" + 
+        		"	\"borough\": \"Bronx\",\n" + 
+        		"	\"total\": 68,\n" + 
+        		"	\"local\": 31\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    
+    @Test
+    public void joinInSubqueryByOne() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select t.cuisine, max(t.total) as maxi from (select r.cuisine as cuisine, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc limit 15) as t group by t.cuisine");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\" : \"American \",\n" +
+        		"	\"maxi\" : 6183\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void joinInSubqueryAndJoinAgain() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter("select t.cuisine as cuisine, max(t.total) as maxi, count(*) as coxi from "+COLLECTION+" as r inner join (select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc, borough limit 15) as t on r.cuisine = t.cuisine and r.borough = t.borough group by t.cuisine");
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(1, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"maxi\": 6183,\n" + 
+        		"	\"coxi\": 6165,\n" + 
+        		"	\"cuisine\": \"American \"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    
 
     @Test
     public void countQuery() throws ParseException {

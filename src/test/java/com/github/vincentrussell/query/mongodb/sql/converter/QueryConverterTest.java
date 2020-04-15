@@ -1040,7 +1040,7 @@ public class QueryConverterTest {
     }
 
     @Test
-    public void writeSumGroupByWithSort() throws ParseException, IOException {
+    public void writeCountGroupByWithSort() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code,   \n" +
                 "COUNT (advance_amount)   \n" +
                 "FROM orders \n " +
@@ -1076,7 +1076,7 @@ public class QueryConverterTest {
     }
     
     @Test
-    public void writeSumGroupByWithSortWithAlias() throws ParseException, IOException {
+    public void writeCountGroupByWithSortWithAlias() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
                 "COUNT (advance_amount) as c  \n" +
                 "FROM orders \n " +
@@ -1112,7 +1112,151 @@ public class QueryConverterTest {
     }
     
     @Test
-    public void writeSumGroupByWithSortCountWithMultiAlias() throws ParseException, IOException {
+    public void writeSumGroupByWithSortWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
+                "SUM (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY SUM (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeMaxGroupByWithSortWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
+                "MAX (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY MAX (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"c\": {\n" +
+                "      \"$max\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeMinGroupByWithSortWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
+                "MIN (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY MIN (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"c\": {\n" +
+                "      \"$min\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeAvgGroupByWithSortWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
+                "AVG (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY AVG (advance_amount) DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"c\": {\n" +
+                "      \"$avg\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeCountGroupByWithSortCountWithMultiAlias() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code as cc,  \n" +
                 "COUNT (advance_amount) as c  \n" +
                 "FROM orders \n " +
@@ -1152,7 +1296,7 @@ public class QueryConverterTest {
     }
     
     @Test
-    public void writeSumGroupByWithSortFieldsWithMultiAlias() throws ParseException, IOException {
+    public void writeCountGroupByWithSortFieldsWithMultiAlias() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code as cc,  \n" +
                 "COUNT (advance_amount) as c  \n" +
                 "FROM orders \n " +
@@ -1193,7 +1337,7 @@ public class QueryConverterTest {
     }
     
     @Test
-    public void writeSumGroupByWithSortFieldsWithPartialAlias() throws ParseException, IOException {
+    public void writeCountGroupByWithSortFieldsWithPartialAlias() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code,  \n" +
                 "COUNT (advance_amount) as c  \n" +
                 "FROM orders \n " +
@@ -1235,7 +1379,7 @@ public class QueryConverterTest {
 
     
     @Test
-    public void writeSumGroupByWithSortFieldsWithPartialAliasNoCount() throws ParseException, IOException {
+    public void writeCountGroupByWithSortFieldsWithPartialAliasNoCount() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code,  \n" +
                 "COUNT (advance_amount) \n" +
                 "FROM orders \n " +
@@ -1422,9 +1566,7 @@ public class QueryConverterTest {
         		"    \"column2\": 1\n" + 
         		"  }\n" + 
         		"},{\n" + 
-        		"  \"$limit\": {\n" + 
-        		"    \"$numberLong\": \"3\"\n" +  
-        		"  }\n" + 
+        		"  \"$limit\": 3\n" +
         		"},{\n" + 
         		"  \"$project\": {\n" + 
         		"    \"_id\": 0,\n" + 
@@ -1451,9 +1593,7 @@ public class QueryConverterTest {
         		"    \"column2\": 1\n" + 
         		"  }\n" + 
         		"},{\n" + 
-        		"  \"$skip\": {\n" + 
-        		"    \"$numberLong\": \"3\"\n" +  
-        		"  }\n" + 
+        		"  \"$skip\": 3\n" +
         		"},{\n" + 
         		"  \"$project\": {\n" + 
         		"    \"_id\": 0,\n" + 
@@ -1480,13 +1620,9 @@ public class QueryConverterTest {
         		"    \"column2\": 1\n" + 
         		"  }\n" + 
         		"},{\n" + 
-        		"  \"$skip\": {\n" + 
-        		"    \"$numberLong\": \"3\"\n" +  
-        		"  }\n" + 
+        		"  \"$skip\": 3\n" +
         		"},{\n" + 
-        		"  \"$limit\": {\n" + 
-        		"    \"$numberLong\": \"4\"\n" +  
-        		"  }\n" + 
+        		"  \"$limit\": 4\n" + 
         		"},{\n" + 
         		"  \"$project\": {\n" + 
         		"    \"_id\": 0,\n" + 
@@ -1551,13 +1687,9 @@ public class QueryConverterTest {
         		"    \"column2\": 1\n" + 
         		"  }\n" + 
         		"},{\n" + 
-        		"  \"$skip\": {\n" + 
-        		"    \"$numberLong\": \"3\"\n" +  
-        		"  }\n" + 
+        		"  \"$skip\": 3\n" +
         		"},{\n" + 
-        		"  \"$limit\": {\n" + 
-        		"    \"$numberLong\": \"4\"\n" +  
-        		"  }\n" + 
+        		"  \"$limit\": 4\n" +
         		"},{\n" + 
         		"  \"$project\": {\n" + 
         		"    \"_id\": 0,\n" + 
@@ -1584,13 +1716,9 @@ public class QueryConverterTest {
         		"    \"sub2.column2\": 1\n" + 
         		"  }\n" + 
         		"},{\n" + 
-        		"  \"$skip\": {\n" + 
-        		"    \"$numberLong\": \"3\"\n" +  
-        		"  }\n" + 
+        		"  \"$skip\": 3\n" +
         		"},{\n" + 
-        		"  \"$limit\": {\n" + 
-        		"    \"$numberLong\": \"4\"\n" +  
-        		"  }\n" + 
+        		"  \"$limit\": 4\n" + 
         		"},{\n" + 
         		"  \"$project\": {\n" + 
         		"    \"_id\": 0,\n" + 
