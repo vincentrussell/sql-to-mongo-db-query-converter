@@ -398,7 +398,89 @@ public class QueryConverterIT {
         		"	\"c\" : \"African\"\n" + 
         		"}]",toJson(results),false);
     }
+    
+    @Test
+    public void selectOrderByAliasOneInAliasQuery() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by b asc,cuisine asc limit 6");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"}]",toJson(results),false);
+    }
 
+    
+    @Test
+    public void selectOrderByAliasBothInAliasQuery() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,c asc limit 6");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void selectOrderByAliasTwoInAliasQuery() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by b asc,c asc limit 6");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"},{\n" + 
+        		"	\"b\" : \"Bronx\",\n" + 
+        		"	\"c\" : \"African\"\n" + 
+        		"}]",toJson(results),false);
+    }
+    
     @Test
     public void countGroupByQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough");
@@ -455,9 +537,37 @@ public class QueryConverterIT {
     }
     
     @Test
-    public void countGroupBySortByCountAliasMixedQuery() throws ParseException, IOException, JSONException {
+    public void countGroupBySortByCountMixedQuery() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
                 "ORDER BY count(borough) DESC;");
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(6, results.size());
+        JSONAssert.assertEquals("[{\n" +
+                "\t\"co\" : 10259,\n" +
+                "\t\"borough\" : \"Manhattan\"\n" +
+                "},{\n" +
+                "\t\"co\" : 6086,\n" +
+                "\t\"borough\" : \"Brooklyn\"\n" +
+                "},{\n" +
+                "\t\"co\" : 5656,\n" +
+                "\t\"borough\" : \"Queens\"\n" +
+                "},{\n" +
+                "\t\"co\" : 2338,\n" +
+                "\t\"borough\" : \"Bronx\"\n" +
+                "},{\n" +
+                "\t\"co\" : 969,\n" +
+                "\t\"borough\" : \"Staten Island\"\n" +
+                "},{\n" +
+                "\t\"co\" : 51,\n" +
+                "\t\"borough\" : \"Missing\"\n" +
+                "}]",toJson(results),false);
+    }
+    
+    @Test
+    public void countGroupBySortByCountAliasMixedQuery() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY co DESC;");
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());

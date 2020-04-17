@@ -494,5 +494,10 @@ public class SqlUtils {
 			j.setInner(true);
 		}
 	}
+	
+	public static boolean isAggregateExp(String field) {
+		String fieldForAgg = field.trim().toLowerCase();
+		return fieldForAgg.startsWith("sum(") || fieldForAgg.startsWith("avg(") || fieldForAgg.startsWith("min(") || fieldForAgg.startsWith("max(")  || fieldForAgg.startsWith("count(");
+	}
 
 }

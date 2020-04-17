@@ -1,5 +1,6 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.ExpressionHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.FromHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.SQLCommandInfoHolder;
@@ -244,7 +245,7 @@ public class QueryConverter {
         }
 
         if (sqlCommandInfoHolder.getOrderByElements()!=null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
-            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(preprocessOrderBy(sqlCommandInfoHolder.getOrderByElements(),sqlCommandInfoHolder.getFromHolder()),sqlCommandInfoHolder.getAliasHash(),sqlCommandInfoHolder.getGoupBys()));
+            mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(preprocessOrderBy(sqlCommandInfoHolder.getOrderByElements(),sqlCommandInfoHolder.getFromHolder()),sqlCommandInfoHolder.getAliasHolder(),sqlCommandInfoHolder.getGoupBys()));
         }
 
         if (sqlCommandInfoHolder.getWhereClause()!=null) {
@@ -310,7 +311,7 @@ public class QueryConverter {
     	return lgroupEraseAlias;
     }
 
-    private Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements, HashMap<String,String> aliasHash, List<String> groupBys) throws ParseException {
+    private Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements, AliasHolder aliasHolder, List<String> groupBys) throws ParseException {
         Document document = new Document();
         if (orderByElements==null && orderByElements.size()==0) {
             return document;
@@ -341,19 +342,26 @@ public class QueryConverter {
         for (OrderByElement orderByElement : orderByElements) {
             if (nonFunctionItems.contains(orderByElement)) {
             	String sortField = SqlUtils.getStringValue(orderByElement.getExpression());
+            	String projectField = aliasHolder.getFieldFromAliasOrField(sortField);
             	if(!groupBys.isEmpty()) {
-            		if(groupBys.size() > 1) {
-            			sortField = "_id." + sortField.replaceAll("\\.", "_");
+            		
+            		if(!SqlUtils.isAggregateExp(projectField)) {
+	            		if(groupBys.size() > 1) {
+	            			projectField = "_id." + projectField.replaceAll("\\.", "_");
+	            		}
+	            		else {
+	            			projectField = "_id";
+	            		}
             		}
             		else {
-            			sortField = "_id";
+            			projectField = sortField;
             		}
             	}
-                sortItems.put(sortField, orderByElement.isAsc() ? 1 : -1);
+                sortItems.put(projectField, orderByElement.isAsc() ? 1 : -1);
             } else {
                 Function function = (Function) orderByElement.getExpression();
                 String sortKey;
-                String alias = aliasHash.get(function.toString());
+                String alias = aliasHolder.getAliasFromFieldExp(function.toString());
                 if(alias!=null && !alias.equals(function.toString())) {
                 	sortKey = alias;
                 }
@@ -584,7 +592,7 @@ public class QueryConverter {
     }
     
     private boolean isAggregate(MongoDBQueryHolder mongoDBQueryHolder) {
-    	return !sqlCommandInfoHolder.getAliasHash().isEmpty() || sqlCommandInfoHolder.getGoupBys().size() > 0 || (sqlCommandInfoHolder.getJoins() != null && sqlCommandInfoHolder.getJoins().size() > 0) || (mongoDBQueryHolder.getPrevSteps() != null && !mongoDBQueryHolder.getPrevSteps().isEmpty());
+    	return !sqlCommandInfoHolder.getAliasHolder().isEmpty() || sqlCommandInfoHolder.getGoupBys().size() > 0 || (sqlCommandInfoHolder.getJoins() != null && sqlCommandInfoHolder.getJoins().size() > 0) || (mongoDBQueryHolder.getPrevSteps() != null && !mongoDBQueryHolder.getPrevSteps().isEmpty());
     }
 
     private String getDistinctFieldName(MongoDBQueryHolder mongoDBQueryHolder) {

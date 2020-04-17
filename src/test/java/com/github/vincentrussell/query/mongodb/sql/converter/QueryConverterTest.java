@@ -1148,6 +1148,42 @@ public class QueryConverterTest {
     }
     
     @Test
+    public void writeSumGroupByWithSortAliasWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
+                "SUM (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code\n" +
+                "ORDER BY c DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": \"$agent_code\",\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": \"$advance_amount\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"c\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
     public void writeMaxGroupByWithSortWithAlias() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac,   \n" +
                 "MAX (advance_amount) as c  \n" +
@@ -1303,6 +1339,47 @@ public class QueryConverterTest {
                 "WHERE agent_code LIKE 'AW_%'\n" +
                 "GROUP BY agent_code, city_code\n" +
                 "ORDER BY agent_code asc, city_code DESC;");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.orders.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"agent_code\": {\n" +
+                "      \"$regex\": \"^AW.{1}.*$\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {\n" + 
+                "      \"agent_code\": \"$agent_code\",\n" +
+                "      \"city_code\": \"$city_code\"\n" +
+                "    },\n" +
+                "    \"c\": {\n" +
+                "      \"$sum\": 1\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$sort\": {\n" +
+                "    \"_id.agent_code\": 1,\n" +
+                "    \"_id.city_code\": -1\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"ac\": \"$_id.agent_code\",\n" +
+                "    \"cc\": \"$_id.city_code\",\n" +
+                "    \"c\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeCountGroupByWithSortAliasFieldsWithMultiAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter("SELECT agent_code as ac, city_code as cc,  \n" +
+                "COUNT (advance_amount) as c  \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code, city_code\n" +
+                "ORDER BY ac asc, cc DESC;");
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.orders.aggregate([{\n" +

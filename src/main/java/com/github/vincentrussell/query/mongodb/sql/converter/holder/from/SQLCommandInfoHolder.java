@@ -2,7 +2,9 @@ package com.github.vincentrussell.query.mongodb.sql.converter.holder.from;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.SQLCommandType;
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
+import com.github.vincentrussell.query.mongodb.sql.converter.visitor.ExpVisitorEraseAliasTableBaseBuilder;
 
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
@@ -31,9 +33,9 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     private final List<Join> joins;
     private final List<String> groupBys;
     private final List<OrderByElement> orderByElements;
-    private final HashMap<String,String> aliasHash;
+    private final AliasHolder aliasHolder;
 
-    public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause, boolean isDistinct, boolean isCountAll, FromHolder from, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, HashMap<String,String> aliasHash) {
+    public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause, boolean isDistinct, boolean isCountAll, FromHolder from, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, AliasHolder aliasHolder) {
         this.sqlCommandType = sqlCommandType;
         this.whereClause = whereClause;
         this.isDistinct = isDistinct;
@@ -45,7 +47,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
         this.joins = joins;
         this.groupBys = groupBys;
         this.orderByElements = orderByElements;
-        this.aliasHash = aliasHash;
+        this.aliasHolder = aliasHolder;
     }
     
     @Override
@@ -105,8 +107,8 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
         return sqlCommandType;
     }
 
-    public HashMap<String,String> getAliasHash() {
-		return aliasHash;
+    public AliasHolder getAliasHolder() {
+		return aliasHolder;
 	}
 
 	public static class Builder {
@@ -123,7 +125,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
         private List<Join> joins = new ArrayList<>();
         private List<String> groupBys = new ArrayList<>();
         private List<OrderByElement> orderByElements1 = new ArrayList<>();
-        private HashMap<String,String> aliasHash;
+        private AliasHolder aliasHolder;
 
         private Builder(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping){
             this.defaultFieldType = defaultFieldType;
@@ -184,7 +186,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
             selectItems = plainSelect.getSelectItems();
             joins = plainSelect.getJoins();
             groupBys = SqlUtils.getGroupByColumnReferences(plainSelect);
-            aliasHash = generateHashAliasFromSelectItems(selectItems);
+            aliasHolder = generateHashAliasFromSelectItems(selectItems);
             SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
             return this;
         }
@@ -196,24 +198,30 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
             return this;
         }
         
-        private HashMap<String,String> generateHashAliasFromSelectItems(List<SelectItem> selectItems) {
-        	HashMap<String,String> aliasHashAux = new HashMap<String,String>();
+        private AliasHolder generateHashAliasFromSelectItems(List<SelectItem> selectItems) {
+        	HashMap<String,String> aliasFromFieldHash = new HashMap<String,String>();
+        	HashMap<String,String> fieldFromAliasHash = new HashMap<String,String>();
         	for(SelectItem sitem: selectItems) {
         		if(!(sitem instanceof AllColumns)) {
         			if(sitem instanceof SelectExpressionItem) {
 	        			SelectExpressionItem seitem = (SelectExpressionItem) sitem;
 	        			if(seitem.getAlias() != null) {
-			        		aliasHashAux.put( seitem.getExpression().toString(), seitem.getAlias().getName());
+		        			Expression selectExp = seitem.getExpression();
+		        			selectExp.accept(new ExpVisitorEraseAliasTableBaseBuilder(this.from.getBaseAliasTable()));
+		        			String expStr = selectExp.toString();
+		        			String aliasStr = seitem.getAlias().getName();
+	        				aliasFromFieldHash.put( expStr, aliasStr);
+	        				fieldFromAliasHash.put( aliasStr, expStr);
 	        			}
         			}
         		}
         	}
-        	return aliasHashAux;
+        	return new AliasHolder(aliasFromFieldHash, fieldFromAliasHash);
         }
 
         public SQLCommandInfoHolder build() {
             return new SQLCommandInfoHolder(sqlCommandType, whereClause,
-                    isDistinct, isCountAll, from, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHash);
+                    isDistinct, isCountAll, from, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHolder);
         }
 
         public static Builder create(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) {
