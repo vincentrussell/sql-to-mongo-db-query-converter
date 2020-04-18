@@ -38,8 +38,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -79,8 +77,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -133,8 +129,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -188,8 +182,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -272,8 +264,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -470,8 +460,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -522,8 +510,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -589,8 +575,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -764,8 +748,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 
@@ -848,8 +830,6 @@ public class QueryConverterJoinTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
-        		"  \"$match\": {}\n" + 
-        		"},{\n" + 
         		"  \"$lookup\": {\n" + 
         		"    \"from\": \"my_table2\",\n" + 
         		"    \"let\": {\n" + 

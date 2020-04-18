@@ -1,10 +1,13 @@
 package com.github.vincentrussell.query.mongodb.sql.converter.processor;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
+import com.github.vincentrussell.query.mongodb.sql.converter.MongoDBQueryHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
+import com.github.vincentrussell.query.mongodb.sql.converter.QueryConverter;
 import com.github.vincentrussell.query.mongodb.sql.converter.WhereCauseProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.ExpressionHolder;
-import com.github.vincentrussell.query.mongodb.sql.converter.holder.TablesHolder;
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.FromHolder;
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.SQLCommandInfoHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.ExpVisitorEraseAliasTableBaseBuilder;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.OnVisitorLetsBuilder;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.OnVisitorMatchLookupBuilder;
@@ -17,6 +20,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.JSqlParser;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.SubSelect;
 
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.bson.Document;
@@ -27,15 +31,15 @@ import java.util.List;
 
 public final class JoinProcessor {
 	
-	private static Document generateLetsFromON(TablesHolder tholder, Expression onExp, Table t) {
+	private static Document generateLetsFromON(FromHolder tholder, Expression onExp, String aliasTableName) {
 		Document onDocument = new Document();
-		onExp.accept(new OnVisitorLetsBuilder(onDocument, t.getAlias().getName(), tholder.getBaseAliasTable()));
+		onExp.accept(new OnVisitorLetsBuilder(onDocument, aliasTableName, tholder.getBaseAliasTable()));
 		return onDocument;
 	}
 	
-	private static Document generateMatchJoin(TablesHolder tholder, Expression onExp, Expression wherePartialExp, Table t) throws ParseException {
+	private static Document generateMatchJoin(FromHolder tholder, Expression onExp, Expression wherePartialExp, String joinTableAlias) throws ParseException {
 		Document matchJoinStep = new Document();
-		onExp.accept(new OnVisitorMatchLookupBuilder(t.getAlias().getName(),tholder.getBaseAliasTable()));
+		onExp.accept(new OnVisitorMatchLookupBuilder(joinTableAlias,tholder.getBaseAliasTable()));
 		WhereCauseProcessor whereCauseProcessor = new WhereCauseProcessor(FieldType.UNKNOWN,
 				Collections.<String, FieldType>emptyMap());
         
@@ -44,23 +48,23 @@ public final class JoinProcessor {
 		return matchJoinStep;
 	}
 	
-	private static List<Document> generateSubPipelineLookup(TablesHolder tholder, Expression onExp, Expression wherePartialExp, Table t) throws ParseException {
-		List<Document> ldoc = new LinkedList<Document>();
-		ldoc.add(generateMatchJoin(tholder, onExp, wherePartialExp, t));	
+	private static List<Document> generateSubPipelineLookup(FromHolder tholder, Expression onExp, Expression wherePartialExp, String aliasTableName, List<Document> subqueryDocs) throws ParseException {
+		List<Document> ldoc = subqueryDocs;
+		ldoc.add(generateMatchJoin(tholder, onExp, wherePartialExp, aliasTableName));	
 		return ldoc;
 	}
 
-	private static Document generateInternalLookup(TablesHolder tholder, Table t, Expression onExp, Expression wherePartialExp) throws ParseException {
+	private static Document generateInternalLookup(FromHolder tholder, String joinTableName, String joinTableAlias, Expression onExp, Expression wherePartialExp, List<Document> subqueryDocs) throws ParseException {
 		Document lookupInternal = new Document(); 
-		lookupInternal.put("from", t.getName());
-		lookupInternal.put("let", generateLetsFromON(tholder, onExp, t));
-		lookupInternal.put("pipeline", generateSubPipelineLookup(tholder, onExp, wherePartialExp, t));
-		lookupInternal.put("as", tholder.getAlias(t.getName()));
+		lookupInternal.put("from", joinTableName);
+		lookupInternal.put("let", generateLetsFromON(tholder, onExp, joinTableAlias));
+		lookupInternal.put("pipeline", generateSubPipelineLookup(tholder, onExp, wherePartialExp, joinTableAlias, subqueryDocs));
+		lookupInternal.put("as", joinTableAlias);
 		
 		return lookupInternal;
 	}
 	
-	private static Document generateLookupStep(TablesHolder tholder, Table table, Expression onExp, Expression mixedOnAndWhereExp) throws ParseException {
+	private static Document generateLookupStep(FromHolder tholder, String joinTableName, String joinTableAlias, Expression onExp, Expression mixedOnAndWhereExp, List<Document> subqueryDocs) throws ParseException {
 		/**
 		 * {
 		 * 	"$lookup":{
@@ -80,18 +84,18 @@ public final class JoinProcessor {
 		 * }
 		 */
 		Document lookup = new Document();
-		lookup.put("$lookup", generateInternalLookup(tholder, table, onExp, mixedOnAndWhereExp));
+		lookup.put("$lookup", generateInternalLookup(tholder, joinTableName, joinTableAlias, onExp, mixedOnAndWhereExp,subqueryDocs));
 		return lookup;
 	}
 	
-	private static Document generateUnwindInternal(TablesHolder tholder, Table t, boolean isLeft) {
+	private static Document generateUnwindInternal(FromHolder tholder, String joinTableAlias, boolean isLeft) {
 		Document internalUnwind = new Document();
-		internalUnwind.put("path", "$" + tholder.getAlias(t.getName()));
+		internalUnwind.put("path", "$" + joinTableAlias);
 		internalUnwind.put("preserveNullAndEmptyArrays", isLeft);
 		return internalUnwind;
 	}
 	
-	private static Document generateUnwindStep(TablesHolder tholder, Table t, boolean isLeft) throws ParseException {
+	private static Document generateUnwindStep(FromHolder tholder, String joinTableAlias, boolean isLeft) throws ParseException {
 		/**
 		 * {
 		 * 	"$unwind":{
@@ -101,7 +105,7 @@ public final class JoinProcessor {
 		 * }
 		 */
 		Document unwind = new Document();
-		unwind.put("$unwind", generateUnwindInternal(tholder, t, isLeft));
+		unwind.put("$unwind", generateUnwindInternal(tholder, joinTableAlias, isLeft));
 		return unwind;
 	}
 	
@@ -115,7 +119,7 @@ public final class JoinProcessor {
                 .parseExpression(new Document(), whereExpression, null);
 	}
 	
-	private static Document generateMatchAfterJoin(TablesHolder tholder, Expression whereExpression) throws ParseException {
+	private static Document generateMatchAfterJoin(FromHolder tholder, Expression whereExpression) throws ParseException {
 		/**
 		 * {
 		 * 	"$unwind":{
@@ -129,30 +133,42 @@ public final class JoinProcessor {
 		return match;
 	}
 	
-	public static List<Document> toPipelineSteps(TablesHolder tholder, List<Join> ljoins, Expression whereExpression) throws ParseException {
+	public static List<Document> toPipelineSteps(FromHolder tholder, List<Join> ljoins, Expression whereExpression) throws ParseException, net.sf.jsqlparser.parser.ParseException {
 		List<Document> ldoc = new LinkedList<Document>();
 		MutableBoolean haveOrExpression = new MutableBoolean();
 		for(Join j : ljoins) {
 			if(j.isInner() || j.isLeft()) {
-				if(j.getRightItem() instanceof Table) {
-					Table t = (Table)j.getRightItem();
-					ExpressionHolder whereExpHolder = new ExpressionHolder(null);
+				
+				if(j.getRightItem() instanceof Table || j.getRightItem() instanceof SubSelect) {
+					ExpressionHolder whereExpHolder;
+					String joinTableAlias = j.getRightItem().getAlias().getName();
+					String joinTableName = tholder.getSQLHolder(j.getRightItem()).getBaseTableName();
+					
+					whereExpHolder = new ExpressionHolder(null);
 					
 					if(whereExpression != null) {
 						haveOrExpression.setValue(false);
-						whereExpression.accept(new WhereVisitorMatchAndLookupPipelineMatchBuilder(t.getAlias().getName(), whereExpHolder, haveOrExpression));
+						whereExpression.accept(new WhereVisitorMatchAndLookupPipelineMatchBuilder(joinTableAlias, whereExpHolder, haveOrExpression));
 						if(!haveOrExpression.booleanValue() && whereExpHolder.getExpression() != null) {
-							whereExpHolder.getExpression().accept(new ExpVisitorEraseAliasTableBaseBuilder(t.getAlias().getName()));
+							whereExpHolder.getExpression().accept(new ExpVisitorEraseAliasTableBaseBuilder(joinTableAlias));
 						}
 						else {
 							whereExpHolder.setExpression(null);
 						}
 					}
-					ldoc.add(generateLookupStep(tholder,t,j.getOnExpression(),whereExpHolder.getExpression()));
-					ldoc.add(generateUnwindStep(tholder,t,j.isLeft()));
+					
+					List<Document> subqueryDocs = new LinkedList<>();
+					
+					if(j.getRightItem() instanceof SubSelect) {
+						QueryConverter qConverter = new QueryConverter();
+						subqueryDocs = qConverter.fromSQLCommandInfoHolderToAggregateSteps((SQLCommandInfoHolder)tholder.getSQLHolder(j.getRightItem()));
+					}
+					
+					ldoc.add(generateLookupStep(tholder,joinTableName,joinTableAlias,j.getOnExpression(),whereExpHolder.getExpression(),subqueryDocs));
+					ldoc.add(generateUnwindStep(tholder,joinTableAlias,j.isLeft()));
 				}
-				else {//Subselect...
-					throw new ParseException("Only join with table no subqueries");
+				else {
+					throw new ParseException("From join not supported");
 				}
 			}
 			else {
