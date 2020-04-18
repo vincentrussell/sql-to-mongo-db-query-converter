@@ -148,7 +148,7 @@ public class QueryConverterIT {
 
     @Test
     public void likeQuery() throws ParseException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select * from "+COLLECTION+" where address.street LIKE '%Street'");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from "+COLLECTION+" where address.street LIKE '%Street'").build();
         QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
         List<Document> documents = Lists.newArrayList(findIterable);
         assertEquals(7499, documents.size());
@@ -198,8 +198,8 @@ public class QueryConverterIT {
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
         try {
-            QueryConverter queryConverter = new QueryConverter("select _id from " + COLLECTION
-                + " where ObjectId('_id') = '54651022bffebc03098b4567'");
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select _id from " + COLLECTION
+                + " where ObjectId('_id') = '54651022bffebc03098b4567'").build();
             QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
             List<Document> documents = Lists.newArrayList(findIterable);
             assertEquals(1, documents.size());
@@ -216,8 +216,8 @@ public class QueryConverterIT {
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
         try {
-            QueryConverter queryConverter = new QueryConverter("select _id from " + COLLECTION
-                + " where ObjectId('_id') IN ('54651022bffebc03098b4567','54651022bffebc03098b4568')");
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select _id from " + COLLECTION
+                + " where ObjectId('_id') IN ('54651022bffebc03098b4567','54651022bffebc03098b4568')").build();
             QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
             List<Document> documents = Lists.newArrayList(findIterable);
             assertEquals(2, documents.size());
@@ -233,7 +233,8 @@ public class QueryConverterIT {
 
     @Test
     public void likeQueryWithProjection() throws ParseException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select address.building, address.coord from "+COLLECTION+" where address.street LIKE '%Street'");
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select address.building, address.coord from "+COLLECTION+" where address.street LIKE '%Street'").build();
         QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
         List<Document> documents = Lists.newArrayList(findIterable);
         assertEquals(7499, documents.size());
@@ -247,7 +248,8 @@ public class QueryConverterIT {
 
     @Test
     public void distinctQuery() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select distinct borough from "+COLLECTION+" where address.street LIKE '%Street'");
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select distinct borough from "+COLLECTION+" where address.street LIKE '%Street'").build();
         QueryResultIterator<String> distinctIterable = queryConverter.run(mongoDatabase);
         List<String> results = Lists.newArrayList(distinctIterable);
         assertEquals(5, results.size());
@@ -257,7 +259,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" limit 6");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, cuisine from "+COLLECTION+" limit 6").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -284,7 +286,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectQueryAlias() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" limit 6");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine as c from "+COLLECTION+" limit 6").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -311,7 +313,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectOrderByQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 10");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 10").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(10, results.size());
@@ -350,7 +352,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectOrderByQueryOffset() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 5 offset 5");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, cuisine from "+COLLECTION+" order by borough asc,cuisine desc limit 5 offset 5").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(5, results.size());
@@ -374,7 +376,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectOrderByAliasQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,cuisine asc limit 6");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,cuisine asc limit 6").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -401,7 +403,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectOrderByAliasOneInAliasQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by b asc,cuisine asc limit 6");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine as c from "+COLLECTION+" order by b asc,cuisine asc limit 6").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -429,7 +431,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectOrderByAliasBothInAliasQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,c asc limit 6");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine as c from "+COLLECTION+" order by borough asc,c asc limit 6").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -456,7 +458,7 @@ public class QueryConverterIT {
     
     @Test
     public void selectOrderByAliasTwoInAliasQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c from "+COLLECTION+" order by b asc,c asc limit 6");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine as c from "+COLLECTION+" order by b asc,c asc limit 6").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -483,7 +485,7 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupByQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, count(borough) from "+COLLECTION+" GROUP BY borough").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -510,8 +512,8 @@ public class QueryConverterIT {
 
     @Test
     public void countGroupBySortByCountQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough\n" +
-                "ORDER BY count(borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, count(borough) from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY count(borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -538,8 +540,8 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupBySortByCountMixedQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
-                "ORDER BY count(borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY count(borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -566,8 +568,8 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupBySortByCountAliasMixedQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
-                "ORDER BY co DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY co DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -594,8 +596,8 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupBySortByCountAliasAllQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough b, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
-                "ORDER BY count(borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough b, count(borough) as co from "+COLLECTION+" GROUP BY borough\n" +
+                "ORDER BY count(borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -622,8 +624,8 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupByNestedFieldSortByCountAliasAllQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 6\n" +
-                "ORDER BY count(borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 6\n" +
+                "ORDER BY count(borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -650,8 +652,8 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupByNestedFieldSortByCountAliasAllQueryOffset() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 3 offset 3\n" +
-                "ORDER BY count(borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select address.zipcode as az, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode asc limit 3 offset 3\n" +
+                "ORDER BY count(borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(3, results.size());
@@ -669,8 +671,8 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupByNestedFieldSortByCountQuery() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select address.zipcode, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode limit 6\n" +
-                "ORDER BY count(borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select address.zipcode, count(borough) as co from "+COLLECTION+" GROUP BY address.zipcode order by address.zipcode limit 6\n" +
+                "ORDER BY count(borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -709,7 +711,8 @@ public class QueryConverterIT {
 
     @Test
     public void countGroupByQueryLimit() throws ParseException, JSONException, IOException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough order by borough asc LIMIT 2");
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select borough, count(borough) from "+COLLECTION+" GROUP BY borough order by borough asc LIMIT 2").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(2, results.size());
@@ -720,7 +723,7 @@ public class QueryConverterIT {
     
     @Test
     public void countGroupByQueryLimitOffset() throws ParseException, JSONException, IOException {
-        QueryConverter queryConverter = new QueryConverter("select borough, count(borough) from "+COLLECTION+" GROUP BY borough order by borough asc LIMIT 1 OFFSET 1");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, count(borough) from "+COLLECTION+" GROUP BY borough order by borough asc LIMIT 1 OFFSET 1").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -731,7 +734,7 @@ public class QueryConverterIT {
     @Test
     public void countGroupByQueryMultipleColumns() throws ParseException, IOException,
         JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough, cuisine, count(*) from "+COLLECTION+" GROUP BY borough, cuisine");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough, cuisine, count(*) from "+COLLECTION+" GROUP BY borough, cuisine").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(365, results.size());
@@ -781,7 +784,7 @@ public class QueryConverterIT {
     @Test
     public void countGroupByQueryMultipleColumnsAliasMixed()
         throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(365, results.size());
@@ -831,7 +834,7 @@ public class QueryConverterIT {
     @Test
     public void countGroupByQueryMultipleColumnsAliasAll()
         throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select borough as b, cuisine as c, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select borough as b, cuisine as c, count(*) as co from "+COLLECTION+" GROUP BY borough, cuisine").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(365, results.size());
@@ -880,7 +883,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleTableAlias() throws ParseException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select c.address.building, c.address.coord from "+COLLECTION+" as c where c.address.street LIKE '%Street'");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.address.building, c.address.coord from "+COLLECTION+" as c where c.address.street LIKE '%Street'").build();
         QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
         List<Document> documents = Lists.newArrayList(findIterable);
         assertEquals(7499, documents.size());
@@ -894,8 +897,8 @@ public class QueryConverterIT {
     
     @Test
     public void simpleTableAliasGroup() throws ParseException, IOException, JSONException {
-        QueryConverter queryConverter = new QueryConverter("select c.address.zipcode, count(c.borough) as co from "+COLLECTION+" as c GROUP BY c.address.zipcode order by c.address.zipcode limit 6\n" +
-                "ORDER BY count(c.borough) DESC;");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.address.zipcode, count(c.borough) as co from "+COLLECTION+" as c GROUP BY c.address.zipcode order by c.address.zipcode limit 6\n" +
+                "ORDER BY count(c.borough) DESC;").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(6, results.size());
@@ -934,7 +937,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleInnerJoin() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select t1.Phone as Phonet1, t2.managerStaffId as managerStaffIdt2 from "+COLLECTION_CUSTOMERS+" as t1 inner join " + COLLECTION_STORES + " as t2 on t1.Country = t2.Country");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Phone as Phonet1, t2.managerStaffId as managerStaffIdt2 from "+COLLECTION_CUSTOMERS+" as t1 inner join " + COLLECTION_STORES + " as t2 on t1.Country = t2.Country").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
     	List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(5, results.size());
@@ -958,7 +961,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleInnerJoinByTwoFields() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select t1.Phone as Phonet1, t2.managerStaffId as managerStaffIdt2 from "+COLLECTION_CUSTOMERS+" as t1 inner join " + COLLECTION_STORES + " as t2 on t1.Country = t2.Country and t1.City = t2.City");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Phone as Phonet1, t2.managerStaffId as managerStaffIdt2 from "+COLLECTION_CUSTOMERS+" as t1 inner join " + COLLECTION_STORES + " as t2 on t1.Country = t2.Country and t1.City = t2.City").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
     	List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -970,7 +973,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubquery() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select * from(select borough, cuisine from "+COLLECTION+" limit 1)");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from(select borough, cuisine from "+COLLECTION+" limit 1)").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -982,7 +985,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAlias() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select * from(select borough, cuisine from "+COLLECTION+" order by restaurant_id asc limit 1) as c");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from(select borough, cuisine from "+COLLECTION+" order by restaurant_id asc limit 1) as c").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -994,7 +997,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAlias_Project() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.borough from(select borough, cuisine from "+COLLECTION+" order by restaurant_id asc limit 1) as c");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.borough from(select borough, cuisine from "+COLLECTION+" order by restaurant_id asc limit 1) as c").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1005,7 +1008,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAlias_ProjectLimit() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.borough from(select borough, cuisine from "+COLLECTION+" order by restaurant_id asc limit 2) as c limit 1");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.borough from(select borough, cuisine from "+COLLECTION+" order by restaurant_id asc limit 2) as c limit 1").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1016,7 +1019,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAlias_WhereProject() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.restaurant_id from(select borough, cuisine, restaurant_id from "+COLLECTION+" order by restaurant_id asc limit 6) as c where c.cuisine = 'Hamburgers'");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.restaurant_id from(select borough, cuisine, restaurant_id from "+COLLECTION+" order by restaurant_id asc limit 6) as c where c.cuisine = 'Hamburgers'").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1027,7 +1030,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAliasGroup_WhereProject() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.cuisine = 'Hamburgers' and c.borough ='Manhattan'");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.cuisine = 'Hamburgers' and c.borough ='Manhattan'").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1039,7 +1042,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAliasGroupWhere_WhereProject() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" where cuisine = 'Hamburgers' group by borough, cuisine) as c where c.borough ='Manhattan'");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" where cuisine = 'Hamburgers' group by borough, cuisine) as c where c.borough ='Manhattan'").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1051,7 +1054,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAliasGroup_WhereProjectGroup() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.cuisine = 'Italian' group by cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.cuisine = 'Italian' group by cuisine").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1063,7 +1066,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAliasGroupSort_WhereProjectGroup() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine order by count(*) asc, borough, cuisine limit 300) as c where c.c > 100 group by cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine order by count(*) asc, borough, cuisine limit 300) as c where c.c > 100 group by cuisine").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(3, results.size());
@@ -1081,7 +1084,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAliasGroup_WhereProjectGroupSort() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.c > 500 group by c.cuisine order by cuisine desc ");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine) as c where c.c > 500 group by c.cuisine order by cuisine desc ").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(4, results.size());
@@ -1102,7 +1105,7 @@ public class QueryConverterIT {
     
     @Test
     public void simpleSubqueryAliasGroupSort_WhereProjectGroupSort() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine order by count(*) desc, borough asc, cuisine desc limit 3) as c where c.c > 1000 group by cuisine order by cuisine asc");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from "+COLLECTION+" group by borough, cuisine order by count(*) desc, borough asc, cuisine desc limit 3) as c where c.c > 1000 group by cuisine order by cuisine asc").build();
         QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1115,7 +1118,7 @@ public class QueryConverterIT {
     
     @Test
     public void subqueryJoinByOneGetMaxOfGroup() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats asc, cuisine asc limit 15");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select r.cuisine as cuisine, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats asc, cuisine asc limit 15").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(15, results.size());
@@ -1170,7 +1173,7 @@ public class QueryConverterIT {
     
     @Test
     public void subqueryJoinByTwoGetMaxOfGroup() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, r.borough as borough, brest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, borough, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by r.cuisine asc, r.borough asc limit 15");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select r.cuisine as cuisine, r.borough as borough, brest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, borough, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by r.cuisine asc, r.borough asc limit 15").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(15, results.size());
@@ -1240,7 +1243,7 @@ public class QueryConverterIT {
     
     @Test
     public void twoSubqueriesJoinByOneAndTwoGetMaxOfTwoGroups() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total, brest.totalrestaurats as local from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine inner join (select cuisine, borough, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by cuisine asc, r.borough asc limit 15");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total, brest.totalrestaurats as local from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine inner join (select cuisine, borough, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by cuisine asc, r.borough asc limit 15").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(15, results.size());
@@ -1325,7 +1328,7 @@ public class QueryConverterIT {
     
     @Test
     public void joinInSubqueryByOne() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select t.cuisine, max(t.total) as maxi from (select r.cuisine as cuisine, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc limit 15) as t group by t.cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t.cuisine, max(t.total) as maxi from (select r.cuisine as cuisine, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc limit 15) as t group by t.cuisine").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1337,7 +1340,7 @@ public class QueryConverterIT {
     
     @Test
     public void joinInSubqueryAndJoinAgain() throws ParseException, JSONException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select t.cuisine as cuisine, max(t.total) as maxi, count(*) as coxi from "+COLLECTION+" as r inner join (select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc, borough limit 15) as t on r.cuisine = t.cuisine and r.borough = t.borough group by t.cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t.cuisine as cuisine, max(t.total) as maxi, count(*) as coxi from "+COLLECTION+" as r inner join (select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total from "+COLLECTION+" as r inner join (select cuisine, count(*) as totalrestaurats from "+COLLECTION+" group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc, borough limit 15) as t on r.cuisine = t.cuisine and r.borough = t.borough group by t.cuisine").build();
     	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
         List<Document> results = Lists.newArrayList(distinctIterable);
         assertEquals(1, results.size());
@@ -1352,7 +1355,7 @@ public class QueryConverterIT {
 
     @Test
     public void countQuery() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'");
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'").build();
         long count  = queryConverter.run(mongoDatabase);
         assertEquals(7499, count);
     }
@@ -1367,7 +1370,7 @@ public class QueryConverterIT {
             newCollection.insertOne(new Document("_id", "3").append("key", "value"));
             newCollection.insertOne(new Document("_id", "4").append("key2", "value2"));
             assertEquals(3, newCollection.count(new BsonDocument("key", new BsonString("value"))));
-            QueryConverter queryConverter = new QueryConverter("delete from " + collection + " where key = 'value'");
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from " + collection + " where key = 'value'").build();
             long deleteCount = queryConverter.run(mongoDatabase);
             assertEquals(3, deleteCount);
             assertEquals(1, newCollection.count());

@@ -2,33 +2,24 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 
 import org.bson.Document;
-
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class QueryConverterSubqueryTest {
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
 
-    @Before
-    public void before() {
-        System.getProperties().remove(QueryConverter.D_AGGREGATION_ALLOW_DISK_USE);
-        System.getProperties().remove(QueryConverter.D_AGGREGATION_BATCH_SIZE);
-    }
-    
     @Test
     public void writeSimpleSubquery() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select * from(select borough, cuisine from Restaurants limit 1)");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from(select borough, cuisine from Restaurants limit 1)").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -46,7 +37,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSimpleSubqueryAlias_ProjectLimit() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.borough from(select borough, cuisine from Restautants limit 2) as c limit 1");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.borough from(select borough, cuisine from Restautants limit 2) as c limit 1").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restautants.aggregate([{\n" + 
@@ -69,7 +60,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSimpleSubqueryAliasGroup_WhereProject() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine limit 6000) as c where c.cuisine = 'Hamburgers' and c.borough ='Manhattan'");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, c.c as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine limit 6000) as c where c.cuisine = 'Hamburgers' and c.borough ='Manhattan'").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -113,7 +104,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSimpleSubqueryAliasGroup_WhereProjectGroup() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine limit 3000) as c where c.cuisine = 'Italian' group by cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine limit 3000) as c where c.cuisine = 'Italian' group by cuisine").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -157,7 +148,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSimpleSubqueryAliasGroupSort_WhereProjectGroup() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine order by count(*) asc limit 30) as c where c.c > 100 group by cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine order by count(*) asc limit 30) as c where c.c > 100 group by cuisine").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -207,7 +198,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSimpleSubqueryAliasGroup_WhereProjectGroupSort() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine limit 3000) as c where c.c > 100 group by c.cuisine order by cuisine desc ");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine limit 3000) as c where c.c > 100 group by c.cuisine order by cuisine desc ").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -257,7 +248,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSimpleSubqueryAliasGroupSort_WhereProjectGroupSort() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine order by count(*) desc limit 3) as c where c.c > 1000 group by cuisine order by cuisine asc");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select c.cuisine, sum(c.c) as c  from(select borough, cuisine, count(*) as c from Restaurants group by borough, cuisine order by count(*) desc limit 3) as c where c.c > 1000 group by cuisine order by cuisine asc").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -312,7 +303,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSubqueryJoinByOneGetMaxOfGroup() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, trest.totalrestaurats as total from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats asc, cuisine asc limit 15");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select r.cuisine as cuisine, trest.totalrestaurats as total from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats asc, cuisine asc limit 15").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -374,7 +365,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeSubqueryJoinByTwoGetMaxOfGroup() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, r.borough as borough, brest.totalrestaurats as total from Restaurants as r inner join (select cuisine, borough, count(*) as totalrestaurats from Restaurants group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by r.cuisine asc, r.borough asc limit 15");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select r.cuisine as cuisine, r.borough as borough, brest.totalrestaurats as total from Restaurants as r inner join (select cuisine, borough, count(*) as totalrestaurats from Restaurants group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by r.cuisine asc, r.borough asc limit 15").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -454,7 +445,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeTwoSubqueriesJoinByOneAndTwoGetMaxOfTwoGroups() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total, brest.totalrestaurats as local from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine inner join (select cuisine, borough, count(*) as totalrestaurats from Restaurants group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by cuisine asc, r.borough asc limit 15");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total, brest.totalrestaurats as local from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine inner join (select cuisine, borough, count(*) as totalrestaurats from Restaurants group by cuisine, borough) as brest on r.cuisine = brest.cuisine and r.borough = brest.borough order by cuisine asc, r.borough asc limit 15").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -575,7 +566,7 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeJoinInSubqueryByOne() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select t.cuisine, max(t.total) as maxi from (select r.cuisine as cuisine, trest.totalrestaurats as total from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc limit 15) as t group by t.cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t.cuisine, max(t.total) as maxi from (select r.cuisine as cuisine, trest.totalrestaurats as total from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc limit 15) as t group by t.cuisine").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 
@@ -649,7 +640,8 @@ public class QueryConverterSubqueryTest {
     
     @Test
     public void writeJoinInSubqueryAndJoinAgain() throws ParseException, IOException {
-    	QueryConverter queryConverter = new QueryConverter("select t.cuisine as cuisine, max(t.total) as maxi, count(*) as coxi from Restaurants as r inner join (select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc, borough limit 15) as t on r.cuisine = t.cuisine and r.borough = t.borough group by t.cuisine");
+    	QueryConverter queryConverter = new QueryConverter.Builder()
+				.sqlString("select t.cuisine as cuisine, max(t.total) as maxi, count(*) as coxi from Restaurants as r inner join (select r.cuisine as cuisine, r.borough as borough, trest.totalrestaurats as total from Restaurants as r inner join (select cuisine, count(*) as totalrestaurats from Restaurants group by cuisine) as trest on r.cuisine = trest.cuisine order by trest.totalrestaurats desc, cuisine asc, borough limit 15) as t on r.cuisine = t.cuisine and r.borough = t.borough group by t.cuisine").build();
     	ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.Restaurants.aggregate([{\n" + 

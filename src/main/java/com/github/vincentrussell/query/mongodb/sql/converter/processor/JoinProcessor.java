@@ -133,7 +133,7 @@ public final class JoinProcessor {
 		return match;
 	}
 	
-	public static List<Document> toPipelineSteps(FromHolder tholder, List<Join> ljoins, Expression whereExpression) throws ParseException, net.sf.jsqlparser.parser.ParseException {
+	public static List<Document> toPipelineSteps(QueryConverter queryConverter, FromHolder tholder, List<Join> ljoins, Expression whereExpression) throws ParseException, net.sf.jsqlparser.parser.ParseException {
 		List<Document> ldoc = new LinkedList<Document>();
 		MutableBoolean haveOrExpression = new MutableBoolean();
 		for(Join j : ljoins) {
@@ -160,8 +160,7 @@ public final class JoinProcessor {
 					List<Document> subqueryDocs = new LinkedList<>();
 					
 					if(j.getRightItem() instanceof SubSelect) {
-						QueryConverter qConverter = new QueryConverter();
-						subqueryDocs = qConverter.fromSQLCommandInfoHolderToAggregateSteps((SQLCommandInfoHolder)tholder.getSQLHolder(j.getRightItem()));
+						subqueryDocs = queryConverter.fromSQLCommandInfoHolderToAggregateSteps((SQLCommandInfoHolder)tholder.getSQLHolder(j.getRightItem()));
 					}
 					
 					ldoc.add(generateLookupStep(tholder,joinTableName,joinTableAlias,j.getOnExpression(),whereExpHolder.getExpression(),subqueryDocs));

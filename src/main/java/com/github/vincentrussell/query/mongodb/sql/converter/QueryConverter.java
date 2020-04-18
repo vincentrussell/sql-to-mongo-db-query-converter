@@ -40,18 +40,15 @@ import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
 import java.io.*;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.apache.commons.lang.Validate.notNull;
 
 public class QueryConverter {
-
-    public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
-    public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
     private final CCJSqlParser jSqlParser;
+    private final Integer aggregationBatchSize;
+    private final Boolean aggregationAllowDiskUse;
     private MongoDBQueryHolder mongoDBQueryHolder;
 
     private final Map<String,FieldType> fieldNameToFieldTypeMapping;
@@ -65,12 +62,15 @@ public class QueryConverter {
      * 
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter() throws ParseException {
     	fieldNameToFieldTypeMapping = Collections.<String, FieldType>emptyMap();
     	defaultFieldType = FieldType.UNKNOWN;
     	sqlCommandInfoHolder = null;
     	mongoDBQueryHolder = null;
         jSqlParser = null;
+        aggregationBatchSize = null;
+        aggregationAllowDiskUse = null;
     }
 
     /**
@@ -78,6 +78,7 @@ public class QueryConverter {
      * @param sql the sql statement
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter(String sql) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
     }
@@ -88,6 +89,7 @@ public class QueryConverter {
      * @param fieldNameToFieldTypeMapping mapping for each field
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter(String sql, Map<String,FieldType> fieldNameToFieldTypeMapping) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)),fieldNameToFieldTypeMapping, FieldType.UNKNOWN);
     }
@@ -98,6 +100,7 @@ public class QueryConverter {
      * @param fieldType the default {@link FieldType} to be used
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter(String sql, FieldType fieldType) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), Collections.<String, FieldType>emptyMap(), fieldType);
     }
@@ -109,6 +112,7 @@ public class QueryConverter {
      * @param defaultFieldType defaultFieldType the default {@link FieldType} to be used
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter(String sql, Map<String, FieldType> fieldNameToFieldTypeMapping, FieldType defaultFieldType) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), fieldNameToFieldTypeMapping, defaultFieldType);
     }
@@ -118,6 +122,7 @@ public class QueryConverter {
      * @param inputStream an input stream that has the sql statement in it
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter(InputStream inputStream) throws ParseException {
         this(inputStream,Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
     }
@@ -129,9 +134,28 @@ public class QueryConverter {
      * @param defaultFieldType the default {@link FieldType} to be used
      * @throws ParseException when the sql query cannot be parsed
      */
+    @Deprecated
     public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping,
                           FieldType defaultFieldType) throws ParseException {
+        this(inputStream, fieldNameToFieldTypeMapping, defaultFieldType, false, -1);
+    }
+
+    /**
+     * Create a QueryConverter with an InputStream
+     * @param inputStream an input stream that has the sql statement in it
+     * @param fieldNameToFieldTypeMapping mapping for each field
+     * @param defaultFieldType the default {@link FieldType} to be used
+     * @param aggregationAllowDiskUse set whether or not disk use is allowed during aggregation
+     * @param aggregationBatchSize set the batch size for aggregation
+     * @throws ParseException when the sql query cannot be parsed
+     */
+    @Deprecated
+    public QueryConverter(InputStream inputStream, Map<String, FieldType> fieldNameToFieldTypeMapping,
+                          FieldType defaultFieldType, Boolean aggregationAllowDiskUse,
+                          Integer aggregationBatchSize) throws ParseException {
         try {
+            this.aggregationAllowDiskUse = aggregationAllowDiskUse;
+            this.aggregationBatchSize = aggregationBatchSize;
             this.jSqlParser = new CCJSqlParser(new StreamProvider(inputStream, Charsets.UTF_8.name()));
             this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
             this.sqlCommandInfoHolder = SQLCommandInfoHolder.Builder
@@ -143,8 +167,8 @@ public class QueryConverter {
 
             net.sf.jsqlparser.parser.Token nextToken = jSqlParser.getNextToken();
             SqlUtils.isTrue(
-                isEmpty(nextToken.image) || ";".equals(nextToken.image),
-                 "unable to parse complete sql string. one reason for this is the use of double equals (==)");
+                    isEmpty(nextToken.image) || ";".equals(nextToken.image),
+                    "unable to parse complete sql string. one reason for this is the use of double equals (==)");
 
             this.mongoDBQueryHolder = getMongoQueryInternal(sqlCommandInfoHolder);
             validate();
@@ -238,7 +262,10 @@ public class QueryConverter {
         }
         
         if (sqlCommandInfoHolder.getJoins() != null) {
-        	mongoDBQueryHolder.setJoinPipeline(JoinProcessor.toPipelineSteps(sqlCommandInfoHolder.getFromHolder(), sqlCommandInfoHolder.getJoins(), sqlCommandInfoHolder.getWhereClause()));
+        	mongoDBQueryHolder.setJoinPipeline(
+        	        JoinProcessor.toPipelineSteps(this,
+                            sqlCommandInfoHolder.getFromHolder(),
+                            sqlCommandInfoHolder.getJoins(), sqlCommandInfoHolder.getWhereClause()));
         }
 
         if (sqlCommandInfoHolder.getOrderByElements()!=null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
@@ -558,12 +585,12 @@ public class QueryConverter {
             IOUtils.write("]", outputStream);
 
             Document options = new Document();
-            if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)!=null) {
-                options.put("allowDiskUse",Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+            if (aggregationAllowDiskUse != null) {
+                options.put("allowDiskUse", aggregationAllowDiskUse.booleanValue());
             }
 
-            if (System.getProperty(D_AGGREGATION_BATCH_SIZE)!=null) {
-                options.put("cursor",new Document("batchSize",Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE))));
+            if (aggregationBatchSize != null) {
+                options.put("cursor",new Document("batchSize", aggregationBatchSize.intValue()));
             }
 
             if (options.size() > 0) {
@@ -640,12 +667,12 @@ public class QueryConverter {
                 
                 AggregateIterable aggregate = mongoCollection.aggregate(generateAggSteps(mongoDBQueryHolder,sqlCommandInfoHolder));
 
-                if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {
-                    aggregate.allowDiskUse(Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+                if (aggregationAllowDiskUse != null) {
+                    aggregate.allowDiskUse(aggregationAllowDiskUse.booleanValue());
                 }
 
-                if (System.getProperty(D_AGGREGATION_BATCH_SIZE) != null) {
-                    aggregate.batchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
+                if (aggregationBatchSize != null) {
+                    aggregate.batchSize(aggregationBatchSize.intValue());
                 }
 
                 return (T) new QueryResultIterator<>(aggregate);
@@ -735,6 +762,59 @@ public class QueryConverter {
         JsonParser jp = new JsonParser();
         JsonElement je = jp.parse(json);
         return gson.toJson(je);
+    }
+
+    /**
+     * Builder for {@link QueryConverter}
+     */
+    public static class Builder {
+
+        private Boolean aggregationAllowDiskUse = null;
+        private Integer aggregationBatchSize = null;
+        private InputStream inputStream;
+        private Map<String,FieldType> fieldNameToFieldTypeMapping = new HashMap<>();
+        private FieldType defaultFieldType = FieldType.UNKNOWN;
+
+        public Builder sqlInputStream(final InputStream inputStream) {
+            notNull(inputStream);
+            this.inputStream = inputStream;
+            return this;
+        }
+
+        public Builder sqlString(final String sql) {
+            notNull(sql);
+            this.inputStream = new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8));
+            return this;
+        }
+
+        public Builder fieldNameToFieldTypeMapping(final Map<String, FieldType> fieldNameToFieldTypeMapping) {
+            notNull(fieldNameToFieldTypeMapping);
+            this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
+            return this;
+        }
+
+        public Builder defaultFieldType(final FieldType defaultFieldType) {
+            notNull(defaultFieldType);
+            this.defaultFieldType = defaultFieldType;
+            return this;
+        }
+
+        public Builder aggregationAllowDiskUse(final Boolean aggregationAllowDiskUse) {
+            notNull(aggregationAllowDiskUse);
+            this.aggregationAllowDiskUse = aggregationAllowDiskUse;
+            return this;
+        }
+
+        public Builder aggregationBatchSize(final Integer aggregationBatchSize) {
+            notNull(aggregationBatchSize);
+            this.aggregationBatchSize = aggregationBatchSize;
+            return this;
+        }
+
+        public QueryConverter build() throws ParseException {
+            return new QueryConverter(inputStream, fieldNameToFieldTypeMapping,
+                    defaultFieldType, aggregationAllowDiskUse, aggregationBatchSize);
+        }
     }
 
 
