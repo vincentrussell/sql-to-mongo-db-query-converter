@@ -26,7 +26,7 @@ public class MongoDBQueryHolder {
     /**
      * Pojo to hold the MongoDB data
      * @param collection the collection that the query will be run on.
-     * @param sqlCommandType
+     * @param sqlCommandType the command type: like select or delete
      */
     public MongoDBQueryHolder(String collection, SQLCommandType sqlCommandType){
         notNull(collection, "collection is null");

@@ -100,7 +100,7 @@ public class QueryConverter {
      * Create a QueryConverter with a string
      * @param sql sql string
      * @param fieldType the default {@link FieldType} to be used
-     * @throws ParseException
+     * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql, FieldType fieldType) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), Collections.<String, FieldType>emptyMap(), fieldType);
@@ -111,7 +111,7 @@ public class QueryConverter {
      * @param sql sql string
      * @param fieldNameToFieldTypeMapping mapping for each field
      * @param defaultFieldType defaultFieldType the default {@link FieldType} to be used
-     * @throws ParseException
+     * @throws ParseException when the sql query cannot be parsed
      */
     public QueryConverter(String sql, Map<String, FieldType> fieldNameToFieldTypeMapping, FieldType defaultFieldType) throws ParseException {
         this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), fieldNameToFieldTypeMapping, defaultFieldType);
@@ -605,8 +605,7 @@ public class QueryConverter {
      * @return When query does a find will return QueryResultIterator&lt;{@link org.bson.Document}&gt;
      *           When query does a count will return a Long
      *           When query does a distinct will return QueryResultIterator&lt;{@link java.lang.String}&gt;
-     * @throws ParseException 
-     * @throws net.sf.jsqlparser.parser.ParseException 
+     * @throws ParseException when the sql query cannot be parsed
      */
     @SuppressWarnings("unchecked")
     public <T> T run(MongoDatabase mongoDatabase) throws ParseException {

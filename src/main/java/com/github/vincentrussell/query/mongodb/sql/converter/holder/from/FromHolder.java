@@ -100,21 +100,14 @@ public class FromHolder {
     public String getBaseAliasTable() {
     	return baseAlias;
     }
-    
-    /**
-     * Return null if not alias, otherwise original table  
-     * **/
-    
-    /*public String isAlias(String posibleAlias) {
-    	return (aliasToTable.containsKey(posibleAlias)?aliasToTable.get(posibleAlias):null);
-    }*/
-    
-    /**
-     * Return alias of table, otherwise null  
-     * **/
-    
-    public String getAlias(String table) {
-    	return (tableToAlias.containsKey(table)?tableToAlias.get(table):null);
+
+	/**
+	 * Return alias of table, otherwise null
+	 * @param table the table that you want the alias for
+	 * @return the alias
+	 */
+	public String getAlias(final String table) {
+    	return tableToAlias.containsKey(table)? tableToAlias.get(table) : null;
     }
     
 }
