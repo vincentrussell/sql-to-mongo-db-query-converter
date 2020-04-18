@@ -5,9 +5,9 @@ import com.github.vincentrussell.query.mongodb.sql.converter.holder.ExpressionHo
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.FromHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.SQLCommandInfoHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.processor.JoinProcessor;
+import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.ExpVisitorEraseAliasTableBaseBuilder;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.WhereVisitorMatchAndLookupPipelineMatchBuilder;
-import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
@@ -18,35 +18,29 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
-
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.schema.Table;
-import net.sf.jsqlparser.statement.select.*;
+import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.SelectExpressionItem;
+import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SubSelect;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.StringWriter;
-import java.util.ArrayList;
+import java.io.*;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +51,7 @@ public class QueryConverter {
 
     public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
+    private final CCJSqlParser jSqlParser;
     private MongoDBQueryHolder mongoDBQueryHolder;
 
     private final Map<String,FieldType> fieldNameToFieldTypeMapping;
@@ -75,6 +70,7 @@ public class QueryConverter {
     	defaultFieldType = FieldType.UNKNOWN;
     	sqlCommandInfoHolder = null;
     	mongoDBQueryHolder = null;
+        jSqlParser = null;
     }
 
     /**
@@ -136,8 +132,7 @@ public class QueryConverter {
     public QueryConverter(InputStream inputStream, Map<String,FieldType> fieldNameToFieldTypeMapping,
                           FieldType defaultFieldType) throws ParseException {
         try {
-            StreamProvider streamProvider = new StreamProvider(inputStream, Charsets.UTF_8.name());
-            CCJSqlParser jSqlParser = new CCJSqlParser(streamProvider);
+            this.jSqlParser = new CCJSqlParser(new StreamProvider(inputStream, Charsets.UTF_8.name()));
             this.defaultFieldType = defaultFieldType != null ? defaultFieldType : FieldType.UNKNOWN;
             this.sqlCommandInfoHolder = SQLCommandInfoHolder.Builder
                     .create(defaultFieldType, fieldNameToFieldTypeMapping)
@@ -147,9 +142,11 @@ public class QueryConverter {
                     ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
 
             net.sf.jsqlparser.parser.Token nextToken = jSqlParser.getNextToken();
-            SqlUtils.isTrue(isEmpty(nextToken.image) || ";".equals(nextToken.image), "unable to parse complete sql string. one reason for this is the use of double equals (==)");
+            SqlUtils.isTrue(
+                isEmpty(nextToken.image) || ";".equals(nextToken.image),
+                 "unable to parse complete sql string. one reason for this is the use of double equals (==)");
 
-            mongoDBQueryHolder = getMongoQueryInternal(sqlCommandInfoHolder);
+            this.mongoDBQueryHolder = getMongoQueryInternal(sqlCommandInfoHolder);
             validate();
         } catch (IOException e) {
             throw new ParseException(e.getMessage());
@@ -262,8 +259,13 @@ public class QueryConverter {
         
         return mongoDBQueryHolder;
     }
-    
-    //Erase table base alias and get where part of main table when joins
+
+    /**
+     * Erase table base alias and get where part of main table when joins
+     * @param exp
+     * @param tholder
+     * @return
+     */
     private Expression preprocessWhere(Expression exp, FromHolder tholder){
     	if(sqlCommandInfoHolder.getJoins()!=null && !sqlCommandInfoHolder.getJoins().isEmpty()) {
     		ExpressionHolder partialWhereExpHolder = new ExpressionHolder(null);
@@ -279,24 +281,39 @@ public class QueryConverter {
     	}
     	return exp;
     }
-    
-    //Erase table base alias
+
+    /**
+     * Erase table base alias
+     * @param lord
+     * @param tholder
+     * @return
+     */
     private List<OrderByElement> preprocessOrderBy(List<OrderByElement> lord, FromHolder tholder){
     	for(OrderByElement ord : lord) {
     		ord.getExpression().accept(new ExpVisitorEraseAliasTableBaseBuilder(tholder.getBaseAliasTable()));
     	}
     	return lord;
     }
-    
-    //Erase table base alias
+
+    /**
+     * Erase table base alias
+     * @param lsel
+     * @param tholder
+     * @return
+     */
     private List<SelectItem> preprocessSelect(List<SelectItem> lsel, FromHolder tholder){
     	for(SelectItem sel : lsel) {
     		sel.accept(new ExpVisitorEraseAliasTableBaseBuilder(tholder.getBaseAliasTable()));
     	}
     	return lsel;
     }
-    
-  //Erase table base alias
+
+    /**
+     * Erase table base alias
+     * @param lgroup
+     * @param tholder
+     * @return
+     */
     private List<String> preprocessGroupBy(List<String> lgroup, FromHolder tholder){
     	List<String> lgroupEraseAlias = new LinkedList<String>();
     	for(String group: lgroup) {
