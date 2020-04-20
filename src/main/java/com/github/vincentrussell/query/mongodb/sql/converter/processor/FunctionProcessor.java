@@ -11,7 +11,8 @@ public final class FunctionProcessor {
     static
     { 
     	functionMapper = new HashMap<>(); 
-    	functionMapper.put("OID", "toObjectId"); 
+    	functionMapper.put("OID", "toObjectId");
+    	functionMapper.put("TIMESTAMP", "date"); 
     }
 	
 	

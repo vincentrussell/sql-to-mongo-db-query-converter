@@ -167,7 +167,7 @@ public class Main {
                     }
 
 
-                    QueryConverter queryConverter = new QueryConverter(inputStream);
+                    QueryConverter queryConverter = new QueryConverter.Builder().sqlInputStream(inputStream).build();
 
                     inputStream.close();
 

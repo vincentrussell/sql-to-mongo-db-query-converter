@@ -21,11 +21,12 @@ public class MongoDBQueryHolder {
     private List<String> groupBys = new ArrayList<>();
     private long limit = -1;
     private long offset = -1;
+    private List<Document> prevSteps;//Aggregate previous steps
 
     /**
      * Pojo to hold the MongoDB data
      * @param collection the collection that the query will be run on.
-     * @param sqlCommandType
+     * @param sqlCommandType the command type: like select or delete
      */
     public MongoDBQueryHolder(String collection, SQLCommandType sqlCommandType){
         notNull(collection, "collection is null");
@@ -134,6 +135,14 @@ public class MongoDBQueryHolder {
 
 	public void setJoinPipeline(List<Document> joinPipeline) {
 		this.joinPipeline = joinPipeline;
+	}
+
+	public List<Document> getPrevSteps() {
+		return prevSteps;
+	}
+
+	public void setPrevSteps(List<Document> prevSteps) {
+		this.prevSteps = prevSteps;
 	}
     
 }

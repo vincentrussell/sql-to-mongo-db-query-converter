@@ -107,6 +107,13 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
 		this.haveOrExpression.setValue(true);
     }
 	
+	@Override
+    public void visit(IsNullExpression expr) {
+        if(this.isBaseAliasOrValue) {
+			this.setOrAndExpression(outputMatch,expr);
+		}
+    }
+	
 	//Default  with expresion copy
     protected void visitBinaryExpression(BinaryExpression expr) {
     	this.isBaseAliasOrValue = true;

@@ -20,7 +20,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 ## Running it from Java
 
 ```
-QueryConverter queryConverter = new QueryConverter("select column1 from my_table where value NOT IN ("theValue1","theValue2","theValue3")");
+QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1 from my_table where value NOT IN ("theValue1","theValue2","theValue3")").build();
 MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
 String collection = mongoDBQueryHolder.getCollection();
 Document query = mongoDBQueryHolder.getQuery();
