@@ -566,7 +566,7 @@ public class QueryConverter {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".distinct(", outputStream);
             IOUtils.write("\""+getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
             IOUtils.write(" , ", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(relaxed)), outputStream);
         } else if (isAggregate(mongoDBQueryHolder)) {
         	IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".aggregate(", outputStream);
             IOUtils.write("[", outputStream);
@@ -590,21 +590,26 @@ public class QueryConverter {
 
             if (options.size() > 0) {
                 IOUtils.write(",",outputStream);
-                IOUtils.write(prettyPrintJson(options.toJson()),outputStream);
+                IOUtils.write(prettyPrintJson(options.toJson(relaxed)),outputStream);
             }
 
 
 
         } else if (sqlCommandInfoHolder.isCountAll()) {
             IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(relaxed)), outputStream);
         } else {
-        	isFindQuery = true;
-            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".find(", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson()), outputStream);
-            if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0) {
+        	if(sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
+	        	isFindQuery = true;
+	            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".find(", outputStream);
+        	}
+        	else if(sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.DELETE){
+        		IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".remove(", outputStream);
+        	}
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(relaxed)), outputStream);
+            if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0 && sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
                 IOUtils.write(" , ", outputStream);
-                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson()), outputStream);
+                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson(relaxed)), outputStream);
             }
         }
         IOUtils.write(")", outputStream);
@@ -612,7 +617,7 @@ public class QueryConverter {
         if(isFindQuery) {
         	if (mongoDBQueryHolder.getSort()!=null && mongoDBQueryHolder.getSort().size() > 0) {
                 IOUtils.write(".sort(", outputStream);
-                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson()), outputStream);
+                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson(relaxed)), outputStream);
                 IOUtils.write(")", outputStream);
             }
             
@@ -631,7 +636,7 @@ public class QueryConverter {
     }
     
     private boolean isAggregate(MongoDBQueryHolder mongoDBQueryHolder) {
-    	return !sqlCommandInfoHolder.getAliasHolder().isEmpty() || sqlCommandInfoHolder.getGoupBys().size() > 0 || (sqlCommandInfoHolder.getJoins() != null && sqlCommandInfoHolder.getJoins().size() > 0) || (mongoDBQueryHolder.getPrevSteps() != null && !mongoDBQueryHolder.getPrevSteps().isEmpty());
+    	return (sqlCommandInfoHolder.getAliasHolder()!=null && !sqlCommandInfoHolder.getAliasHolder().isEmpty()) || sqlCommandInfoHolder.getGoupBys().size() > 0 || (sqlCommandInfoHolder.getJoins() != null && sqlCommandInfoHolder.getJoins().size() > 0) || (mongoDBQueryHolder.getPrevSteps() != null && !mongoDBQueryHolder.getPrevSteps().isEmpty());
     }
 
     private String getDistinctFieldName(MongoDBQueryHolder mongoDBQueryHolder) {

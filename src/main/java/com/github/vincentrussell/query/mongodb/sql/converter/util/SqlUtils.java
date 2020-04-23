@@ -532,5 +532,9 @@ public class SqlUtils {
         }
         return parameters.size() > 0 ? Iterables.get(parameters, 0) : null;
 	}
+	
+	public static Object nonFunctionToNode(Expression exp) throws ParseException {
+		return (SqlUtils.isColumn(exp)&&!exp.toString().startsWith("$"))?"$" + exp:getValue(exp,null,FieldType.UNKNOWN, null);
+	}
 
 }

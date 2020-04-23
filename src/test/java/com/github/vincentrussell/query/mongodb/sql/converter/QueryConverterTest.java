@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
@@ -520,6 +521,32 @@ public class QueryConverterTest {
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(documentValuesArray("$and", document("_id", new ObjectId("53102b43bf1044ed8b0ba36b")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
+    
+    @Test
+    public void OIDInsideEqualTest() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id = OID('5e97ae59c63d1b3ff8e07c74')").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$eq\": [\n" + 
+        		"        {\n" + 
+        		"          \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
+        		"        },\n" + 
+        		"        \"$_id\"\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"id\": \"$_id\",\n" + 
+        		"    \"R\": \"$Restaurant\"\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
 
     @Test
     public void objectIdFunctionNotTest() throws ParseException {
@@ -542,7 +569,47 @@ public class QueryConverterTest {
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(documentValuesArray("$and", document("_id", document("$in", Lists.newArrayList(new ObjectId("53102b43bf1044ed8b0ba36b"), new ObjectId("54651022bffebc03098b4568")))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
-
+    
+    @Test
+    public void OIDInsideInTest() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id IN (OID('5e97ae59c63d1b3ff8e07c74'),OID('5e97ae58c63d1b3ff8e07c73'),OID('5e97ae58c63d1b3ff8e07c72'),OID('5e97ae58c63d1b3ff8e07c71'),OID('5e97ae58c63d1b3ff8e07c70'))").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$in\": [\n" + 
+        		"        \"$_id\",\n" + 
+        		"        [\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c73\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c72\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c71\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c70\"\n" + 
+        		"          }\n" + 
+        		"        ]\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"id\": \"$_id\",\n" + 
+        		"    \"R\": \"$Restaurant\"\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
     @Test
     public void objectIdFunctionNotInTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder()
@@ -802,8 +869,27 @@ public class QueryConverterTest {
     public void deleteQueryMoreComplicated() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
-        assertEquals(document("value",document("$in","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
         assertEquals(SQLCommandType.DELETE, mongoDBQueryHolder.getSqlCommandType());
+    }
+    
+    @Test
+    public void deleteInQuery() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from Restaurants where Restaurant.cuisine IN ('American ','Italian','Chinese')").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.remove({\n" + 
+        		"  \"$expr\": {\n" + 
+        		"    \"$in\": [\n" + 
+        		"      \"$Restaurant.cuisine\",\n" + 
+        		"      [\n" + 
+        		"        \"American \",\n" + 
+        		"        \"Italian\",\n" + 
+        		"        \"Chinese\"\n" + 
+        		"      ]\n" + 
+        		"    ]\n" + 
+        		"  }\n" + 
+        		"})",byteArrayOutputStream.toString("UTF-8"));
     }
 
     @Test
@@ -828,7 +914,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("value",document("$in","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -838,7 +924,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("value",document("$nin","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$expr",documentValuesArray("$nin","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -2437,6 +2523,10 @@ public class QueryConverterTest {
 
     private static Document documentValuesArray(String key, Object... values) {
         return new Document(key,Arrays.asList(values));
+    }
+    
+    private static List<Object> objsToList(Object... values) {
+        return Arrays.asList(values);
     }
 
 }

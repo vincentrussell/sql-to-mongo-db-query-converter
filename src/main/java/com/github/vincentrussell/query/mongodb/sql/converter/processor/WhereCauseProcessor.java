@@ -13,6 +13,8 @@ import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
+
+import org.bson.BsonArray;
 import org.bson.Document;
 
 import java.util.ArrayList;
@@ -66,8 +68,7 @@ public class WhereCauseProcessor {
         } else {
         	Document doc = new Document();
         	Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
-        	Object rightParse = parseExpression(new Document(), rightExpression, leftExpression); 
-        	doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(rightExpression)&&!rightExpression.toString().startsWith("$")?"$" + rightParse:rightParse)));
+        	doc.put(operator, Arrays.asList(leftParse, SqlUtils.nonFunctionToNode(rightExpression)));
         	query.put("$expr", doc);
         }
     }
@@ -158,8 +159,11 @@ public class WhereCauseProcessor {
                     query.put(mongoInFunction, new Document("function", parseExpression(new Document(), leftExpression, otherSide)).append("list", objectList));
                 } else {
                     String mongoInFunction = inExpression.isNot() ? "$nin" : "$in";
-                    query.put(leftExpressionAsString,
-                        new Document(mongoInFunction, objectList));
+                    Document doc = new Document();
+                    List<Object> lobj = Arrays.asList(SqlUtils.nonFunctionToNode(leftExpression),(Object)objectList);
+                	doc.put(mongoInFunction, lobj);
+                	query.put("$expr", doc);
+
                 }
             }
         } else if(AndExpression.class.isInstance(incomingExpression)) {

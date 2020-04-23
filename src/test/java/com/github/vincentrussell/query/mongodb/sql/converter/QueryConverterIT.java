@@ -230,6 +230,42 @@ public class QueryConverterIT {
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
         }
     }
+    
+    @Test
+    public void objectIdInQueryFnInside() throws ParseException, JSONException {
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
+        try {
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select _id from " + COLLECTION
+                + " where _id IN (OID('54651022bffebc03098b4567'),OID('54651022bffebc03098b4568'))").build();
+            QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+            List<Document> documents = Lists.newArrayList(findIterable);
+            assertEquals(2, documents.size());
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings),false);
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4568\"\n"
+                + "\t}\n" + "}", documents.get(1).toJson(jsonWriterSettings),false);
+        } finally {
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
+        }
+    }
+    
+    @Test
+    public void objectIdEqQueryFnInside() throws ParseException, JSONException {
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
+        try {
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select _id from " + COLLECTION
+                + " where _id = OID('54651022bffebc03098b4567')").build();
+            QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+            List<Document> documents = Lists.newArrayList(findIterable);
+            assertEquals(1, documents.size());
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings),false);
+        } finally {
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
+        }
+    }
 
     @Test
     public void likeQueryWithProjection() throws ParseException, JSONException {
