@@ -4,7 +4,9 @@ import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.ExpressionHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.FromHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.SQLCommandInfoHolder;
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.HavingCauseProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.processor.JoinProcessor;
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.WhereCauseProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.ExpVisitorEraseAliasTableBaseBuilder;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.WhereVisitorMatchAndLookupPipelineMatchBuilder;
@@ -281,6 +283,12 @@ public class QueryConverter {
                     .parseExpression(new Document(), preprocessedWhere , null));
             }
         }
+        if (sqlCommandInfoHolder.getHavingClause()!=null) {
+            HavingCauseProcessor havingClauseProcessor = new HavingCauseProcessor(defaultFieldType, fieldNameToFieldTypeMapping);
+            havingClauseProcessor.setAliasHolder(sqlCommandInfoHolder.getAliasHolder());
+            mongoDBQueryHolder.setHaving((Document) havingClauseProcessor.parseExpression(new Document(), sqlCommandInfoHolder.getHavingClause(), null));
+        }
+        
         mongoDBQueryHolder.setOffset(sqlCommandInfoHolder.getOffset());
         mongoDBQueryHolder.setLimit(sqlCommandInfoHolder.getLimit());
         
@@ -513,10 +521,9 @@ public class QueryConverter {
         
         for (SelectItem selectItem : functionItems) {
         	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
-        	String columnName = ((Function) selectExpressionItem.getExpression()).getName().toLowerCase();
+        	Function function = (Function) selectExpressionItem.getExpression();
             Alias alias = selectExpressionItem.getAlias();
-            String nameOrAlias = (alias != null ? alias.getName() : columnName);
-        	document.put(nameOrAlias, 1);
+        	document.put(SqlUtils.generateAggField(function, alias), 1);
         }
         
         document.put("_id", 0);
@@ -525,33 +532,21 @@ public class QueryConverter {
     }
     
     private void parseFunctionForAggregation(Function function, Document document, List<String> groupBys, Alias alias) throws ParseException {
-        List<String> parameters = function.getParameters()== null ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(), new com.google.common.base.Function<Expression, String>() {
-            @Override
-            public String apply(Expression expression) {
-                return SqlUtils.getStringValue(expression);
-            }
-        });
-        if (parameters.size() > 1) {
-            throw new ParseException(function.getName()+" function can only have one parameter");
+        String op = function.getName().toLowerCase();
+        String aggField = SqlUtils.generateAggField(function, alias);
+        switch(op) {
+        	case "count":
+        		document.put(aggField,new Document("$sum",1));
+        		break;
+        	case "sum":
+        	case "min":
+        	case "max":
+        	case "avg":
+        		createFunction(op,aggField, document,"$"+ SqlUtils.getFieldFromFunction(function));
+        		break;
+        	default:
+        		throw new ParseException("could not understand function:" + function.getName());
         }
-        String field = parameters.size() > 0 ? Iterables.get(parameters, 0) : null;
-        if ("sum".equals(function.getName().toLowerCase())) {
-            createFunction("sum",generateAggField("sum", field, alias), document,"$"+ field);
-        } else if ("avg".equals(function.getName().toLowerCase())) {
-            createFunction("avg",generateAggField("avg", field, alias), document,"$"+ field);
-        } else if ("count".equals(function.getName().toLowerCase())) {
-            document.put(generateAggField("count", null, alias),new Document("$sum",1));
-        } else if ("min".equals(function.getName().toLowerCase())) {
-            createFunction("min",generateAggField("min", field, alias), document,"$"+ field);
-        } else if ("max".equals(function.getName().toLowerCase())) {
-            createFunction("max",generateAggField("max", field, alias), document,"$"+ field);
-        } else {
-            throw new ParseException("could not understand function:" + function.getName());
-        }
-    }
-    
-    private String generateAggField(String function, String field, Alias alias) {
-    	return (alias == null?function + (field != null?"_" + field.replaceAll("\\.","_"):""):alias.getName());
     }
 
     private void createFunction(String functionName, String aggField, Document document, Object value) throws ParseException {
@@ -719,6 +714,9 @@ public class QueryConverter {
         }
         if(!sqlCommandInfoHolder.getGoupBys().isEmpty()) {
         	documents.add(new Document("$group", mongoDBQueryHolder.getProjection()));
+        }
+        if (mongoDBQueryHolder.getHaving() != null && mongoDBQueryHolder.getHaving().size() > 0 ){
+            documents.add(new Document("$match",mongoDBQueryHolder.getHaving()));
         }
         if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
             documents.add(new Document("$sort", mongoDBQueryHolder.getSort()));

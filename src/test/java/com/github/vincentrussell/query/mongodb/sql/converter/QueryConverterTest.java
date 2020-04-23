@@ -1008,7 +1008,7 @@ public class QueryConverterTest {
                 "},{\n" +
 				"  \"$project\": {\n" +
 				"    \"agent_code\": \"$_id\",\n" +
-				"    \"sum\": 1,\n" +
+				"    \"sum_advance_amount\": 1,\n" +
 				"    \"_id\": 0\n" +
 				"  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
@@ -1042,7 +1042,7 @@ public class QueryConverterTest {
                 "},{\n" +
                 "  \"$project\": {\n" +
                 "    \"agent_code\": \"$_id\",\n" +
-                "    \"sum\": 1,\n" +
+                "    \"sum_advance_amount\": 1,\n" +
                 "    \"_id\": 0\n" +
                 "  }\n" +
                 "}],{\n" +
@@ -1902,6 +1902,355 @@ public class QueryConverterTest {
     }
     
     @Test
+    public void writeHavingCount() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select Restaurant.cuisine, count(*) from Restaurants group by Restaurant.cuisine having count(*) > 3").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$Restaurant.cuisine\",\n" + 
+        		"    \"count\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$gt\": [\n" + 
+        		"        \"$count\",\n" + 
+        		"        3\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"Restaurant.cuisine\": \"$_id\",\n" + 
+        		"    \"count\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingCountAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select Restaurant.cuisine, count(*) as c from Restaurants group by Restaurant.cuisine having count(*) > 3").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$Restaurant.cuisine\",\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$gt\": [\n" + 
+        		"        \"$c\",\n" + 
+        		"        3\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"Restaurant.cuisine\": \"$_id\",\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingAliasCountAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select Restaurant.cuisine, count(*) as c from Restaurants group by Restaurant.cuisine having c > 3").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$Restaurant.cuisine\",\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$gt\": 3\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"Restaurant.cuisine\": \"$_id\",\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingFunctionCompCountAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select Restaurant.cuisine, count(*) as c from Restaurants group by Restaurant.cuisine having count(*) = count(*)").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$Restaurant.cuisine\",\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$eq\": [\n" + 
+        		"        \"$c\",\n" + 
+        		"        \"$c\"\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"Restaurant.cuisine\": \"$_id\",\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingFunctionCompCountAliasAndDummyWhere() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select Restaurant.cuisine, count(*) as c from Restaurants where 1=1 group by Restaurant.cuisine having count(*) = count(*)").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$eq\": [\n" + 
+        		"        1,\n" + 
+        		"        1\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$Restaurant.cuisine\",\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$eq\": [\n" + 
+        		"        \"$c\",\n" + 
+        		"        \"$c\"\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"Restaurant.cuisine\": \"$_id\",\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingMultiCondCountAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select Restaurant.cuisine, count(*) as c from Restaurants where 1=1 group by Restaurant.cuisine having count(*) >= 4 and count(*) <= 7").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$eq\": [\n" + 
+        		"        1,\n" + 
+        		"        1\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$Restaurant.cuisine\",\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$and\": [\n" + 
+        		"      {\n" + 
+        		"        \"$expr\": {\n" + 
+        		"          \"$gte\": [\n" + 
+        		"            \"$c\",\n" + 
+        		"            4\n" + 
+        		"          ]\n" + 
+        		"        }\n" + 
+        		"      },\n" + 
+        		"      {\n" + 
+        		"        \"$expr\": {\n" + 
+        		"          \"$lte\": [\n" + 
+        		"            \"$c\",\n" + 
+        		"            7\n" + 
+        		"          ]\n" + 
+        		"        }\n" + 
+        		"      }\n" + 
+        		"    ]\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"Restaurant.cuisine\": \"$_id\",\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingMultiOp() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select idAdaptador, process_date, avg(totalLoaded), min(structural), max(integrity), sum(business) from errorsOnDate group by idApaptador, process_date having avg(totalLoaded) > min(structural)").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.errorsOnDate.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {\n" + 
+        		"      \"idAdaptador\": \"$idAdaptador\",\n" + 
+        		"      \"process_date\": \"$process_date\"\n" + 
+        		"    },\n" + 
+        		"    \"avg_totalLoaded\": {\n" + 
+        		"      \"$avg\": \"$totalLoaded\"\n" + 
+        		"    },\n" + 
+        		"    \"min_structural\": {\n" + 
+        		"      \"$min\": \"$structural\"\n" + 
+        		"    },\n" + 
+        		"    \"max_integrity\": {\n" + 
+        		"      \"$max\": \"$integrity\"\n" + 
+        		"    },\n" + 
+        		"    \"sum_business\": {\n" + 
+        		"      \"$sum\": \"$business\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$gt\": [\n" + 
+        		"        \"$avg_totalLoaded\",\n" + 
+        		"        \"$min_structural\"\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"idAdaptador\": \"$_id.idAdaptador\",\n" + 
+        		"    \"process_date\": \"$_id.process_date\",\n" + 
+        		"    \"avg_totalLoaded\": 1,\n" + 
+        		"    \"min_structural\": 1,\n" + 
+        		"    \"max_integrity\": 1,\n" + 
+        		"    \"sum_business\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingMultiOpAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select idAdaptador, process_date, avg(totalLoaded) as avgg, min(structural) as minn, max(integrity) as maxx, sum(business) as summ from errorsOnDate group by idApaptador, process_date having avgg > minn").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.errorsOnDate.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {\n" + 
+        		"      \"idAdaptador\": \"$idAdaptador\",\n" + 
+        		"      \"process_date\": \"$process_date\"\n" + 
+        		"    },\n" + 
+        		"    \"avgg\": {\n" + 
+        		"      \"$avg\": \"$totalLoaded\"\n" + 
+        		"    },\n" + 
+        		"    \"minn\": {\n" + 
+        		"      \"$min\": \"$structural\"\n" + 
+        		"    },\n" + 
+        		"    \"maxx\": {\n" + 
+        		"      \"$max\": \"$integrity\"\n" + 
+        		"    },\n" + 
+        		"    \"summ\": {\n" + 
+        		"      \"$sum\": \"$business\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$gt\": [\n" + 
+        		"        \"$avgg\",\n" + 
+        		"        \"$minn\"\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"idAdaptador\": \"$_id.idAdaptador\",\n" + 
+        		"    \"process_date\": \"$_id.process_date\",\n" + 
+        		"    \"avgg\": 1,\n" + 
+        		"    \"minn\": 1,\n" + 
+        		"    \"maxx\": 1,\n" + 
+        		"    \"summ\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeHavingMultiOpAliasSort() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select idAdaptador, process_date, avg(totalLoaded) as avgg, min(structural) as minn, max(integrity) as maxx, sum(business) as summ from errorsOnDate group by idApaptador, process_date having avgg > minn order by avgg desc").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.errorsOnDate.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {\n" + 
+        		"      \"idAdaptador\": \"$idAdaptador\",\n" + 
+        		"      \"process_date\": \"$process_date\"\n" + 
+        		"    },\n" + 
+        		"    \"avgg\": {\n" + 
+        		"      \"$avg\": \"$totalLoaded\"\n" + 
+        		"    },\n" + 
+        		"    \"minn\": {\n" + 
+        		"      \"$min\": \"$structural\"\n" + 
+        		"    },\n" + 
+        		"    \"maxx\": {\n" + 
+        		"      \"$max\": \"$integrity\"\n" + 
+        		"    },\n" + 
+        		"    \"summ\": {\n" + 
+        		"      \"$sum\": \"$business\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$gt\": [\n" + 
+        		"        \"$avgg\",\n" + 
+        		"        \"$minn\"\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$sort\": {\n" + 
+        		"    \"avgg\": -1\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"idAdaptador\": \"$_id.idAdaptador\",\n" + 
+        		"    \"process_date\": \"$_id.process_date\",\n" + 
+        		"    \"avgg\": 1,\n" + 
+        		"    \"minn\": 1,\n" + 
+        		"    \"maxx\": 1,\n" + 
+        		"    \"summ\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==).");
@@ -2054,6 +2403,24 @@ public class QueryConverterTest {
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("aa","value"),mongoDBQueryHolder.getQuery());
         assertEquals(Arrays.asList(new String[]{"aa","cc"}),mongoDBQueryHolder.getGroupBys());
+    }
+    
+    @Test
+    public void testCountAllGroupByWithHaving() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT agent_code,   \n" +
+                "COUNT (*)   \n" +
+                "FROM orders \n " +
+                "WHERE agent_code LIKE 'AW_%'\n" +
+                "GROUP BY agent_code \n" +
+                "HAVING count > 1;"
+                ).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(2,mongoDBQueryHolder.getProjection().size());
+        assertEquals(document("_id","$agent_code").append("count",document("$sum",1)),mongoDBQueryHolder.getProjection());
+        assertEquals("orders",mongoDBQueryHolder.getCollection());
+        assertEquals(Arrays.asList("agent_code"),mongoDBQueryHolder.getGroupBys());
+        assertEquals(document("count",document("$gt",1L)),mongoDBQueryHolder.getHaving());
+        assertEquals(document("agent_code",document("$regex","^AW.{1}.*$")),mongoDBQueryHolder.getQuery());
     }
 
     private static Document document(String key, Object... values) {

@@ -1351,8 +1351,88 @@ public class QueryConverterIT {
         		"}]",toJson(results),false);
     }
     
+    @Test
+    public void countGroupByQueryHavingByCount() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(cuisine) from "+COLLECTION+" WHERE borough = 'Manhattan' GROUP BY cuisine HAVING count(cuisine) > 500").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        queryConverter.write(System.out);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(4, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Chinese\",\n" + 
+        		"	\"count\": 510\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Italian\",\n" + 
+        		"	\"count\": 621\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Café/Coffee/Tea\",\n" + 
+        		"	\"count\": 680\n" +
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"American \",\n" + 
+        		"	\"count\": 3205\n" +
+        		"}]",toJson(results),false);
+    }
     
-
+    @Test
+    public void countGroupByQueryHavingByCountAlias() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(cuisine) as cc from "+COLLECTION+" WHERE borough = 'Manhattan' GROUP BY cuisine HAVING cc > 500").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        queryConverter.write(System.out);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(4, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Chinese\",\n" + 
+        		"	\"cc\": 510\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Italian\",\n" + 
+        		"	\"cc\": 621\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Café/Coffee/Tea\",\n" + 
+        		"	\"cc\": 680\n" +
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"American \",\n" + 
+        		"	\"cc\": 3205\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void havingMultiCond() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(*) as c from "+COLLECTION+" where 1=1 group by Restaurant.cuisine having count(*) >= 5 and count(*) <= 6").build();
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(2, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Nuts/Confectionary\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Czech\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void havingAliasMultiCond() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine as cuisine, count(*) as c from "+COLLECTION+" where 1=1 group by Restaurant.cuisine having c >= 5 and c <= 6").build();
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(2, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Nuts/Confectionary\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Czech\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}]",toJson(results),false);
+    }
+    
     @Test
     public void countQuery() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'").build();

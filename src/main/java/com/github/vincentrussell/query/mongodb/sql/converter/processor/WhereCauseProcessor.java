@@ -1,6 +1,8 @@
-package com.github.vincentrussell.query.mongodb.sql.converter;
+package com.github.vincentrussell.query.mongodb.sql.converter.processor;
 
-import com.github.vincentrussell.query.mongodb.sql.converter.processor.FunctionProcessor;
+import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
+
+import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.DateFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.ObjectIdFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.RegexFunction;
@@ -27,6 +29,48 @@ public class WhereCauseProcessor {
         this.defaultFieldType = defaultFieldType;
         this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
     }
+    
+    //Parse comparative expression != = < > => <= into mongo expr
+    private void parseComparativeExpr(Document query, Expression leftExpression, Expression rightExpression, String comparatorType)  throws ParseException{
+    	String operator = "$" + comparatorType;
+    	if (Function.class.isInstance(leftExpression)) {
+        	Document doc = new Document();
+        	Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
+        	Object rightParse = parseExpression(new Document(), rightExpression, leftExpression); 
+        	doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(rightExpression)&&!rightExpression.toString().startsWith("$")?"$" + rightParse:rightParse)));
+        	query.put("$expr", doc);
+        } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)){
+        	Document doc = new Document();
+        	String leftName = ((Column)leftExpression).getName(false);
+        	String rightName = ((Column)rightExpression).getName(false);
+        	doc.put(operator,Arrays.asList((leftName.startsWith("$")?leftName:"$" + leftName), (rightName.startsWith("$")?rightName:"$" + rightName)));
+        	query.put("$expr", doc);
+        }
+        else if (Function.class.isInstance(rightExpression)){
+        	Document doc = new Document();
+        	Object leftParse = parseExpression(new Document(), rightExpression, leftExpression);
+        	Object rightParse = parseExpression(new Document(), leftExpression, rightExpression);
+        	doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(leftExpression)&&!leftExpression.toString().startsWith("$")?"$" + rightParse:rightParse)));
+        	query.put("$expr", doc); 
+    	} else if (SqlUtils.isColumn(leftExpression)){
+        	Document subdocument = new Document();
+        	if(operator.equals("$eq")) {
+                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(), 
+                		parseExpression(new Document(), rightExpression, leftExpression));
+        	}
+        	else {
+        		subdocument.put(operator,parseExpression(new Document(), rightExpression, leftExpression));
+                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(), 
+                		subdocument);
+        	}
+        } else {
+        	Document doc = new Document();
+        	Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
+        	Object rightParse = parseExpression(new Document(), rightExpression, leftExpression); 
+        	doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(rightExpression)&&!rightExpression.toString().startsWith("$")?"$" + rightParse:rightParse)));
+        	query.put("$expr", doc);
+        }
+    }
 
     public Object parseExpression(Document query, Expression incomingExpression, Expression otherSide) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
@@ -47,52 +91,27 @@ public class WhereCauseProcessor {
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
-                if (Function.class.isInstance(leftExpression)) {
-                	Document eq = new Document();
-                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression), (SqlUtils.isColumn(rightExpression)&&!rightExpression.toString().startsWith("$")?"$":"") + parseExpression(new Document(), rightExpression, leftExpression)));
-                	query.put("$expr", eq);
-                } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)){//$eq operator
-                	Document eq = new Document();
-                	eq.put("$eq",Arrays.asList(((Column)leftExpression).getName(false), ((Column)rightExpression).getName(false)));
-                	query.put("$expr", eq);
-                }
-                else if (Function.class.isInstance(rightExpression)){
-                	Document eq = new Document();
-                	eq.put("$eq", Arrays.asList(parseExpression(new Document(), rightExpression, leftExpression), (SqlUtils.isColumn(leftExpression)&&!leftExpression.toString().startsWith("$")?"$":"") + parseExpression(new Document(), leftExpression, rightExpression)));
-                	query.put("$expr", eq);
-                } 
-                else{
-                    query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
-                        parseExpression(new Document(), rightExpression, leftExpression));
-                }
+                parseComparativeExpr(query, leftExpression, rightExpression, "eq");
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((NotEqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((NotEqualsTo) incomingExpression).getRightExpression();
-
-                if (Function.class.isInstance(leftExpression)) {
-                    query.put("$ne", new Document("arg1", parseExpression(new Document(), leftExpression, rightExpression))
-                        .append("arg2", parseExpression(new Document(), rightExpression, leftExpression)));
-                } else {
-                    query.put(SqlUtils.getStringValue(leftExpression), new Document("$ne", parseExpression(new Document(), rightExpression, leftExpression)));
-
-                }
-
+                parseComparativeExpr(query, leftExpression, rightExpression, "ne");
             } else if (GreaterThan.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$gt",parseExpression(new Document(), rightExpression, leftExpression)));
+                parseComparativeExpr(query, leftExpression, rightExpression, "gt");
             } else if (MinorThan.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$lt", parseExpression(new Document(), rightExpression, leftExpression)));
+                parseComparativeExpr(query, leftExpression, rightExpression, "lt");
             } else if (GreaterThanEquals.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((GreaterThanEquals) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((GreaterThanEquals) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$gte",parseExpression(new Document(), rightExpression, leftExpression)));
+                parseComparativeExpr(query, leftExpression, rightExpression, "gte");
             } else if (MinorThanEquals.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((MinorThanEquals) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((MinorThanEquals) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$lte", parseExpression(new Document(), rightExpression, leftExpression)));
+                parseComparativeExpr(query, leftExpression, rightExpression, "lte");
             }
         } else if(LikeExpression.class.isInstance(incomingExpression)
                 && Column.class.isInstance(((LikeExpression)incomingExpression).getLeftExpression())
@@ -167,7 +186,7 @@ public class WhereCauseProcessor {
                 }
                 query.put(regexFunction.getColumn(), regexDocument);
             } else {
-                recurseFunctions(query, function, defaultFieldType, fieldNameToFieldTypeMapping);
+                return recurseFunctions(query, function, defaultFieldType, fieldNameToFieldTypeMapping);
             }
         } else if (otherSide == null) {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
@@ -177,7 +196,7 @@ public class WhereCauseProcessor {
         return query;
     }
 
-    private Object recurseFunctions(Document query, Object object, FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+    protected Object recurseFunctions(Document query, Object object, FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
         if (Function.class.isInstance(object)) {
             Function function = (Function)object;
             query.put("$" + FunctionProcessor.transcriptFunctionName(function.getName()), recurseFunctions(new Document(), function.getParameters(), defaultFieldType, fieldNameToFieldTypeMapping));

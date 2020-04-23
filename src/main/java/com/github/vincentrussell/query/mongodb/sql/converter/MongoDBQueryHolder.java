@@ -19,6 +19,7 @@ public class MongoDBQueryHolder {
     private boolean distinct = false;
     private boolean countAll = false;
     private List<String> groupBys = new ArrayList<>();
+    private Document having = new Document();
     private long limit = -1;
     private long offset = -1;
     private List<Document> prevSteps;//Aggregate previous steps
@@ -99,6 +100,15 @@ public class MongoDBQueryHolder {
 
     public List<String> getGroupBys() {
         return groupBys;
+    }
+    
+	public Document getHaving() {
+		return having;
+    }
+
+    public void setHaving(Document having) {
+        notNull(having, "having is null");
+        this.having = having;
     }
     
 	public Document getAliasProjection() {

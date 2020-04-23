@@ -1,10 +1,8 @@
 package com.github.vincentrussell.query.mongodb.sql.converter.processor;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
-import com.github.vincentrussell.query.mongodb.sql.converter.MongoDBQueryHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import com.github.vincentrussell.query.mongodb.sql.converter.QueryConverter;
-import com.github.vincentrussell.query.mongodb.sql.converter.WhereCauseProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.ExpressionHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.FromHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.SQLCommandInfoHolder;
@@ -13,11 +11,8 @@ import com.github.vincentrussell.query.mongodb.sql.converter.visitor.OnVisitorLe
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.OnVisitorMatchLookupBuilder;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.WhereVisitorMatchAndLookupPipelineMatchBuilder;
 
-import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.parser.JSqlParser;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.SubSelect;
