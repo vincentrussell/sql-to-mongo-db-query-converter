@@ -5,13 +5,10 @@ import com.github.vincentrussell.query.mongodb.sql.converter.SQLCommandType;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.ExpVisitorEraseAliasTableBaseBuilder;
-
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParser;
-import net.sf.jsqlparser.parser.JSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
-import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.select.*;
@@ -162,15 +159,27 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
             
             if (Select.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.SELECT;
-                final PlainSelect plainSelect = (PlainSelect)(((Select)statement).getSelectBody());
-                return setPlainSelect(plainSelect);
-                
+                SelectBody selectBody = ((Select) statement).getSelectBody();
+
+                if (SetOperationList.class.isInstance(selectBody)) {
+                    SetOperationList setOperationList = (SetOperationList)selectBody;
+                    if (setOperationList.getSelects() != null
+                            && setOperationList.getSelects().size() == 1
+                            && PlainSelect.class.isInstance(setOperationList.getSelects().get(0))) {
+                        return setPlainSelect((PlainSelect) setOperationList.getSelects().get(0));
+                    }
+                } else if (PlainSelect.class.isInstance(selectBody)) {
+                    return setPlainSelect((PlainSelect) selectBody);
+                }
+
+                throw new ParseException("No supported sentence");
+
+
             } else if (Delete.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.DELETE;
                 Delete delete = (Delete)statement;
                 return setDelete(delete); 
-            }
-            else {
+            } else {
             	throw new ParseException("No supported sentence");
             }
         }

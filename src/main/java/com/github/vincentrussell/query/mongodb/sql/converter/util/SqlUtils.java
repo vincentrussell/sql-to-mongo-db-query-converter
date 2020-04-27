@@ -303,10 +303,12 @@ public class SqlUtils {
     }
 
     public static List<String> getGroupByColumnReferences(PlainSelect plainSelect) {
-        if (plainSelect.getGroupByColumnReferences()==null) {
+        if (plainSelect.getGroupBy()==null) {
             return Collections.emptyList();
         }
-        return Lists.transform(plainSelect.getGroupByColumnReferences(), new com.google.common.base.Function<Expression, String>() {
+
+        return Lists.transform(plainSelect.getGroupBy().getGroupByExpressions(),
+                new com.google.common.base.Function<Expression, String>() {
             @Override
             public String apply(Expression expression) {
                 return SqlUtils.getStringValue(expression);

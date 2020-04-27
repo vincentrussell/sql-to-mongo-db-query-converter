@@ -657,6 +657,7 @@ more results? (y/n): n
 - Created a builder for the QueryConverter class and depreciated the constructors for the QueryConverterClass
 - Created the ability to prove the following options to aggregation: aggregationAllowDiskUse and aggregationBatchSize
 - Support for having clause
+- Upgrading com.github.jsqlparser:jsqlparser from v1.4 to v3.1
 
 # Change Log
 

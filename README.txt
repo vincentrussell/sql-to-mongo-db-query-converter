@@ -1,6 +1,7 @@
 
 release process:
 
+mvn javadoc:javadoc
 mvn versions:set -DnewVersion=1.0
 git add .
 git commit -m "preparing for release 1.0"
