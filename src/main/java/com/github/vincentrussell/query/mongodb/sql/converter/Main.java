@@ -26,6 +26,8 @@ public class Main {
     private static JsonWriterSettings JSON_WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "\t", "\n");
     public static final String ENTER_SQL_TEXT = "Enter input sql:\n\n ";
     private static final String DEFAULT_MONGO_PORT = "27017";
+    public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
+    public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
 
     public static Options buildOptions() {
         Options options = new Options();
@@ -167,7 +169,21 @@ public class Main {
                     }
 
 
-                    QueryConverter queryConverter = new QueryConverter.Builder().sqlInputStream(inputStream).build();
+                    QueryConverter.Builder builder = new QueryConverter.Builder().sqlInputStream(inputStream);
+
+                    if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {
+                        builder.aggregationAllowDiskUse(Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+                    }
+
+                    if (System.getProperty(D_AGGREGATION_BATCH_SIZE) != null) {
+                        try {
+                            builder.aggregationBatchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
+                        } catch (NumberFormatException formatException) {
+                            System.err.println(formatException.getMessage());
+                        }
+                    }
+
+                    QueryConverter queryConverter = builder.build();
 
                     inputStream.close();
 
