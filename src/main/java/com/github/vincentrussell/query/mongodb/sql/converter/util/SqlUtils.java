@@ -3,10 +3,13 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import com.github.vincentrussell.query.mongodb.sql.converter.Token;
-import com.github.vincentrussell.query.mongodb.sql.converter.WhereCauseProcessor;
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.WhereCauseProcessor;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
+
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
@@ -498,6 +501,40 @@ public class SqlUtils {
 	public static boolean isAggregateExp(String field) {
 		String fieldForAgg = field.trim().toLowerCase();
 		return fieldForAgg.startsWith("sum(") || fieldForAgg.startsWith("avg(") || fieldForAgg.startsWith("min(") || fieldForAgg.startsWith("max(")  || fieldForAgg.startsWith("count(");
+	}
+	
+	public static String generateAggField(Function f, Alias alias)  throws ParseException{
+    	String aliasStr = (alias == null? null : alias.getName());
+    	return generateAggField(f, aliasStr);
+    }
+	
+	public static String generateAggField(Function f, String alias) throws ParseException {
+		String field = getFieldFromFunction(f);
+		String function = f.getName().toLowerCase();
+		if("*".equals(field) || function.equals("count") ){
+			return (alias == null?function:alias);
+		}
+		else {
+			return (alias == null?function + "_" + field.replaceAll("\\.","_"):alias);
+		}
+    	
+    }
+	
+	public static String getFieldFromFunction(Function function) throws ParseException{
+		 List<String> parameters = function.getParameters()== null ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(), new com.google.common.base.Function<Expression, String>() {
+            @Override
+            public String apply(Expression expression) {
+                return SqlUtils.getStringValue(expression);
+            }
+        });
+        if (parameters.size() > 1) {
+            throw new ParseException(function.getName()+" function can only have one parameter");
+        }
+        return parameters.size() > 0 ? Iterables.get(parameters, 0) : null;
+	}
+	
+	public static Object nonFunctionToNode(Expression exp) throws ParseException {
+		return (SqlUtils.isColumn(exp)&&!exp.toString().startsWith("$"))?"$" + exp:getValue(exp,null,FieldType.UNKNOWN, null);
 	}
 
 }
