@@ -2,7 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 public class ParseException extends Exception {
     private static final long serialVersionUID = 1L;
-    protected static String EOL = System.getProperty("line.separator", "\n");
+    private static final String EOL = System.getProperty("line.separator", "\n");
     public Token currentToken;
     public int[][] expectedTokenSequences;
     public String[] tokenImage;
@@ -41,39 +41,39 @@ public class ParseException extends Exception {
             expected.append(EOL).append("    ");
         }
 
-        String var8 = "Encountered \"";
-        Token var9 = currentToken.next;
+        StringBuffer stringbuffer = new StringBuffer("Encountered \"");
+        Token var9 = currentToken.getNext();
 
         for(int i = 0; i < maxSize; ++i) {
             if(i != 0) {
-                var8 = var8 + " ";
+                stringbuffer.append(" ");
             }
 
-            if(var9.kind == 0) {
-                var8 = var8 + tokenImage[0];
+            if(var9.getKind() == 0) {
+                stringbuffer.append(tokenImage[0]);
                 break;
             }
 
-            var8 = var8 + " " + tokenImage[var9.kind];
-            var8 = var8 + " \"";
-            var8 = var8 + add_escapes(var9.image);
-            var8 = var8 + " \"";
-            var9 = var9.next;
+            stringbuffer.append(" " + tokenImage[var9.getKind()]);
+            stringbuffer.append(" \"");
+            stringbuffer.append(add_escapes(var9.getImage()));
+            stringbuffer.append(" \"");
+            var9 = var9.getNext();
         }
 
-        var8 = var8 + "\" at line " + currentToken.next.beginLine + ", column " + currentToken.next.beginColumn;
-        var8 = var8 + "." + EOL;
+        stringbuffer.append("\" at line " + currentToken.getNext().getBeginLine() + ", column " + currentToken.getNext().getBeginColumn());
+        stringbuffer.append("." + EOL);
         if(expectedTokenSequences.length != 0) {
             if(expectedTokenSequences.length == 1) {
-                var8 = var8 + "Was expecting:" + EOL + "    ";
+                stringbuffer.append("Was expecting:" + EOL + "    ");
             } else {
-                var8 = var8 + "Was expecting one of:" + EOL + "    ";
+                stringbuffer.append("Was expecting one of:" + EOL + "    ");
             }
 
-            var8 = var8 + expected.toString();
+            stringbuffer.append(expected.toString());
         }
 
-        return var8;
+        return stringbuffer.toString();
     }
 
     static String add_escapes(String str) {

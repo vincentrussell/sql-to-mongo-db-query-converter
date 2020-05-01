@@ -123,7 +123,6 @@ public class WhereCauseProcessor {
             String stringValueRightSide = SqlUtils.getStringValue(likeExpression.getRightExpression());
             Document document = new Document("$regex", "^" + SqlUtils.replaceRegexCharacters(stringValueRightSide) + "$");
             if (likeExpression.isNot()) {
-                document = new Document("$not",new Document(stringValueLeftSide,document));
                 throw new ParseException("NOT LIKE queries not supported");
             } else {
                 document = new Document(stringValueLeftSide,document);
@@ -178,7 +177,7 @@ public class WhereCauseProcessor {
             Expression expression = ((NotExpression)incomingExpression).getExpression();
 
             if (Parenthesis.class.isInstance(expression)) {
-                return new Document("$nor", Arrays.asList(parseExpression(query, expression, otherSide)));
+                return new Document("$nor", Arrays.asList(parseExpression(query, expression, null)));
             }
 
             return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));

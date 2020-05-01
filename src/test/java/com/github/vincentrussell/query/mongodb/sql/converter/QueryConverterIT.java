@@ -117,25 +117,25 @@ public class QueryConverterIT {
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_CUSTOMERS,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_CUSTOMERS,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_CUSTOMERS,mongoCollection.countDocuments());
         
         mongoCollection = mongoDatabase.getCollection(COLLECTION_FILMS);
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_FILMS,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_FILMS,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_FILMS,mongoCollection.countDocuments());
         
         mongoCollection = mongoDatabase.getCollection(COLLECTION_STORES);
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_STORES,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_STORES,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_STORES,mongoCollection.countDocuments());
 
         mongoCollection = mongoDatabase.getCollection(COLLECTION);
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_PRIMER,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_PRIMER,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_PRIMER,mongoCollection.countDocuments());
         
     }
 
@@ -1489,7 +1489,7 @@ public class QueryConverterIT {
             QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from " + collection + " where key = 'value'").build();
             long deleteCount = queryConverter.run(mongoDatabase);
             assertEquals(3, deleteCount);
-            assertEquals(1, newCollection.count());
+            assertEquals(1, newCollection.countDocuments());
         } finally {
             newCollection.drop();
         }

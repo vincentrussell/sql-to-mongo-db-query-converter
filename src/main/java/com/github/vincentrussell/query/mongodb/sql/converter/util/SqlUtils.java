@@ -24,6 +24,7 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
+import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -310,7 +311,7 @@ public class SqlUtils {
         return Lists.transform(plainSelect.getGroupBy().getGroupByExpressions(),
                 new com.google.common.base.Function<Expression, String>() {
             @Override
-            public String apply(Expression expression) {
+            public String apply(@Nonnull  Expression expression) {
                 return SqlUtils.getStringValue(expression);
             }
         });
@@ -525,7 +526,7 @@ public class SqlUtils {
 	public static String getFieldFromFunction(Function function) throws ParseException{
 		 List<String> parameters = function.getParameters()== null ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(), new com.google.common.base.Function<Expression, String>() {
             @Override
-            public String apply(Expression expression) {
+            public String apply(@Nonnull Expression expression) {
                 return SqlUtils.getStringValue(expression);
             }
         });

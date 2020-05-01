@@ -41,6 +41,7 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
+import javax.annotation.Nonnull;
 import java.io.*;
 import java.util.*;
 
@@ -363,15 +364,14 @@ public class QueryConverter {
     	return lgroupEraseAlias;
     }
 
-    private Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements, AliasHolder aliasHolder, List<String> groupBys) throws ParseException {
-        Document document = new Document();
-        if (orderByElements==null && orderByElements.size()==0) {
-            return document;
+    private Document createSortInfoFromOrderByElements(@Nonnull List<OrderByElement> orderByElements, AliasHolder aliasHolder, List<String> groupBys) throws ParseException {
+        if (orderByElements.size()==0) {
+            return new Document();
         }
 
         final List<OrderByElement> functionItems = Lists.newArrayList(Iterables.filter(orderByElements, new Predicate<OrderByElement>() {
             @Override
-            public boolean apply(OrderByElement orderByElement) {
+            public boolean apply(@Nonnull OrderByElement orderByElement) {
                 try {
                     if (Function.class.isInstance(orderByElement.getExpression())) {
                         return true;
@@ -384,7 +384,7 @@ public class QueryConverter {
         }));
         final List<OrderByElement> nonFunctionItems = Lists.newArrayList(Collections2.filter(orderByElements, new Predicate<OrderByElement>() {
             @Override
-            public boolean apply(OrderByElement orderByElement) {
+            public boolean apply(@Nonnull OrderByElement orderByElement) {
                 return !functionItems.contains(orderByElement);
             }
 
@@ -429,15 +429,15 @@ public class QueryConverter {
         return sortItems;
     }
 
-    private Document createProjectionsFromSelectItems(List<SelectItem> selectItems, List<String> groupBys) throws ParseException {
+    private Document createProjectionsFromSelectItems(@Nonnull List<SelectItem> selectItems, List<String> groupBys) throws ParseException {
         Document document = new Document();
-        if (selectItems==null && selectItems.size()==0) {
+        if (selectItems.size()==0) {
             return document;
         }
 
         final List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
             @Override
-            public boolean apply(SelectItem selectItem) {
+            public boolean apply(@Nonnull SelectItem selectItem) {
                 try {
                     if (SelectExpressionItem.class.isInstance(selectItem)
                             && Function.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
@@ -451,7 +451,7 @@ public class QueryConverter {
         }));
         final List<SelectItem> nonFunctionItems = Lists.newArrayList(Collections2.filter(selectItems, new Predicate<SelectItem>() {
             @Override
-            public boolean apply(SelectItem selectItem) {
+            public boolean apply(@Nonnull SelectItem selectItem) {
                 return !functionItems.contains(selectItem);
             }
 
@@ -480,7 +480,7 @@ public class QueryConverter {
     	
     	final List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems, new Predicate<SelectItem>() {
             @Override
-            public boolean apply(SelectItem selectItem) {
+            public boolean apply(@Nonnull SelectItem selectItem) {
                 try {
                     if (SelectExpressionItem.class.isInstance(selectItem)
                             && Function.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
@@ -494,7 +494,7 @@ public class QueryConverter {
         }));
         final List<SelectItem> nonFunctionItems = Lists.newArrayList(Collections2.filter(selectItems, new Predicate<SelectItem>() {
             @Override
-            public boolean apply(SelectItem selectItem) {
+            public boolean apply(@Nonnull SelectItem selectItem) {
                 return !functionItems.contains(selectItem);
             }
 
@@ -581,11 +581,11 @@ public class QueryConverter {
 
             Document options = new Document();
             if (aggregationAllowDiskUse != null) {
-                options.put("allowDiskUse", aggregationAllowDiskUse.booleanValue());
+                options.put("allowDiskUse", aggregationAllowDiskUse);
             }
 
             if (aggregationBatchSize != null) {
-                options.put("cursor",new Document("batchSize", aggregationBatchSize.intValue()));
+                options.put("cursor",new Document("batchSize", aggregationBatchSize));
             }
 
             if (options.size() > 0) {
@@ -668,11 +668,11 @@ public class QueryConverter {
                 AggregateIterable aggregate = mongoCollection.aggregate(generateAggSteps(mongoDBQueryHolder,sqlCommandInfoHolder));
 
                 if (aggregationAllowDiskUse != null) {
-                    aggregate.allowDiskUse(aggregationAllowDiskUse.booleanValue());
+                    aggregate.allowDiskUse(aggregationAllowDiskUse);
                 }
 
                 if (aggregationBatchSize != null) {
-                    aggregate.batchSize(aggregationBatchSize.intValue());
+                    aggregate.batchSize(aggregationBatchSize);
                 }
 
                 return (T) new QueryResultIterator<>(aggregate);
@@ -751,7 +751,7 @@ public class QueryConverter {
         IOUtils.write("[", stringWriter);
         IOUtils.write(Joiner.on(",").join(Lists.transform(documents, new com.google.common.base.Function<Document, String>() {
             @Override
-            public String apply(Document document) {
+            public String apply(@Nonnull Document document) {
                 return document.toJson(relaxed);
             }
         })),stringWriter);
