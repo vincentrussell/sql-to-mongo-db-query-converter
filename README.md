@@ -321,6 +321,44 @@ db.my_collection.aggregate([{
 }])
 ```
 
+###Having clause with aggregation
+
+```
+select Restaurant.cuisine, count(*) from Restaurants group by Restaurant.cuisine having count(*) > 3;
+
+
+******Mongo Query:*********
+
+db.Restaurants.aggregate([
+                           {
+                             "$group": {
+                               "_id": "$Restaurant.cuisine",
+                               "count": {
+                                 "$sum": 1
+                               }
+                             }
+                           },
+                           {
+                             "$match": {
+                               "$expr": {
+                                 "$gt": [
+                                   "$count",
+                                   3
+                                 ]
+                               }
+                             }
+                           },
+                           {
+                             "$project": {
+                               "Restaurant.cuisine": "$_id",
+                               "count": 1,
+                               "_id": 0
+                             }
+                           }
+                         ])
+```
+
+
 ###Joins
 
 ```
@@ -608,6 +646,18 @@ more results? (y/n): y
 
 more results? (y/n): n
 ```
+
+# Change Log
+
+## [1.11](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.11) (TBD)
+
+**Enhancements:**
+
+- Support for subqueries translated to aggregation steps in a recursive way.
+- Created a builder for the QueryConverter class and depreciated the constructors for the QueryConverterClass
+- Created the ability to prove the following options to aggregation: aggregationAllowDiskUse and aggregationBatchSize
+- Support for having clause
+- Upgrading com.github.jsqlparser:jsqlparser from v1.4 to v3.1
 
 # Change Log
 

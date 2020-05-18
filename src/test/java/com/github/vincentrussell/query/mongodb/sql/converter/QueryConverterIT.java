@@ -117,25 +117,25 @@ public class QueryConverterIT {
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_CUSTOMERS,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_CUSTOMERS,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_CUSTOMERS,mongoCollection.countDocuments());
         
         mongoCollection = mongoDatabase.getCollection(COLLECTION_FILMS);
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_FILMS,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_FILMS,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_FILMS,mongoCollection.countDocuments());
         
         mongoCollection = mongoDatabase.getCollection(COLLECTION_STORES);
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_STORES,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_STORES,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_STORES,mongoCollection.countDocuments());
 
         mongoCollection = mongoDatabase.getCollection(COLLECTION);
 
         mongoCollection.deleteMany(new Document());
         loadRecords(TOTAL_TEST_RECORDS_PRIMER,DATASET_PRIMER,mongoCollection);
-        assertEquals(TOTAL_TEST_RECORDS_PRIMER,mongoCollection.count());
+        assertEquals(TOTAL_TEST_RECORDS_PRIMER,mongoCollection.countDocuments());
         
     }
 
@@ -228,6 +228,42 @@ public class QueryConverterIT {
         } finally {
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
             mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
+        }
+    }
+    
+    @Test
+    public void objectIdInQueryFnInside() throws ParseException, JSONException {
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));
+        try {
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select _id from " + COLLECTION
+                + " where _id IN (OID('54651022bffebc03098b4567'),OID('54651022bffebc03098b4568'))").build();
+            QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+            List<Document> documents = Lists.newArrayList(findIterable);
+            assertEquals(2, documents.size());
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings),false);
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4568\"\n"
+                + "\t}\n" + "}", documents.get(1).toJson(jsonWriterSettings),false);
+        } finally {
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")));
+        }
+    }
+    
+    @Test
+    public void objectIdEqQueryFnInside() throws ParseException, JSONException {
+        mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
+        try {
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select _id from " + COLLECTION
+                + " where _id = OID('54651022bffebc03098b4567')").build();
+            QueryResultIterator<Document> findIterable = queryConverter.run(mongoDatabase);
+            List<Document> documents = Lists.newArrayList(findIterable);
+            assertEquals(1, documents.size());
+            JSONAssert.assertEquals("{\n" + "\t\"_id\" : {\n" + "\t\t\"$oid\" : \"54651022bffebc03098b4567\"\n"
+                + "\t}\n" + "}", documents.get(0).toJson(jsonWriterSettings),false);
+        } finally {
+            mongoCollection.deleteOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")));
         }
     }
 
@@ -1351,8 +1387,88 @@ public class QueryConverterIT {
         		"}]",toJson(results),false);
     }
     
+    @Test
+    public void countGroupByQueryHavingByCount() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(cuisine) from "+COLLECTION+" WHERE borough = 'Manhattan' GROUP BY cuisine HAVING count(cuisine) > 500").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        queryConverter.write(System.out);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(4, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Chinese\",\n" + 
+        		"	\"count\": 510\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Italian\",\n" + 
+        		"	\"count\": 621\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Café/Coffee/Tea\",\n" + 
+        		"	\"count\": 680\n" +
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"American \",\n" + 
+        		"	\"count\": 3205\n" +
+        		"}]",toJson(results),false);
+    }
     
-
+    @Test
+    public void countGroupByQueryHavingByCountAlias() throws ParseException, IOException, JSONException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(cuisine) as cc from "+COLLECTION+" WHERE borough = 'Manhattan' GROUP BY cuisine HAVING cc > 500").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        queryConverter.write(System.out);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(4, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Chinese\",\n" + 
+        		"	\"cc\": 510\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Italian\",\n" + 
+        		"	\"cc\": 621\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Café/Coffee/Tea\",\n" + 
+        		"	\"cc\": 680\n" +
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"American \",\n" + 
+        		"	\"cc\": 3205\n" +
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void havingMultiCond() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(*) as c from "+COLLECTION+" where 1=1 group by Restaurant.cuisine having count(*) >= 5 and count(*) <= 6").build();
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(2, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Nuts/Confectionary\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Czech\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void havingAliasMultiCond() throws ParseException, JSONException, IOException {
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine as cuisine, count(*) as c from "+COLLECTION+" where 1=1 group by Restaurant.cuisine having c >= 5 and c <= 6").build();
+    	QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        assertEquals(2, results.size());
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"cuisine\": \"Nuts/Confectionary\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}," +
+        		"{\n" + 
+        		"	\"cuisine\": \"Czech\",\n" + 
+        		"	\"c\": 6\n" +  
+        		"}]",toJson(results),false);
+    }
+    
     @Test
     public void countQuery() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from "+COLLECTION+" where address.street LIKE '%Street'").build();
@@ -1373,7 +1489,7 @@ public class QueryConverterIT {
             QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from " + collection + " where key = 'value'").build();
             long deleteCount = queryConverter.run(mongoDatabase);
             assertEquals(3, deleteCount);
-            assertEquals(1, newCollection.count());
+            assertEquals(1, newCollection.countDocuments());
         } finally {
             newCollection.drop();
         }

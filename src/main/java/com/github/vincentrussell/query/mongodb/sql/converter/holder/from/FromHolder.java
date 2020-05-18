@@ -1,16 +1,14 @@
 package com.github.vincentrussell.query.mongodb.sql.converter.holder.from;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
-
-import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SubSelect;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class FromHolder {
 	private FieldType defaultFieldType;
@@ -101,13 +99,4 @@ public class FromHolder {
     	return baseAlias;
     }
 
-	/**
-	 * Return alias of table, otherwise null
-	 * @param table the table that you want the alias for
-	 * @return the alias
-	 */
-	public String getAlias(final String table) {
-    	return tableToAlias.containsKey(table)? tableToAlias.get(table) : null;
-    }
-    
 }

@@ -14,11 +14,16 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.apache.commons.lang.Validate.notNull;
 
 public class Main {
 
@@ -26,6 +31,8 @@ public class Main {
     private static JsonWriterSettings JSON_WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "\t", "\n");
     public static final String ENTER_SQL_TEXT = "Enter input sql:\n\n ";
     private static final String DEFAULT_MONGO_PORT = "27017";
+    public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
+    public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
 
     public static Options buildOptions() {
         Options options = new Options();
@@ -167,7 +174,21 @@ public class Main {
                     }
 
 
-                    QueryConverter queryConverter = new QueryConverter.Builder().sqlInputStream(inputStream).build();
+                    QueryConverter.Builder builder = new QueryConverter.Builder().sqlInputStream(inputStream);
+
+                    if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {
+                        builder.aggregationAllowDiskUse(Boolean.valueOf(System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+                    }
+
+                    if (System.getProperty(D_AGGREGATION_BATCH_SIZE) != null) {
+                        try {
+                            builder.aggregationBatchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
+                        } catch (NumberFormatException formatException) {
+                            System.err.println(formatException.getMessage());
+                        }
+                    }
+
+                    QueryConverter queryConverter = builder.build();
 
                     inputStream.close();
 
@@ -250,7 +271,7 @@ public class Main {
         }
 
     private static String getCharacterInput() {
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in, Charsets.UTF_8.displayName());
         System.out.print("more results? (y/n): ");
         String choice = "";
         if (scanner.hasNext()){
@@ -264,7 +285,7 @@ public class Main {
         IOUtils.write("[", stringWriter);
         IOUtils.write(Joiner.on(",").join(Lists.transform(documents, new com.google.common.base.Function<Document, String>() {
             @Override
-            public String apply(Document document) {
+            public String apply(@Nonnull Document document) {
                 return document.toJson(JSON_WRITER_SETTINGS);
             }
         })),stringWriter);
@@ -276,7 +297,7 @@ public class Main {
         final Pattern hostAndPort = Pattern.compile("^(.[^:]*){1}([:]){0,1}(\\d+){0,1}$");
         List<ServerAddress> serverAddresses = Lists.transform(Arrays.asList(hosts), new Function<String, ServerAddress>() {
             @Override
-            public ServerAddress apply(String string) {
+            public ServerAddress apply(@Nonnull String string) {
                 Matcher matcher = hostAndPort.matcher(string.trim());
                 if (matcher.matches()) {
                     String hostname = matcher.group(1);
@@ -308,7 +329,7 @@ public class Main {
     }
 
 
-    private static class OptionComparator implements Comparator<Option> {
+    private static class OptionComparator implements Comparator<Option>, Serializable {
         private final List<String> orderList;
 
         public OptionComparator(List<String> orderList) {

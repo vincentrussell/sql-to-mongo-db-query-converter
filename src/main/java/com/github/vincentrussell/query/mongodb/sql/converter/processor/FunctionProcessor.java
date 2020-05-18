@@ -12,7 +12,7 @@ public final class FunctionProcessor {
     { 
     	functionMapper = new HashMap<>(); 
     	functionMapper.put("OID", "toObjectId");
-    	functionMapper.put("TIMESTAMP", "date"); 
+    	functionMapper.put("TIMESTAMP", "toDate"); 
     }
 	
 	

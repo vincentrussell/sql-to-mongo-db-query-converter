@@ -5,13 +5,10 @@ import com.github.vincentrussell.query.mongodb.sql.converter.SQLCommandType;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.SqlUtils;
 import com.github.vincentrussell.query.mongodb.sql.converter.visitor.ExpVisitorEraseAliasTableBaseBuilder;
-
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParser;
-import net.sf.jsqlparser.parser.JSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
-import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.select.*;
@@ -34,8 +31,9 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     private final List<String> groupBys;
     private final List<OrderByElement> orderByElements;
     private final AliasHolder aliasHolder;
+    private final Expression havingClause;
 
-    public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause, boolean isDistinct, boolean isCountAll, FromHolder from, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, AliasHolder aliasHolder) {
+    public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause, boolean isDistinct, boolean isCountAll, FromHolder from, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, AliasHolder aliasHolder, Expression havingClause) {
         this.sqlCommandType = sqlCommandType;
         this.whereClause = whereClause;
         this.isDistinct = isDistinct;
@@ -46,6 +44,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
         this.selectItems = selectItems;
         this.joins = joins;
         this.groupBys = groupBys;
+        this.havingClause = havingClause;
         this.orderByElements = orderByElements;
         this.aliasHolder = aliasHolder;
     }
@@ -70,10 +69,6 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     public FromHolder getFromHolder() {
         return this.from;
     }
-    
-    /*public String getAliasTable() {
-    	return this.from.getAlias(this.tables.getBaseTable());
-    }*/
 
     public long getLimit() {
         return limit;
@@ -98,6 +93,10 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     public List<String> getGoupBys() {
         return groupBys;
     }
+    
+    public Expression getHavingClause() {
+		return havingClause;
+	}
 
     public List<OrderByElement> getOrderByElements() {
         return orderByElements;
@@ -124,6 +123,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
         private List<SelectItem> selectItems = new ArrayList<>();
         private List<Join> joins = new ArrayList<>();
         private List<String> groupBys = new ArrayList<>();
+        private Expression havingClause;
         private List<OrderByElement> orderByElements1 = new ArrayList<>();
         private AliasHolder aliasHolder;
 
@@ -159,15 +159,27 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
             
             if (Select.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.SELECT;
-                final PlainSelect plainSelect = (PlainSelect)(((Select)statement).getSelectBody());
-                return setPlainSelect(plainSelect);
-                
+                SelectBody selectBody = ((Select) statement).getSelectBody();
+
+                if (SetOperationList.class.isInstance(selectBody)) {
+                    SetOperationList setOperationList = (SetOperationList)selectBody;
+                    if (setOperationList.getSelects() != null
+                            && setOperationList.getSelects().size() == 1
+                            && PlainSelect.class.isInstance(setOperationList.getSelects().get(0))) {
+                        return setPlainSelect((PlainSelect) setOperationList.getSelects().get(0));
+                    }
+                } else if (PlainSelect.class.isInstance(selectBody)) {
+                    return setPlainSelect((PlainSelect) selectBody);
+                }
+
+                throw new ParseException("No supported sentence");
+
+
             } else if (Delete.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.DELETE;
                 Delete delete = (Delete)statement;
                 return setDelete(delete); 
-            }
-            else {
+            } else {
             	throw new ParseException("No supported sentence");
             }
         }
@@ -186,6 +198,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
             selectItems = plainSelect.getSelectItems();
             joins = plainSelect.getJoins();
             groupBys = SqlUtils.getGroupByColumnReferences(plainSelect);
+            havingClause = plainSelect.getHaving();
             aliasHolder = generateHashAliasFromSelectItems(selectItems);
             SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
             return this;
@@ -221,7 +234,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
 
         public SQLCommandInfoHolder build() {
             return new SQLCommandInfoHolder(sqlCommandType, whereClause,
-                    isDistinct, isCountAll, from, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHolder);
+                    isDistinct, isCountAll, from, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHolder, havingClause);
         }
 
         public static Builder create(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) {

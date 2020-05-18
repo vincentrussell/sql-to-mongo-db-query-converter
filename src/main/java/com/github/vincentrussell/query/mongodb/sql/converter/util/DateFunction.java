@@ -22,9 +22,8 @@ public class DateFunction {
         this.column = column;
     }
 
-
     public Date getDate() {
-        return date;
+        return new Date(date.getTime());
     }
 
     public String getColumn() {

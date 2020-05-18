@@ -4,14 +4,14 @@ import java.io.Serializable;
 
 public class Token implements Serializable {
     private static final long serialVersionUID = 1L;
-    public int kind;
-    public int beginLine;
-    public int beginColumn;
-    public int endLine;
-    public int endColumn;
-    public String image;
-    public Token next;
-    public Token specialToken;
+    private int kind;
+    private int beginLine;
+    private int beginColumn;
+    private int endLine;
+    private int endColumn;
+    private String image;
+    private Token next;
+    private Token specialToken;
 
     public Object getValue() {
         return null;
@@ -38,6 +38,38 @@ public class Token implements Serializable {
             default:
                 return new Token(ofKind, image);
         }
+    }
+
+    public int getKind() {
+        return kind;
+    }
+
+    public int getBeginLine() {
+        return beginLine;
+    }
+
+    public int getBeginColumn() {
+        return beginColumn;
+    }
+
+    public int getEndLine() {
+        return endLine;
+    }
+
+    public int getEndColumn() {
+        return endColumn;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public Token getNext() {
+        return next;
+    }
+
+    public Token getSpecialToken() {
+        return specialToken;
     }
 
     public static Token newToken(int ofKind) {
