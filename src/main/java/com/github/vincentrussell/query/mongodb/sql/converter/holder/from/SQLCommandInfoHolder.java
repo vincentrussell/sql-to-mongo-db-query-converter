@@ -22,7 +22,8 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     private final SQLCommandType sqlCommandType;
     private final boolean isDistinct;
     private final boolean isCountAll;
-    private final FromHolder from;
+    private final boolean isTotalGroup;
+	private final FromHolder from;
     private final long limit;
     private final long offset;
     private final Expression whereClause;
@@ -33,11 +34,12 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     private final AliasHolder aliasHolder;
     private final Expression havingClause;
 
-    public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause, boolean isDistinct, boolean isCountAll, FromHolder from, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, AliasHolder aliasHolder, Expression havingClause) {
+    public SQLCommandInfoHolder(SQLCommandType sqlCommandType, Expression whereClause, boolean isDistinct, boolean isCountAll, boolean isTotalGroup, FromHolder from, long limit, long offset, List<SelectItem> selectItems, List<Join> joins, List<String> groupBys, List<OrderByElement> orderByElements, AliasHolder aliasHolder, Expression havingClause) {
         this.sqlCommandType = sqlCommandType;
         this.whereClause = whereClause;
         this.isDistinct = isDistinct;
         this.isCountAll = isCountAll;
+        this.isTotalGroup = isTotalGroup;
         this.from = from;
         this.limit = limit;
         this.offset = offset;
@@ -61,6 +63,10 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
     public boolean isCountAll() {
         return isCountAll;
     }
+    
+    public boolean isTotalGroup() {
+		return isTotalGroup;
+	}
 
     public String getTable() throws ParseException {
         return from.getBaseFromTableName();
@@ -117,6 +123,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
         private Expression whereClause;
         private boolean isDistinct = false;
         private boolean isCountAll = false;
+        private boolean isTotalGroup = false;
         private FromHolder from;
         private long limit = -1;
         private long offset = -1;
@@ -200,6 +207,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
             groupBys = SqlUtils.getGroupByColumnReferences(plainSelect);
             havingClause = plainSelect.getHaving();
             aliasHolder = generateHashAliasFromSelectItems(selectItems);
+            isTotalGroup = SqlUtils.isTotalGroup(selectItems);
             SqlUtils.isTrue(plainSelect.getFromItem() != null, "could not find table to query.  Only one simple table name is supported.");
             return this;
         }
@@ -234,7 +242,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
 
         public SQLCommandInfoHolder build() {
             return new SQLCommandInfoHolder(sqlCommandType, whereClause,
-                    isDistinct, isCountAll, from, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHolder, havingClause);
+                    isDistinct, isCountAll, isTotalGroup, from, limit, offset, selectItems, joins, groupBys, orderByElements1, aliasHolder, havingClause);
         }
 
         public static Builder create(FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) {

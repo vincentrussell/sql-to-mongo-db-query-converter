@@ -44,6 +44,7 @@ import org.bson.json.JsonWriterSettings;
 import javax.annotation.Nonnull;
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang.Validate.notNull;
@@ -203,7 +204,7 @@ public class QueryConverter {
                 || SqlUtils.isSelectAll(selectItems))
                 && sqlCommandInfoHolder.isDistinct(),"cannot run distinct one more than one column");
         SqlUtils.isFalse(sqlCommandInfoHolder.getGoupBys().size() == 0 && selectItems.size()!=filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
-                && !SqlUtils.isCountAll(selectItems),"illegal expression(s) found in select clause.  Only column names supported");
+                && !SqlUtils.isCountAll(selectItems)&& !sqlCommandInfoHolder.isTotalGroup(),"illegal expression(s) found in select clause.  Only column names supported");
     }
 
     /**
@@ -223,7 +224,7 @@ public class QueryConverter {
 
     private MongoDBQueryHolder getMongoQueryInternal(SQLCommandInfoHolder sqlCommandInfoHolder) throws ParseException, net.sf.jsqlparser.parser.ParseException {
         MongoDBQueryHolder mongoDBQueryHolder = new MongoDBQueryHolder(sqlCommandInfoHolder.getBaseTableName(), sqlCommandInfoHolder.getSqlCommandType());
-        Document document = new Document();
+    	Document document = new Document();
         //From Subquery 
         if(sqlCommandInfoHolder.getFromHolder().getBaseFrom().getClass() == SubSelect.class) {
         	mongoDBQueryHolder.setPrevSteps(fromSQLCommandInfoHolderToAggregateSteps((SQLCommandInfoHolder)sqlCommandInfoHolder.getFromHolder().getBaseSQLHolder()));
@@ -241,9 +242,12 @@ public class QueryConverter {
         	}
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selects, groupBys));
             mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(selects, groupBys));
-        } else if (sqlCommandInfoHolder.isCountAll()) {
-            mongoDBQueryHolder.setCountAll(sqlCommandInfoHolder.isCountAll());
-        } else if (!SqlUtils.isSelectAll(sqlCommandInfoHolder.getSelectItems())) {
+        }  else if (sqlCommandInfoHolder.isTotalGroup()) {
+        	List<SelectItem> selects = preprocessSelect(sqlCommandInfoHolder.getSelectItems(),sqlCommandInfoHolder.getFromHolder());
+        	Document d = createProjectionsFromSelectItems(selects, null);
+            mongoDBQueryHolder.setProjection(d);
+            mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(selects, null));
+        }  else if (!SqlUtils.isSelectAll(sqlCommandInfoHolder.getSelectItems())) {
             document.put("_id",0);
             for (SelectItem selectItem : sqlCommandInfoHolder.getSelectItems()) {
             	SelectExpressionItem selectExpressionItem =  ((SelectExpressionItem) selectItem);
@@ -264,11 +268,15 @@ public class QueryConverter {
             mongoDBQueryHolder.setProjection(document);
         }
         
+        if (sqlCommandInfoHolder.isCountAll()) {
+            mongoDBQueryHolder.setCountAll(sqlCommandInfoHolder.isCountAll());
+        }
+        
         if (sqlCommandInfoHolder.getJoins() != null) {
         	mongoDBQueryHolder.setJoinPipeline(
         	        JoinProcessor.toPipelineSteps(this,
                             sqlCommandInfoHolder.getFromHolder(),
-                            sqlCommandInfoHolder.getJoins(), sqlCommandInfoHolder.getWhereClause()));
+                            sqlCommandInfoHolder.getJoins(), SqlUtils.cloneExpression(sqlCommandInfoHolder.getWhereClause())));
         }
 
         if (sqlCommandInfoHolder.getOrderByElements()!=null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
@@ -464,8 +472,10 @@ public class QueryConverter {
             String columnName = SqlUtils.getStringValue(column);
             idDocument.put(columnName.replaceAll("\\.", "_"),"$" + columnName);
         }
-
-        document.append("_id", idDocument.size() == 1 ? Iterables.get(idDocument.values(),0) : idDocument);
+        
+        if(!idDocument.isEmpty()) {
+        	document.append("_id", idDocument.size() == 1 ? Iterables.get(idDocument.values(),0) : idDocument);
+        }
 
         for (SelectItem selectItem : functionItems) {
             Function function = (Function) ((SelectExpressionItem)selectItem).getExpression();
@@ -567,6 +577,9 @@ public class QueryConverter {
             IOUtils.write("\""+getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
             IOUtils.write(" , ", outputStream);
             IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(relaxed)), outputStream);
+        } else if (sqlCommandInfoHolder.isCountAll() && !isAggregate(mongoDBQueryHolder)) {
+            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
+            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(relaxed)), outputStream);
         } else if (isAggregate(mongoDBQueryHolder)) {
         	IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".aggregate(", outputStream);
             IOUtils.write("[", outputStream);
@@ -595,9 +608,6 @@ public class QueryConverter {
 
 
 
-        } else if (sqlCommandInfoHolder.isCountAll()) {
-            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(relaxed)), outputStream);
         } else {
         	if(sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
 	        	isFindQuery = true;
@@ -636,7 +646,7 @@ public class QueryConverter {
     }
     
     private boolean isAggregate(MongoDBQueryHolder mongoDBQueryHolder) {
-    	return (sqlCommandInfoHolder.getAliasHolder()!=null && !sqlCommandInfoHolder.getAliasHolder().isEmpty()) || sqlCommandInfoHolder.getGoupBys().size() > 0 || (sqlCommandInfoHolder.getJoins() != null && sqlCommandInfoHolder.getJoins().size() > 0) || (mongoDBQueryHolder.getPrevSteps() != null && !mongoDBQueryHolder.getPrevSteps().isEmpty());
+    	return (sqlCommandInfoHolder.getAliasHolder()!=null && !sqlCommandInfoHolder.getAliasHolder().isEmpty()) || sqlCommandInfoHolder.getGoupBys().size() > 0 || (sqlCommandInfoHolder.getJoins() != null && sqlCommandInfoHolder.getJoins().size() > 0) || (mongoDBQueryHolder.getPrevSteps() != null && !mongoDBQueryHolder.getPrevSteps().isEmpty()) || (sqlCommandInfoHolder.isTotalGroup() && !SqlUtils.isCountAll(sqlCommandInfoHolder.getSelectItems()));
     }
 
     private String getDistinctFieldName(MongoDBQueryHolder mongoDBQueryHolder) {
@@ -661,7 +671,7 @@ public class QueryConverter {
         	
             if (mongoDBQueryHolder.isDistinct()) {
                 return (T) new QueryResultIterator<>(mongoCollection.distinct(getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
-            } else if (mongoDBQueryHolder.isCountAll()) {
+            } else if (sqlCommandInfoHolder.isCountAll() && !isAggregate(mongoDBQueryHolder)) {
                 return (T) Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
             } else if (isAggregate(mongoDBQueryHolder)) {
                 
@@ -717,8 +727,21 @@ public class QueryConverter {
         if(sqlCommandInfoHolder.getJoins() != null && !sqlCommandInfoHolder.getJoins().isEmpty()) {
         	documents.addAll(mongoDBQueryHolder.getJoinPipeline());
         }
-        if(!sqlCommandInfoHolder.getGoupBys().isEmpty()) {
-        	documents.add(new Document("$group", mongoDBQueryHolder.getProjection()));
+        if(!sqlCommandInfoHolder.getGoupBys().isEmpty() || sqlCommandInfoHolder.isTotalGroup()) {
+        	if(mongoDBQueryHolder.getProjection().get("_id") == null ) {//Generate _id with empty document
+        		Document dgroup = new Document();
+        		dgroup.put("_id", new Document());
+        		for(Entry<String,Object> keyValue : mongoDBQueryHolder.getProjection().entrySet()) {
+        			if(!keyValue.getKey().equals("_id")) {
+        				dgroup.put(keyValue.getKey(),keyValue.getValue());
+        			}
+        		}
+        		documents.add(new Document("$group", dgroup));
+        	}
+        	else {
+        		documents.add(new Document("$group", mongoDBQueryHolder.getProjection()));
+        	}
+        	
         }
         if (mongoDBQueryHolder.getHaving() != null && mongoDBQueryHolder.getHaving().size() > 0 ){
             documents.add(new Document("$match",mongoDBQueryHolder.getHaving()));
@@ -738,7 +761,7 @@ public class QueryConverter {
         	documents.add(new Document("$project",aliasProjection));
         }
         
-        if(sqlCommandInfoHolder.getGoupBys().isEmpty() && !mongoDBQueryHolder.getProjection().isEmpty()) {//Alias no group
+        if(sqlCommandInfoHolder.getGoupBys().isEmpty() && !sqlCommandInfoHolder.isTotalGroup() && !mongoDBQueryHolder.getProjection().isEmpty()) {//Alias no group
         	Document projection = mongoDBQueryHolder.getProjection();
         	documents.add(new Document("$project",projection));
         }

@@ -2337,6 +2337,186 @@ public class QueryConverterTest {
     }
     
     @Test
+    public void countAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) as c from Restaurants").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void sumAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select sum(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"sum_Helsinki_population\": {\n" + 
+        		"      \"$sum\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"sum_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void sumAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select sum(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void minAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select min(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"min_Helsinki_population\": {\n" + 
+        		"      \"$min\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"min_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void minAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select min(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$min\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void maxAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select max(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"max_Helsinki_population\": {\n" + 
+        		"      \"$max\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"max_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void maxAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select max(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$max\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void avgAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"avg_Helsinki_population\": {\n" + 
+        		"      \"$avg\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"avg_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void avgAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$avg\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==).");
