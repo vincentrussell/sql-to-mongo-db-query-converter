@@ -358,6 +358,22 @@ db.Restaurants.aggregate([
                          ])
 ```
 
+###Count without GROUP BY
+```
+select count(*) as c from table
+
+******Mongo Query:*********
+db.table.aggregate([{ "$group": { "_id": {}, "c": { "$sum": 1 } } },{ "$project": { "c": 1, "_id": 0 } }])
+```
+
+###Avg without GROUP BY
+
+```
+select avg(field) as avg from table
+
+******Mongo Query:*********
+db.table.aggregate([{ "$group": { "_id": {}, "avg": { "$avg": "$field" } } },{ "$project": { "avg": 1, "_id": 0 } }])
+```
 
 ###Joins
 
@@ -658,6 +674,7 @@ more results? (y/n): n
 - Created the ability to prove the following options to aggregation: aggregationAllowDiskUse and aggregationBatchSize
 - Support for having clause
 - Upgrading com.github.jsqlparser:jsqlparser from v1.4 to v3.1
+- Supporting group operations (avg, max, min, count, sum) without "group by" clause for performing a total group.
 
 # Change Log
 
