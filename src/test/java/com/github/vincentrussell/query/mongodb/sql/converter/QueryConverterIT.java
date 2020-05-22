@@ -1475,6 +1475,90 @@ public class QueryConverterIT {
         long count  = queryConverter.run(mongoDatabase);
         assertEquals(7499, count);
     }
+    
+    @Test
+    public void countQueryAlias() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) as c from "+COLLECTION).build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"c\": " + TOTAL_TEST_RECORDS_PRIMER + "\n" +    
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void countQueryAliasWhere() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) as c from "+COLLECTION+" where address.street LIKE '%Street'").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"c\": 7499\n" +    
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void sumQueryAliasWhere() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select sum(_id) as s from "+COLLECTION_FILMS+" where Category = 'Sports'").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"s\": 39584\n" +    
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void minQueryAliasWhere() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select min(_id) as mi from "+COLLECTION_FILMS+" where Category = 'Sports'").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"mi\": 10\n" +    
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void maxQueryAliasWhere() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select max(_id) as ma from "+COLLECTION_FILMS+" where Category = 'Sports'").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"ma\": 940\n" +    
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void avgQueryAliasWhere() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(_id) as av from "+COLLECTION_FILMS+" where Category = 'Sports'").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"av\": 534.918918918919\n" +    
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void allGroupsQueryAliasWhere() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) as c, sum(_id) as s, min(_id) as mi, max(_id) as ma, avg(_id) as av from "+COLLECTION_FILMS+" where Category = 'Sports'").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" +  
+        		"	\"s\": 39584,\n" +
+        		"	\"mi\": 10,\n" +
+        		"	\"ma\": 940,\n" +
+        		"	\"av\": 534.918918918919,\n" +
+        		"	\"c\": 74\n" +  
+        		"}]",toJson(results),false);
+    }
+    
+    @Test
+    public void countByBoroughSubquery() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from(select borough from " + COLLECTION + " group by borough)").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" + 
+        		"	\"count\": 6\n" +    
+        		"}]",toJson(results),false);
+    }
 
     @Test
     public void deleteQuery() throws ParseException {

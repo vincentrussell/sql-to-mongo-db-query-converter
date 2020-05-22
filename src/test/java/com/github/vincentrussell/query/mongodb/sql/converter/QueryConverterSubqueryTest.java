@@ -33,7 +33,34 @@ public class QueryConverterSubqueryTest {
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
-    
+    @Test
+    public void writeSimpleSubqueryCountAll() throws ParseException, IOException {
+    	QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from(select borough from Restaurants group by borough)").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": \"$borough\"\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"borough\": \"$_id\",\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"count\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"count\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
     
     @Test
     public void writeSimpleSubqueryAlias_ProjectLimit() throws ParseException, IOException {

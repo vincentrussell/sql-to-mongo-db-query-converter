@@ -9,6 +9,7 @@ import com.google.common.collect.Lists;
 import com.joestelmach.natty.DateGroup;
 import com.joestelmach.natty.Parser;
 
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
@@ -16,6 +17,7 @@ import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.SignedExpression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.*;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import org.bson.Document;
@@ -538,6 +540,29 @@ public class SqlUtils {
 	
 	public static Object nonFunctionToNode(Expression exp) throws ParseException {
 		return (SqlUtils.isColumn(exp)&&!exp.toString().startsWith("$"))?"$" + exp:getValue(exp,null,FieldType.UNKNOWN, null);
+	}
+	
+	public static boolean isTotalGroup(List<SelectItem> selectItems) {
+		for(SelectItem sitem : selectItems) {
+			if (isAggregateExp(sitem.toString())) {
+                return true;
+            }
+		}
+		return false;
+	}
+	
+	//Non exception 
+	public static Expression cloneExpression(Expression expression) {
+		if(expression == null) {
+			return null;
+		}
+		try {
+			return CCJSqlParserUtil.parseCondExpression(expression.toString());
+		} catch (JSQLParserException e) {
+			// Never exception because clone
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 }
