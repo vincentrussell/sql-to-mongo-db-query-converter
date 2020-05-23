@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter.svg?branch=master)](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter)
+<br />
+
 # sql-to-mongo-db-query-converter
 
 sql-to-mongo-db-query-converter helps you build quieres for MongoDb based on Queries provided in SQL.   
