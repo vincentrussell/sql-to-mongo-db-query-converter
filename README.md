@@ -2,7 +2,8 @@
 
 sql-to-mongo-db-query-converter helps you build quieres for MongoDb based on Queries provided in SQL.   
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.vincentrussell/sql-to-mongo-db-query-converter.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.github.vincentrussell%22%20AND%20a:%22sql-to-mongo-db-query-converter%22) <br />[![Build Status](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter.svg?branch=master)](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.vincentrussell/sql-to-mongo-db-query-converter.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.github.vincentrussell%22%20AND%20a:%22sql-to-mongo-db-query-converter%22) <br />
+[![Build Status](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter.svg?branch=master)](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter)
 <br />
 
 ## Maven
