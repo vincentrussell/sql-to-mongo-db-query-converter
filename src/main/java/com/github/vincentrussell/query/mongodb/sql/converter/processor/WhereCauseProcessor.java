@@ -158,11 +158,15 @@ public class WhereCauseProcessor {
                     query.put(mongoInFunction, new Document("function", parseExpression(new Document(), leftExpression, otherSide)).append("list", objectList));
                 } else {
                     String mongoInFunction = inExpression.isNot() ? "$nin" : "$in";
-                    Document doc = new Document();
-                    List<Object> lobj = Arrays.asList(SqlUtils.nonFunctionToNode(leftExpression),(Object)objectList);
-                	doc.put(mongoInFunction, lobj);
-                	query.put("$expr", doc);
-
+                    if (SqlUtils.containsNestedFunctions(objectList)) {
+                        Document doc = new Document();
+                        List<Object> lobj = Arrays.asList(SqlUtils.nonFunctionToNode(leftExpression),(Object)objectList);
+                        doc.put(mongoInFunction, lobj);
+                        query.put("$expr", doc);
+                    } else {
+                        query.put(leftExpressionAsString,
+                                new Document(mongoInFunction, objectList));
+                    }
                 }
             }
         } else if(AndExpression.class.isInstance(incomingExpression)) {

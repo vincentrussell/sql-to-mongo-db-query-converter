@@ -77,23 +77,20 @@ public class MainTest {
             Thread.sleep(1000);
             assertThat(systemOutRule.getLog(),startsWith(Main.ENTER_SQL_TEXT));
             String result = systemOutRule.getLog().replaceAll(Main.ENTER_SQL_TEXT,"");
-            assertEquals("******Mongo Query:*********\n" + 
-            		"\n" + 
-            		"db.my_table.find({\n" + 
-            		"  \"$expr\": {\n" + 
-            		"    \"$in\": [\n" + 
-            		"      \"$value\",\n" + 
-            		"      [\n" + 
-            		"        \"theValue1\",\n" + 
-            		"        \"theValue2\",\n" + 
-            		"        \"theValue3\"\n" + 
-            		"      ]\n" + 
-            		"    ]\n" + 
-            		"  }\n" + 
-            		"} , {\n" + 
-            		"  \"_id\": 0,\n" + 
-            		"  \"column1\": 1\n" + 
-            		"})".trim(), result.trim());
+            assertEquals("******Mongo Query:*********\n" +
+                    "\n" +
+                    "db.my_table.find({\n" +
+                    "  \"value\": {\n" +
+                    "    \"$in\": [\n" +
+                    "      \"theValue1\",\n" +
+                    "      \"theValue2\",\n" +
+                    "      \"theValue3\"\n" +
+                    "    ]\n" +
+                    "  }\n" +
+                    "} , {\n" +
+                    "  \"_id\": 0,\n" +
+                    "  \"column1\": 1\n" +
+                    "})".trim(), result.trim());
 
         }
     }
