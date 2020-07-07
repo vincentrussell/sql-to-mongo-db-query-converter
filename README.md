@@ -10,7 +10,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 <dependency>
    <groupId>com.github.vincentrussell</groupId>
    <artifactId>sql-to-mongo-db-query-converter</artifactId>
-   <version>1.11</version>
+   <version>1.12</version>
 </dependency>
 ```
 
@@ -31,7 +31,7 @@ Document sort = mongoDBQueryHolder.getSort();
 ## Running it as a standalone jar
 
 ```
-java -jar sql-to-mongo-db-query-converter-1.11-standalone.jar -s sql.file -d destination.json
+java -jar sql-to-mongo-db-query-converter-1.12-standalone.jar -s sql.file -d destination.json
 ```
 ### Options
 
@@ -66,7 +66,7 @@ To specify an initial batch size for the cursor
 ## Interactive mode
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.11-standalone.jar -i
+java -jar target/sql-to-mongo-db-query-converter-1.12-standalone.jar -i
 Enter input sql:
 
 
@@ -606,7 +606,7 @@ is equivalent to the $skip function in mongodb json query language
 You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.11-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
+java -jar target/sql-to-mongo-db-query-converter-1.12-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
 Enter input sql:
 
 
@@ -664,6 +664,12 @@ more results? (y/n): n
 ```
 
 # Change Log
+
+## [1.12](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.12) (2020-07-07)
+
+**Enhancements:**
+
+- Fix queries using IN keyword.  They were broken in 1.11
 
 ## [1.11](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.11) (2020-05-22)
 
