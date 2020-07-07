@@ -2,7 +2,7 @@
 release process:
 
 mvn javadoc:javadoc
-mvn versions:set -DnewVersion=1.0
+mvn versions:set -DnewVersion=z
 git add .
 git commit -m "preparing for release 1.0"
 git tag sql-to-mongo-db-query-converter-1.0
