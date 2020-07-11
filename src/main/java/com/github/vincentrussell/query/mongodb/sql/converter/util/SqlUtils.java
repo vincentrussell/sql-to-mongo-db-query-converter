@@ -565,16 +565,4 @@ public class SqlUtils {
 		}
 	}
 
-    public static boolean containsNestedFunctions(List<Object> objectList) {
-        for (Object object : objectList) {
-            if (Document.class.isInstance(object)) {
-                for (Map.Entry<String, Object> entry : ((Document)object).entrySet()) {
-                    if (entry.getKey().startsWith("$")) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
 }
