@@ -173,11 +173,11 @@ public class WhereCauseProcessor {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
             Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
             return expression;
-        } else if (NotExpression.class.isInstance(incomingExpression) && otherSide == null) {
+        } else if (NotExpression.class.isInstance(incomingExpression)) {
             Expression expression = ((NotExpression)incomingExpression).getExpression();
 
             if (Parenthesis.class.isInstance(expression)) {
-                return new Document("$nor", Arrays.asList(parseExpression(query, expression, null)));
+                return new Document("$nor", Arrays.asList(parseExpression(query, expression, otherSide)));
             }
 
             return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));

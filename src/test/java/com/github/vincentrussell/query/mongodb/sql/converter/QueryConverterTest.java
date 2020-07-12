@@ -858,6 +858,17 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void multipleNotStatements() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Customers\n" +
+                "WHERE NOT (Country='Germany' AND City='Berlin') and NOT (Country='Mexico');").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and",
+               documentValuesArray("$nor", documentValuesArray("$and", document("Country", "Germany"), document("City", "Berlin"))),
+                documentValuesArray("$nor", document("Country", "Mexico"))),mongoDBQueryHolder.getQuery());
+        assertEquals(SQLCommandType.SELECT, mongoDBQueryHolder.getSqlCommandType());
+    }
+
+    @Test
     public void deleteQuery() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from table where value = 1").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
