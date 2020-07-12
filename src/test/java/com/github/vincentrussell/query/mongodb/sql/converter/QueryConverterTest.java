@@ -13,7 +13,10 @@ import org.junit.rules.ExpectedException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
@@ -573,38 +576,38 @@ public class QueryConverterTest {
                 .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id IN (OID('5e97ae59c63d1b3ff8e07c74'),OID('5e97ae58c63d1b3ff8e07c73'),OID('5e97ae58c63d1b3ff8e07c72'),OID('5e97ae58c63d1b3ff8e07c71'),OID('5e97ae58c63d1b3ff8e07c70'))").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
-        assertEquals("db.Restaurants.aggregate([{\n" +
-                "  \"$match\": {\n" +
-                "    \"$expr\": {\n" +
-                "      \"$in\": [\n" +
-                "        \"$_id\",\n" +
-                "        [\n" +
-                "          {\n" +
-                "            \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c73\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c72\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c71\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c70\"\n" +
-                "          }\n" +
-                "        ]\n" +
-                "      ]\n" +
-                "    }\n" +
-                "  }\n" +
-                "},{\n" +
-                "  \"$project\": {\n" +
-                "    \"_id\": 0,\n" +
-                "    \"id\": \"$_id\",\n" +
-                "    \"R\": \"$Restaurant\"\n" +
-                "  }\n" +
-                "}])",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$expr\": {\n" + 
+        		"      \"$in\": [\n" + 
+        		"        \"$_id\",\n" + 
+        		"        [\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c73\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c72\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c71\"\n" + 
+        		"          },\n" + 
+        		"          {\n" + 
+        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c70\"\n" + 
+        		"          }\n" + 
+        		"        ]\n" + 
+        		"      ]\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"_id\": 0,\n" + 
+        		"    \"id\": \"$_id\",\n" + 
+        		"    \"R\": \"$Restaurant\"\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
     @Test
@@ -855,6 +858,17 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void multipleNotStatements() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Customers\n" +
+                "WHERE NOT (Country='Germany' AND City='Berlin') and NOT (Country='Mexico');").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and",
+               documentValuesArray("$nor", documentValuesArray("$and", document("Country", "Germany"), document("City", "Berlin"))),
+                documentValuesArray("$nor", document("Country", "Mexico"))),mongoDBQueryHolder.getQuery());
+        assertEquals(SQLCommandType.SELECT, mongoDBQueryHolder.getSqlCommandType());
+    }
+
+    @Test
     public void deleteQuery() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from table where value = 1").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -866,7 +880,7 @@ public class QueryConverterTest {
     public void deleteQueryMoreComplicated() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
-        assertEquals(document("value",document("$in","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
         assertEquals(SQLCommandType.DELETE, mongoDBQueryHolder.getSqlCommandType());
     }
     
@@ -875,15 +889,18 @@ public class QueryConverterTest {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from Restaurants where Restaurant.cuisine IN ('American ','Italian','Chinese')").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
-        assertEquals("db.Restaurants.remove({\n" +
-                "  \"Restaurant.cuisine\": {\n" +
-                "    \"$in\": [\n" +
-                "      \"American \",\n" +
-                "      \"Italian\",\n" +
-                "      \"Chinese\"\n" +
-                "    ]\n" +
-                "  }\n" +
-                "})",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.Restaurants.remove({\n" + 
+        		"  \"$expr\": {\n" + 
+        		"    \"$in\": [\n" + 
+        		"      \"$Restaurant.cuisine\",\n" + 
+        		"      [\n" + 
+        		"        \"American \",\n" + 
+        		"        \"Italian\",\n" + 
+        		"        \"Chinese\"\n" + 
+        		"      ]\n" + 
+        		"    ]\n" + 
+        		"  }\n" + 
+        		"})",byteArrayOutputStream.toString("UTF-8"));
     }
 
     @Test
@@ -908,7 +925,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("value", documentValuesArray("$in", "theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -918,7 +935,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("value", documentValuesArray("$nin","theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
+        assertEquals(document("$expr",documentValuesArray("$nin","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -2696,7 +2713,7 @@ public class QueryConverterTest {
     }
 
     private static Document documentValuesArray(String key, Object... values) {
-        return new Document(key, Arrays.asList(values));
+        return new Document(key,Arrays.asList(values));
     }
     
     private static List<Object> objsToList(Object... values) {
