@@ -168,6 +168,19 @@ public abstract class AbstractQueryConverterIT {
     }
 
     @Test
+    public void notLikeQuery() throws ParseException, JSONException {
+        QueryConverter queryConverter1 = new QueryConverter.Builder().sqlString("select * from "+COLLECTION+" where address.street IS NOT NULL").build();
+        QueryConverter queryConverter2 = new QueryConverter.Builder().sqlString("select * from "+COLLECTION+" where address.street LIKE '%Street'").build();
+        QueryConverter queryConverter3 = new QueryConverter.Builder().sqlString("select * from "+COLLECTION+" where address.street NOT LIKE '%Street'").build();
+        int count1 = Lists.newArrayList((Iterator) queryConverter1.run(mongoDatabase)).size();
+        int count2 = Lists.newArrayList((Iterator) queryConverter2.run(mongoDatabase)).size();
+        int count3 = Lists.newArrayList((Iterator) queryConverter3.run(mongoDatabase)).size();
+        assertEquals(25359, count1);
+        assertEquals(7499, count2);
+        assertEquals(count1 - count2, count3);
+    }
+
+    @Test
     public void objectIdQuery() throws ParseException, JSONException {
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4567")).append("key", "value1"));
         mongoCollection.insertOne(new Document("_id", new ObjectId("54651022bffebc03098b4568")).append("key", "value2"));

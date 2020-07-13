@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class WhereCauseProcessor {
 
@@ -121,9 +122,10 @@ public class WhereCauseProcessor {
             LikeExpression likeExpression = (LikeExpression)incomingExpression;
             String stringValueLeftSide = SqlUtils.getStringValue(likeExpression.getLeftExpression());
             String stringValueRightSide = SqlUtils.getStringValue(likeExpression.getRightExpression());
-            Document document = new Document("$regex", "^" + SqlUtils.replaceRegexCharacters(stringValueRightSide) + "$");
+            String convertedRegexString = "^" + SqlUtils.replaceRegexCharacters(stringValueRightSide) + "$";
+            Document document = new Document("$regex", convertedRegexString);
             if (likeExpression.isNot()) {
-                throw new ParseException("NOT LIKE queries not supported");
+                document = new Document(stringValueLeftSide, new Document("$not", Pattern.compile(convertedRegexString)));
             } else {
                 document = new Document(stringValueLeftSide,document);
             }

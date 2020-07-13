@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
@@ -405,16 +406,16 @@ public class QueryConverterTest {
 
     @Test
     public void countAllFromTableWithNotLikeQuery() throws ParseException {
-        expectedException.expect(ParseException.class);
-        expectedException.expectMessage("NOT LIKE queries not supported");
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from my_table where value NOT LIKE 'start%'").build();
+        Document document = queryConverter.getMongoQuery().getQuery();
+        assertEquals(document("value", document("$not", Pattern.compile("^start.*$"))).toJson(), document.toJson());
     }
 
     @Test
     public void selectAllFromTableWithNotLikeQuery() throws ParseException {
-        expectedException.expect(ParseException.class);
-        expectedException.expectMessage("NOT LIKE queries not supported");
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value NOT LIKE 'start%'").build();
+        Document document = queryConverter.getMongoQuery().getQuery();
+        assertEquals(document("value", document("$not", Pattern.compile("^start.*$"))).toJson(), document.toJson());
     }
 
     @Test
