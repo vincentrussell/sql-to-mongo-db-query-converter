@@ -39,8 +39,9 @@ public class SqlUtils {
     private static Pattern SURROUNDED_IN_QUOTES = Pattern.compile("^\"(.+)*\"$");
     private static Pattern LIKE_RANGE_REGEX = Pattern.compile("(\\[.+?\\])");
     private static final String REGEXMATCH_FUNCTION = "regexMatch";
+    private static final String NOT_REGEXMATCH_FUNCTION = "notRegexMatch";
     private static final String OBJECTID_FUNCTION = "objectId";
-    private static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION, OBJECTID_FUNCTION);
+    private static final List<String> SPECIALTY_FUNCTIONS = Arrays.asList(REGEXMATCH_FUNCTION, NOT_REGEXMATCH_FUNCTION, OBJECTID_FUNCTION);
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     private static final DateTimeFormatter YY_MM_DDFORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd");
@@ -400,7 +401,7 @@ public class SqlUtils {
             String rightExpression = equalsTo.getRightExpression().toString();
             if (Function.class.isInstance(equalsTo.getLeftExpression())) {
                 Function function = ((Function)equalsTo.getLeftExpression());
-                if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
+                if ((REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName()) || NOT_REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName()))
                         && (function.getParameters().getExpressions().size()==2
                         || function.getParameters().getExpressions().size()==3)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
@@ -409,27 +410,26 @@ public class SqlUtils {
 
                     isTrue(rightExpressionValue, "false is not allowed for regexMatch function");
 
-                    RegexFunction regexFunction = getRegexFunction(function);
+                    RegexFunction regexFunction = getRegexFunction(function, NOT_REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName()));
                     return regexFunction;
                 }
 
             }
         } else if (Function.class.isInstance(incomingExpression)) {
             Function function = ((Function)incomingExpression);
-            if (REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName())
+            if ((REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName()) || NOT_REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName()))
                 && (function.getParameters().getExpressions().size()==2
                 || function.getParameters().getExpressions().size()==3)
                 && StringValue.class.isInstance(function.getParameters().getExpressions().get(1))) {
 
-                RegexFunction regexFunction = getRegexFunction(function);
+                RegexFunction regexFunction = getRegexFunction(function, NOT_REGEXMATCH_FUNCTION.equalsIgnoreCase(function.getName()));
                 return regexFunction;
-
             }
         }
         return null;
     }
 
-    private static RegexFunction getRegexFunction(Function function) throws ParseException {
+    private static RegexFunction getRegexFunction(Function function, boolean isNot) throws ParseException {
         final String column = getStringValue(function.getParameters().getExpressions().get(0));
         final String regex = fixDoubleSingleQuotes(
             ((StringValue) (function.getParameters().getExpressions().get(1))).getValue());
@@ -438,7 +438,7 @@ public class SqlUtils {
         } catch (PatternSyntaxException e) {
             throw new ParseException(e.getMessage());
         }
-        RegexFunction regexFunction = new RegexFunction(column, regex);
+        RegexFunction regexFunction = new RegexFunction(column, regex, isNot);
 
         if (function.getParameters().getExpressions().size() == 3 && StringValue.class
             .isInstance(function.getParameters().getExpressions().get(2))) {

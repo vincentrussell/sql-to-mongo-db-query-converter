@@ -84,7 +84,7 @@ public class WhereCauseProcessor {
                 if (regexFunction.getOptions() != null) {
                     regexDocument.append("$options", regexFunction.getOptions());
                 }
-                query.put(regexFunction.getColumn(), regexDocument);
+                query.put(regexFunction.getColumn(), wrapIfIsNot(regexDocument, regexFunction));
             } else if (dateFunction!=null) {
                 query.put(dateFunction.getColumn(),
                     new Document(dateFunction.getComparisonExpression(), dateFunction.getDate()));
@@ -191,7 +191,7 @@ public class WhereCauseProcessor {
                 if (regexFunction.getOptions() != null) {
                     regexDocument.append("$options", regexFunction.getOptions());
                 }
-                query.put(regexFunction.getColumn(), regexDocument);
+                query.put(regexFunction.getColumn(), wrapIfIsNot(regexDocument, regexFunction));
             } else {
                 return recurseFunctions(query, function, defaultFieldType, fieldNameToFieldTypeMapping);
             }
@@ -201,6 +201,16 @@ public class WhereCauseProcessor {
             return SqlUtils.getValue(incomingExpression,otherSide, defaultFieldType, fieldNameToFieldTypeMapping);
         }
         return query;
+    }
+
+    private Object wrapIfIsNot(Document regexDocument, RegexFunction regexFunction) {
+        if (regexFunction.isNot()) {
+            if (regexFunction.getOptions() != null) {
+                throw new IllegalArgumentException("$not regex not supported with options");
+            }
+            return new Document("$not", Pattern.compile(regexFunction.getRegex()));
+        }
+        return  regexDocument;
     }
 
     protected Object recurseFunctions(Document query, Object object, FieldType defaultFieldType, Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {

@@ -266,6 +266,15 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void notRegexMatch() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where notRegexMatch(column,'^[ae\"gaf]+$') = true ").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("column", document("$not", Pattern.compile("^[ae\"gaf]+$"))).toJson(),mongoDBQueryHolder.getQuery().toJson());
+    }
+
+    @Test
     public void regexMatchWithEscapedQuote() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where regexMatch(column,'^[ae\"don''tgaf]+$') = true ").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();

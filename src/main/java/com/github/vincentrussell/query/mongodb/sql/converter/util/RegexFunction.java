@@ -3,11 +3,13 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 public class RegexFunction {
     private final String column;
     private final String regex;
+    private final boolean isNot;
     private String options;
 
-    public RegexFunction(String column, String regex) {
+    public RegexFunction(String column, String regex, boolean isNot) {
         this.column = column;
         this.regex = regex;
+        this.isNot = isNot;
     }
 
     public String getColumn() {
@@ -24,5 +26,9 @@ public class RegexFunction {
 
     public String getOptions() {
         return options;
+    }
+
+    public boolean isNot() {
+        return isNot;
     }
 }

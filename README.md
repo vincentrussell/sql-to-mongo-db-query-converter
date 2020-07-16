@@ -150,6 +150,21 @@ db.my_table.find({
 })
 ```
 
+###NOT Regex match
+
+```
+select * from my_table where notRegexMatch(column,'^[ae"gaf]+$')
+
+
+******Result:*********
+
+db.my_table.find({
+  "column": {
+    "$not": /^[ae\"gaf]+$/
+  }
+})
+```
+
 ###Distinct
 
 ```
@@ -176,6 +191,21 @@ select * from my_table where value LIKE 'start%'
 db.my_table.find({
   "value": {
     "$regex": "^start.*$"
+  }
+})
+```
+
+###Like
+
+```
+select * from my_table where value NOT LIKE 'start%'
+
+
+******Result:*********
+
+db.my_table.find({
+  "value": {
+    "$not": /^start.*$/
   }
 })
 ```
@@ -664,6 +694,17 @@ more results? (y/n): n
 ```
 
 # Change Log
+
+## [1.13](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.13) (2020-07-16)
+
+**Enhancements:**
+
+- Support for NOT LIKE queries
+- added notRegexMatch function
+
+**Bugs:**
+
+- NOT expressions with parentheses not working properly, i.e: NOT (Country = 'Albania')
 
 ## [1.12](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.12) (2020-07-07)
 
