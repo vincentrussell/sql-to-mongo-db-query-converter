@@ -631,6 +631,12 @@ select a, count(*) from table group by a limit 3 offset 4
 is equivalent to the $skip function in mongodb json query language
 ```
 
+###Using column names that start with a number.  Sorround it in quotes:
+
+```
+SELECT * FROM tb_test WHERE "3rd_column" = 10
+```
+
 ###Direct Mongo Integration
 
 You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
