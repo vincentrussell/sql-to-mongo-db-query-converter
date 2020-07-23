@@ -12,11 +12,14 @@ import org.junit.rules.ExpectedException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -200,6 +203,43 @@ public class QueryConverterTest {
         Date resultDate = mongoDBQueryHolder.getQuery().get("value",Document.class).get("$gt",Date.class);
         DateTime fortyFiveDaysAgo = new DateTime().minusDays(45);
         assertTrue(new Interval(fortyFiveDaysAgo.minusMinutes(5),fortyFiveDaysAgo.plusMinutes(5)).contains(new DateTime(resultDate)));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testDoubleAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > 1.5").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Double.parseDouble("1.5"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTimestampAsValue() throws Exception {
+        withTimeZone(TimeZone.getTimeZone("Europe/Paris"), new MyRunnable() {
+            @Override
+            public void run() throws  Exception {
+                QueryConverter queryConverter = new QueryConverter.Builder()
+                        .sqlString("select * from my_table where date > {ts '2019-10-11 12:12:23.234'}").build();
+                MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+                assertEquals(0,mongoDBQueryHolder.getProjection().size());
+                assertEquals("my_table",mongoDBQueryHolder.getCollection());
+                assertEquals(document("date", document("$gt", new SimpleDateFormat("E dd MMM yyyy HH:mm:ss.SSS z")
+                        .parse("Fri 11 Oct 2019 12:12:23.234 CEST"))),mongoDBQueryHolder.getQuery());
+            }
+        });
+    }
+
+    private void withTimeZone(TimeZone timeZone, MyRunnable runnable) throws Exception {
+        TimeZone currentTimeZone = Calendar.getInstance().getTimeZone();
+        try {
+            TimeZone.setDefault(timeZone);
+            runnable.run();
+        } finally {
+            TimeZone.setDefault(currentTimeZone);
+        }
     }
 
     @Test
@@ -2728,6 +2768,10 @@ public class QueryConverterTest {
     
     private static List<Object> objsToList(Object... values) {
         return Arrays.asList(values);
+    }
+
+    public interface MyRunnable {
+        void run() throws Exception;
     }
 
 }

@@ -11,11 +11,13 @@ import com.joestelmach.natty.Parser;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.SignedExpression;
 import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.TimestampValue;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
@@ -75,12 +77,16 @@ public class SqlUtils {
                 defaultFieldType) : FieldType.UNKNOWN;
         if (LongValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((LongValue)incomingExpression).getValue()),fieldType);
+        } else if (DoubleValue.class.isInstance(incomingExpression)) {
+            return normalizeValue((((DoubleValue)incomingExpression).getValue()),fieldType);
         } else if (SignedExpression.class.isInstance(incomingExpression)) {
             return normalizeValue((((SignedExpression)incomingExpression).toString()),fieldType);
         } else if (StringValue.class.isInstance(incomingExpression)) {
             return normalizeValue((((StringValue)incomingExpression).getValue()),fieldType);
         } else if (Column.class.isInstance(incomingExpression)) {
             return normalizeValue(getStringValue(incomingExpression),fieldType);
+        } else if (TimestampValue.class.isInstance(incomingExpression)) {
+            return normalizeValue(new Date((((TimestampValue)incomingExpression).getValue().getTime())),fieldType);
         } else {
             throw new ParseException("can not parseNaturalLanguageDate: " + incomingExpression.toString());
         }
