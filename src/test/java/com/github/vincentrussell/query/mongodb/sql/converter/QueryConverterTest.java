@@ -232,6 +232,23 @@ public class QueryConverterTest {
         });
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testDateAsValue() throws Exception {
+        withTimeZone(TimeZone.getTimeZone("Europe/Paris"), new MyRunnable() {
+            @Override
+            public void run() throws  Exception {
+                QueryConverter queryConverter = new QueryConverter.Builder()
+                        .sqlString("select * from my_table where date > {d '2019-10-11'}").build();
+                MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+                assertEquals(0,mongoDBQueryHolder.getProjection().size());
+                assertEquals("my_table",mongoDBQueryHolder.getCollection());
+                assertEquals(document("date", document("$gt", new SimpleDateFormat("yyyy-MM-dd")
+                        .parse("2019-10-11"))),mongoDBQueryHolder.getQuery());
+            }
+        });
+    }
+
     private void withTimeZone(TimeZone timeZone, MyRunnable runnable) throws Exception {
         TimeZone currentTimeZone = Calendar.getInstance().getTimeZone();
         try {

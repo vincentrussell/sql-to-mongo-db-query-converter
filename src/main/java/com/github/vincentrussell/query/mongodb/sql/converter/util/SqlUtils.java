@@ -11,6 +11,7 @@ import com.joestelmach.natty.Parser;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.DateValue;
 import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
@@ -87,6 +88,8 @@ public class SqlUtils {
             return normalizeValue(getStringValue(incomingExpression),fieldType);
         } else if (TimestampValue.class.isInstance(incomingExpression)) {
             return normalizeValue(new Date((((TimestampValue)incomingExpression).getValue().getTime())),fieldType);
+        } else if (DateValue.class.isInstance(incomingExpression)) {
+            return normalizeValue((((DateValue)incomingExpression).getValue()),fieldType);
         } else {
             throw new ParseException("can not parseNaturalLanguageDate: " + incomingExpression.toString());
         }
