@@ -701,6 +701,14 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.14](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.14) (2020-07-22)
+
+**Enhancements:**
+
+- Support for Double values
+- Support for Timestamp values, i.e: {ts '2019-10-11 12:12:23.234'}
+
+
 ## [1.13](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.13) (2020-07-16)
 
 **Enhancements:**
