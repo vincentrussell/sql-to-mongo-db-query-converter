@@ -10,7 +10,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 <dependency>
    <groupId>com.github.vincentrussell</groupId>
    <artifactId>sql-to-mongo-db-query-converter</artifactId>
-   <version>1.13</version>
+   <version>1.14</version>
 </dependency>
 ```
 
@@ -31,7 +31,7 @@ Document sort = mongoDBQueryHolder.getSort();
 ## Running it as a standalone jar
 
 ```
-java -jar sql-to-mongo-db-query-converter-1.13-standalone.jar -s sql.file -d destination.json
+java -jar sql-to-mongo-db-query-converter-1.14-standalone.jar -s sql.file -d destination.json
 ```
 ### Options
 
@@ -66,7 +66,7 @@ To specify an initial batch size for the cursor
 ## Interactive mode
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.13-standalone.jar -i
+java -jar target/sql-to-mongo-db-query-converter-1.14-standalone.jar -i
 Enter input sql:
 
 
@@ -642,7 +642,7 @@ SELECT * FROM tb_test WHERE "3rd_column" = 10
 You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.13-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
+java -jar target/sql-to-mongo-db-query-converter-1.14-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
 Enter input sql:
 
 
@@ -707,6 +707,7 @@ more results? (y/n): n
 
 - Support for Double values
 - Support for Timestamp values, i.e: {ts '2019-10-11 12:12:23.234'}
+- Support for Date values, i.e: {d '2019-10-11'}
 
 
 ## [1.13](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.13) (2020-07-16)
