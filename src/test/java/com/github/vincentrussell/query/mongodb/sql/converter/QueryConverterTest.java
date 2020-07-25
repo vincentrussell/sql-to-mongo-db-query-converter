@@ -981,7 +981,7 @@ public class QueryConverterTest {
     @Test
     public void selectFromMultipleTables() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Join type not suported"));
+        expectedException.expectMessage(containsString("Join type not supported"));
         new QueryConverter.Builder().sqlString("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value=\"theValue\"").build();
     }
 

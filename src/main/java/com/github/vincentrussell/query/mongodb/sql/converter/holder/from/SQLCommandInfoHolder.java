@@ -150,7 +150,7 @@ public class SQLCommandInfoHolder implements SQLInfoHolder{
 	        			tholder = generateFromHolder(tholder,j.getRightItem(),null);
 	        		}	
 	        		else{
-	        			throw new ParseException("Join type not suported");
+	        			throw new ParseException("Join type not supported");
 	        		}
 	        	}
         	}
