@@ -2,8 +2,18 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+/**
+ * {@link InputStream} that will time out (return -1) if no data is returned
+ * when calling read within the indicated timeout.
+ */
 public class TimeoutInputStream extends InputStream {
 
     private ExecutorService executorService = Executors.newFixedThreadPool(1);
@@ -14,12 +24,23 @@ public class TimeoutInputStream extends InputStream {
     private boolean receivedData = false;
 
 
-    public TimeoutInputStream(InputStream inputStream, long timeout, TimeUnit timeUnit) {
+    /**
+     * Default constructor.
+     * @param inputStream
+     * @param timeout
+     * @param timeUnit
+     */
+    public TimeoutInputStream(final InputStream inputStream, final long timeout, final TimeUnit timeUnit) {
         this.inputStream = inputStream;
         this.timeout = timeout;
         this.timeUnit = timeUnit;
     }
 
+    /**
+     * {@inheritDoc}
+     * @return
+     * @throws IOException
+     */
     @Override
     public int read() throws IOException {
 
@@ -35,7 +56,8 @@ public class TimeoutInputStream extends InputStream {
         return result;
     }
 
-    private Integer getInteger(Future<Integer> future) throws InterruptedException, ExecutionException, TimeoutException {
+    private Integer getInteger(final Future<Integer> future)
+            throws InterruptedException, ExecutionException, TimeoutException {
         if (!receivedData) {
             return future.get(1, TimeUnit.MINUTES);
         } else {
@@ -43,16 +65,20 @@ public class TimeoutInputStream extends InputStream {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * @throws IOException
+     */
     @Override
     public void close() throws IOException {
         executorService.shutdownNow();
     }
 
-    private static class ReadNext implements Callable<Integer> {
+    private static final class ReadNext implements Callable<Integer> {
 
         private final InputStream inputStream;
 
-        private ReadNext(InputStream inputStream) {
+        private ReadNext(final InputStream inputStream) {
             this.inputStream = inputStream;
         }
 

@@ -1,15 +1,26 @@
 package com.github.vincentrussell.query.mongodb.sql.converter.holder.from;
 
-public class SQLTableInfoHolder implements SQLInfoHolder{
+/**
+ * Implementation of {@link SQLInfoHolder} meant to hold.
+ */
+public class SQLTableInfoHolder implements SQLInfoHolder {
     private String baseTable;
-    
-    public SQLTableInfoHolder(String baseTable) {
-    	this.baseTable = baseTable;
+
+    /**
+     * Default constructor.
+     * @param baseTable
+     */
+    public SQLTableInfoHolder(final String baseTable) {
+        this.baseTable = baseTable;
     }
-    
+
+    /**
+     * {@inheritDoc}
+     * @return
+     */
     @Override
     public String getBaseTableName() {
-    	return baseTable;
+        return baseTable;
     }
-	
+
 }
