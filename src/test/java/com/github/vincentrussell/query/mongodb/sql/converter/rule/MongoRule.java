@@ -11,16 +11,11 @@ import de.flapdoodle.embed.mongo.config.MongoCmdOptionsBuilder;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
-import de.flapdoodle.embed.mongo.distribution.Version;
-import org.bson.Document;
 import org.junit.rules.ExternalResource;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.Random;
-
-import static org.junit.Assert.assertEquals;
 
 public class MongoRule extends ExternalResource {
 

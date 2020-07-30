@@ -12,22 +12,41 @@ import org.bson.types.ObjectId;
 
 import java.util.List;
 
+/**
+ * Wrapper around mongo ObjectId.
+ */
 public class ObjectIdFunction {
     private final Object value;
     private final String column;
     private final Expression comparisonExpression;
 
-    public ObjectIdFunction(String column, Object value, Expression expression)
-        throws ParseException {
+    /**
+     * Default constructor.
+     * @param column
+     * @param value
+     * @param expression
+     * @throws ParseException
+     */
+    public ObjectIdFunction(final String column, final Object value, final Expression expression)
+            throws ParseException {
         this.column = column;
         this.value = value;
         this.comparisonExpression = expression;
     }
 
+    /**
+     * get the column that is an ObjectId.
+     * @return the column
+     */
     public String getColumn() {
         return column;
     }
 
+    /**
+     * convert this ObjectId into a mongo document.
+     * @return the mongo document
+     * @throws ParseException
+     */
     public Object toDocument() throws ParseException {
         if (EqualsTo.class.isInstance(comparisonExpression)) {
             return new ObjectId(value.toString());
@@ -36,11 +55,13 @@ public class ObjectIdFunction {
         } else if (InExpression.class.isInstance(comparisonExpression)) {
             InExpression inExpression = (InExpression) comparisonExpression;
             List<String> stringList = (List<String>) value;
-            return new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(stringList, new Function<String, ObjectId>() {
-                @Override public ObjectId apply(String s) {
-                    return new ObjectId(s);
-                }
-            }));
+            return new Document(inExpression.isNot() ? "$nin" : "$in", Lists.transform(stringList,
+                    new Function<String, ObjectId>() {
+                        @Override
+                        public ObjectId apply(final String s) {
+                            return new ObjectId(s);
+                        }
+                    }));
         }
         throw new ParseException("Count not convert ObjectId function into document");
     }

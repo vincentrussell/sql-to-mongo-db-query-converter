@@ -1,121 +1,64 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
+/**
+ * Exception that is thrown when there is an issue parsing a sql statement.
+ */
 public class ParseException extends Exception {
-    private static final long serialVersionUID = 1L;
-    private static final String EOL = System.getProperty("line.separator", "\n");
-    public Token currentToken;
-    public int[][] expectedTokenSequences;
-    public String[] tokenImage;
+    private static final long serialVersionUID = 332235693126829948L;
 
-    public ParseException(Token currentTokenVal, int[][] expectedTokenSequencesVal, String[] tokenImageVal) {
-        super(initialise(currentTokenVal, expectedTokenSequencesVal, tokenImageVal));
-        this.currentToken = currentTokenVal;
-        this.expectedTokenSequences = expectedTokenSequencesVal;
-        this.tokenImage = tokenImageVal;
-    }
-
-    public ParseException() {
-    }
-
-    public ParseException(String message) {
+    /**
+     * Constructs a new exception with the specified detail message.  The
+     * cause is not initialized, and may subsequently be initialized by
+     * a call to {@link #initCause}.
+     *
+     * @param   message   the detail message. The detail message is saved for
+     *          later retrieval by the {@link #getMessage()} method.
+     */
+    public ParseException(final String message) {
         super(message);
     }
 
-    private static String initialise(Token currentToken, int[][] expectedTokenSequences, String[] tokenImage) {
-        StringBuffer expected = new StringBuffer();
-        int maxSize = 0;
-
-        for(int retval = 0; retval < expectedTokenSequences.length; ++retval) {
-            if(maxSize < expectedTokenSequences[retval].length) {
-                maxSize = expectedTokenSequences[retval].length;
-            }
-
-            for(int tok = 0; tok < expectedTokenSequences[retval].length; ++tok) {
-                expected.append(tokenImage[expectedTokenSequences[retval][tok]]).append(' ');
-            }
-
-            if(expectedTokenSequences[retval][expectedTokenSequences[retval].length - 1] != 0) {
-                expected.append("...");
-            }
-
-            expected.append(EOL).append("    ");
-        }
-
-        StringBuffer stringbuffer = new StringBuffer("Encountered \"");
-        Token var9 = currentToken.getNext();
-
-        for(int i = 0; i < maxSize; ++i) {
-            if(i != 0) {
-                stringbuffer.append(" ");
-            }
-
-            if(var9.getKind() == 0) {
-                stringbuffer.append(tokenImage[0]);
-                break;
-            }
-
-            stringbuffer.append(" " + tokenImage[var9.getKind()]);
-            stringbuffer.append(" \"");
-            stringbuffer.append(add_escapes(var9.getImage()));
-            stringbuffer.append(" \"");
-            var9 = var9.getNext();
-        }
-
-        stringbuffer.append("\" at line " + currentToken.getNext().getBeginLine() + ", column " + currentToken.getNext().getBeginColumn());
-        stringbuffer.append("." + EOL);
-        if(expectedTokenSequences.length != 0) {
-            if(expectedTokenSequences.length == 1) {
-                stringbuffer.append("Was expecting:" + EOL + "    ");
-            } else {
-                stringbuffer.append("Was expecting one of:" + EOL + "    ");
-            }
-
-            stringbuffer.append(expected.toString());
-        }
-
-        return stringbuffer.toString();
+    /**
+     * Constructs a new exception with the specified detail message and
+     * cause.  <p>Note that the detail message associated with
+     * {@code cause} is <i>not</i> automatically incorporated in
+     * this exception's detail message.
+     *
+     * @param  message the detail message (which is saved for later retrieval
+     *         by the {@link #getMessage()} method).
+     * @param  cause the cause (which is saved for later retrieval by the
+     *         {@link #getCause()} method).  (A <tt>null</tt> value is
+     *         permitted, and indicates that the cause is nonexistent or
+     *         unknown.)
+     */
+    public ParseException(final String message, final Throwable cause) {
+        super(message, cause);
     }
 
-    static String add_escapes(String str) {
-        StringBuffer retval = new StringBuffer();
+    /**
+     * Constructs a new exception with the specified detail message and
+     * cause.  <p>Note that the detail message associated with
+     * {@code cause} is <i>not</i> automatically incorporated in
+     * this exception's detail message.
+     * @param e
+     */
+    public ParseException(final Throwable e) {
+        super(fixErrorMessage(e));
+    }
 
-        for(int i = 0; i < str.length(); ++i) {
-            switch(str.charAt(i)) {
-                case '\b':
-                    retval.append("\\b");
-                    break;
-                case '\t':
-                    retval.append("\\t");
-                    break;
-                case '\n':
-                    retval.append("\\n");
-                    break;
-                case '\f':
-                    retval.append("\\f");
-                    break;
-                case '\r':
-                    retval.append("\\r");
-                    break;
-                case '\"':
-                    retval.append("\\\"");
-                    break;
-                case '\'':
-                    retval.append("\\\'");
-                    break;
-                case '\\':
-                    retval.append("\\\\");
-                    break;
-                default:
-                    char ch;
-                    if((ch = str.charAt(i)) >= 32 && ch <= 126) {
-                        retval.append(ch);
-                    } else {
-                        String s = "0000" + Integer.toString(ch, 16);
-                        retval.append("\\u" + s.substring(s.length() - 4, s.length()));
-                    }
-            }
+    private static Throwable fixErrorMessage(final Throwable e) {
+        if (e.getMessage().startsWith("Encountered unexpected token: \"=\" \"=\"")) {
+            return new ParseException("unable to parse complete sql string. one reason for this "
+                    + "is the use of double equals (==).", e);
+        }
+        if (e.getMessage().startsWith("Encountered \" \"(\" \"( \"\"")) {
+            return new ParseException("Only one simple table name is supported.", e);
+        }
+        if (e.getMessage().contains("Was expecting:" + System.getProperty("line.separator")
+                + "    \"SELECT\"")) {
+            return new ParseException("Only select statements are supported.", e);
         }
 
-        return retval.toString();
+        return e;
     }
 }
