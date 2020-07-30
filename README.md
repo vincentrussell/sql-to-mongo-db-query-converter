@@ -701,6 +701,17 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.15](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.15) (TBD)
+
+**Bugs:**
+
+- Added checkstyle to build process
+- Code cleanup
+
+
+
+# Change Log
+
 ## [1.14](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.14) (2020-07-22)
 
 **Enhancements:**
