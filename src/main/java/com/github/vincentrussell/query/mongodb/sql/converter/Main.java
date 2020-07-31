@@ -36,7 +36,13 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,6 +53,7 @@ public final class Main {
     private static final JsonWriterSettings JSON_WRITER_SETTINGS = JsonWriterSettings.builder()
             .outputMode(JsonMode.RELAXED).indentCharacters("\t").newLineCharacters("\n").build();
     public static final String ENTER_SQL_TEXT = "Enter input sql:\n\n ";
+    public static final String CONTINUE_TEXT = "Would you like to continue? (y/n):\n\n ";
     private static final String DEFAULT_MONGO_PORT = "27017";
     public static final String D_AGGREGATION_ALLOW_DISK_USE = "aggregationAllowDiskUse";
     public static final String D_AGGREGATION_BATCH_SIZE = "aggregationBatchSize";
@@ -133,6 +140,13 @@ public final class Main {
                 .desc("batch size for query results")
                 .build());
 
+        options.addOption(Option.builder("l")
+                .longOpt("loopMode")
+                .hasArg(false)
+                .required(false)
+                .desc("interactive loopMode mode")
+                .build());
+
         options.addOptionGroup(sourceOptionGroup);
 
         return options;
@@ -147,115 +161,47 @@ public final class Main {
      */
     public static void main(final String[] args) throws IOException,
             ParseException, org.apache.commons.cli.ParseException {
-        Options options = buildOptions();
 
+        Options options = buildOptions();
 
         CommandLineParser parser = new DefaultParser();
         HelpFormatter help = new HelpFormatter();
         help.setOptionComparator(new OptionComparator(
-                Arrays.asList("s", "sql", "i", "d", "h", "db", "a", "u", "p", "b")));
+                Arrays.asList("s", "sql", "i", "l", "d", "h", "db", "a", "u", "p", "b")));
 
         CommandLine cmd = null;
         try {
             cmd = parser.parse(options, args);
 
-            String source = cmd.getOptionValue("s");
-            boolean interactiveMode = cmd.hasOption('i');
-
             String[] hosts = cmd.getOptionValues("h");
-            String db = cmd.getOptionValue("db");
-            String username = cmd.getOptionValue("u");
-            String password = cmd.getOptionValue("p");
-            String destination = cmd.getOptionValue("d");
-            String authdb = cmd.getOptionValue("a");
-            String sql = cmd.getOptionValue("sql");
-            final int batchSize = Integer.parseInt(cmd.getOptionValue("b", "" + DEFAULT_RESULT_BATCH_SIZE));
+            final boolean loopMode = cmd.hasOption('l');
 
-            isFalse(hosts != null && db == null,
-                    "provided option h, but missing db");
-            isFalse(username != null && (password == null || authdb == null),
-                    "provided option u, but missing p or a");
+            verifyArguments(cmd);
 
-            isTrue(interactiveMode || source != null || sql != null,
-                    "Missing required option: s or i or sql");
+            while (true) {
+                try (InputStream inputStream = getInputStream(cmd);
+                     OutputStream outputStream = getOutputStream(cmd)) {
 
-            InputStream inputStream = null;
-            OutputStream outputStream = null;
+                    QueryConverter queryConverter = getQueryConverter(inputStream);
 
-            try {
-                if (interactiveMode) {
-                    inputStream = new TimeoutInputStream(System.in, 1, TimeUnit.SECONDS);
-                    System.out.println(ENTER_SQL_TEXT);
-                } else if (sql != null) {
-                    inputStream = new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8));
-                } else {
-                    File sourceFile = new File(source);
-                    if (!sourceFile.exists()) {
-                        throw new FileNotFoundException(source + " cannot be found");
-                    }
-                    inputStream = new FileInputStream(sourceFile);
-                }
-
-                if (destination != null) {
-                    File destinationFile = new File(destination);
-                    if (destinationFile.exists()) {
-                        throw new IOException(destination + " already exists");
-                    }
-                    outputStream = new FileOutputStream(destinationFile);
-                } else {
-                    outputStream = new NonCloseableBufferedOutputStream(System.out);
-                }
-
-
-                QueryConverter.Builder builder = new QueryConverter.Builder().sqlInputStream(inputStream);
-
-                if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {
-                    builder.aggregationAllowDiskUse(Boolean.valueOf(
-                            System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
-                }
-
-                if (System.getProperty(D_AGGREGATION_BATCH_SIZE) != null) {
-                    try {
-                        builder.aggregationBatchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
-                    } catch (NumberFormatException formatException) {
-                        System.err.println(formatException.getMessage());
-                    }
-                }
-
-                QueryConverter queryConverter = builder.build();
-
-                inputStream.close();
-
-                if (hosts != null) {
-                    MongoClient mongoClient = null;
-                    try {
-                        mongoClient = getMongoClient(hosts, authdb, username, password);
-                        Object result = queryConverter.run(mongoClient.getDatabase(db));
-
-                        if (Long.class.isInstance(result) || long.class.isInstance(result)) {
-                            IOUtils.write("\n\n******Query Results:*********\n\n", outputStream);
-                            IOUtils.write("" + result, outputStream);
-                            IOUtils.write("\n\n", outputStream);
-                        } else if (QueryResultIterator.class.isInstance(result)) {
-                            processMongoResults(batchSize, outputStream, (QueryResultIterator) result);
-                        }
-
-                    } finally {
-                        if (mongoClient != null) {
-                            mongoClient.close();
-                        }
+                    if (hosts != null) {
+                        runQueryInMongo(cmd, hosts, outputStream, queryConverter);
+                    } else {
+                        IOUtils.write("\n\n******Mongo Query:*********\n\n", outputStream);
+                        queryConverter.write(outputStream);
+                        IOUtils.write("\n\n", outputStream);
                     }
 
-                } else {
-                    IOUtils.write("\n\n******Mongo Query:*********\n\n", outputStream);
-                    queryConverter.write(outputStream);
-                    IOUtils.write("\n\n", outputStream);
                 }
 
+                if (loopMode) {
+                    if (shouldContinue()) {
+                        continue;
+                    }
 
-            } finally {
-                IOUtils.closeQuietly(inputStream);
-                IOUtils.closeQuietly(outputStream);
+                }
+
+                break;
             }
 
         } catch (org.apache.commons.cli.ParseException e) {
@@ -265,6 +211,135 @@ public final class Main {
         }
 
         System.exit(0);
+    }
+
+    private static boolean shouldContinue() throws IOException {
+        final ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+        Future<Boolean> future = executorService.submit(new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                while (true) {
+                    String continueString;
+                    continueString = getCharacterInput(CONTINUE_TEXT);
+                    if ("n".equals(continueString.trim().toLowerCase())) {
+                        return false;
+                    } else if ("y".equals(continueString.trim().toLowerCase())) {
+                        return true;
+                    }
+                }
+            }
+        });
+
+        try {
+            return future.get(1, TimeUnit.MINUTES);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            return false;
+        }
+
+    }
+
+    private static void verifyArguments(final CommandLine cmd) throws org.apache.commons.cli.ParseException {
+        final String source = cmd.getOptionValue("s");
+        final boolean interactiveMode = cmd.hasOption('i');
+        final String[] hosts = cmd.getOptionValues("h");
+        final String sql = cmd.getOptionValue("sql");
+        final String db = cmd.getOptionValue("db");
+        final String username = cmd.getOptionValue("u");
+        final String password = cmd.getOptionValue("p");
+        final String authdb = cmd.getOptionValue("a");
+
+        isTrue(interactiveMode || source != null || sql != null,
+                "Missing required option: s or i or sql");
+        isFalse(hosts != null && db == null,
+                "provided option h, but missing db");
+        isFalse(username != null && (password == null || authdb == null),
+                "provided option u, but missing p or a");
+    }
+
+    private static void runQueryInMongo(final CommandLine cmd, final String[] hosts, final OutputStream outputStream,
+                                        final QueryConverter queryConverter) throws ParseException, IOException {
+
+        final String db = cmd.getOptionValue("db");
+        final String username = cmd.getOptionValue("u");
+        final String password = cmd.getOptionValue("p");
+        final String authdb = cmd.getOptionValue("a");
+        final int batchSize = Integer.parseInt(cmd.getOptionValue("b", "" + DEFAULT_RESULT_BATCH_SIZE));
+
+        MongoClient mongoClient = null;
+        try {
+            mongoClient = getMongoClient(hosts, authdb, username, password);
+            Object result = queryConverter.run(mongoClient.getDatabase(db));
+
+            if (Long.class.isInstance(result) || long.class.isInstance(result)) {
+                IOUtils.write("\n\n******Query Results:*********\n\n", outputStream);
+                IOUtils.write("" + result, outputStream);
+                IOUtils.write("\n\n", outputStream);
+            } else if (QueryResultIterator.class.isInstance(result)) {
+                processMongoResults(batchSize, outputStream, (QueryResultIterator) result);
+            }
+
+        } finally {
+            if (mongoClient != null) {
+                mongoClient.close();
+            }
+        }
+    }
+
+    private static QueryConverter getQueryConverter(final InputStream inputStream) throws ParseException {
+
+        QueryConverter.Builder builder = new QueryConverter.Builder().sqlInputStream(inputStream);
+
+        if (System.getProperty(D_AGGREGATION_ALLOW_DISK_USE) != null) {
+            builder.aggregationAllowDiskUse(Boolean.valueOf(
+                    System.getProperty(D_AGGREGATION_ALLOW_DISK_USE)));
+        }
+
+        if (System.getProperty(D_AGGREGATION_BATCH_SIZE) != null) {
+            try {
+                builder.aggregationBatchSize(Integer.valueOf(System.getProperty(D_AGGREGATION_BATCH_SIZE)));
+            } catch (NumberFormatException formatException) {
+                System.err.println(formatException.getMessage());
+            }
+        }
+
+        return builder.build();
+    }
+
+    private static OutputStream getOutputStream(final CommandLine cmd) throws IOException {
+        final String destination = cmd.getOptionValue("d");
+        OutputStream outputStream = null;
+        if (destination != null) {
+            File destinationFile = new File(destination);
+            if (destinationFile.exists()) {
+                throw new IOException(destination + " already exists");
+            }
+            outputStream = new FileOutputStream(destinationFile);
+        } else {
+            outputStream = new NonCloseableBufferedOutputStream(System.out);
+        }
+        return outputStream;
+    }
+
+    private static InputStream getInputStream(final CommandLine cmd) throws FileNotFoundException {
+        final String source = cmd.getOptionValue("s");
+        final boolean interactiveMode = cmd.hasOption('i');
+        final String sql = cmd.getOptionValue("sql");
+
+        InputStream inputStream = null;
+        if (interactiveMode) {
+            inputStream = new TimeoutInputStream(new UncloseableInputStream(System.in), 1, TimeUnit.SECONDS);
+            System.out.println(ENTER_SQL_TEXT);
+        } else if (sql != null) {
+            inputStream = new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8));
+        } else {
+            File sourceFile = new File(source);
+            if (!sourceFile.exists()) {
+                throw new FileNotFoundException(source + " cannot be found");
+            }
+            inputStream = new FileInputStream(sourceFile);
+        }
+        return inputStream;
     }
 
     private static void processMongoResults(final int batchSize, final OutputStream outputStream,
@@ -296,7 +371,7 @@ public final class Main {
                     inputLoop:
                     while (true) {
                         String continueString;
-                        continueString = getCharacterInput();
+                        continueString = getCharacterInput("more results? (y/n): ");
 
                         if ("n".equals(continueString.trim().toLowerCase())) {
                             break resultIterator;
@@ -309,9 +384,9 @@ public final class Main {
         }
     }
 
-    private static String getCharacterInput() {
-        Scanner scanner = new Scanner(System.in, Charsets.UTF_8.displayName());
-        System.out.print("more results? (y/n): ");
+    private static String getCharacterInput(final String question) {
+        Scanner scanner = new Scanner(new UncloseableInputStream(System.in), Charsets.UTF_8.displayName());
+        System.out.print(question);
         String choice = "";
         if (scanner.hasNext()) {
             choice = scanner.next();

@@ -102,6 +102,41 @@ public class MainTest {
         }
     }
 
+
+    @Test
+    public void interactiveModeWithLooping() throws IOException,ParseException, ClassNotFoundException, InterruptedException, com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
+        exit.expectSystemExitWithStatus(0);
+        systemInMock.provideLines("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
+        try {
+            Main.main(new String[]{"-i", "-l"});
+        } finally {
+            Thread.sleep(1000);
+            assertThat(systemOutRule.getLog(),startsWith(Main.ENTER_SQL_TEXT));
+            String result = systemOutRule.getLog().replaceAll(Main.ENTER_SQL_TEXT,"");
+            assertEquals("******Mongo Query:*********\n" +
+                    "\n" +
+                    "db.my_table.find({\n" +
+                    "  \"$expr\": {\n" +
+                    "    \"$in\": [\n" +
+                    "      \"$value\",\n" +
+                    "      [\n" +
+                    "        \"theValue1\",\n" +
+                    "        \"theValue2\",\n" +
+                    "        \"theValue3\"\n" +
+                    "      ]\n" +
+                    "    ]\n" +
+                    "  }\n" +
+                    "} , {\n" +
+                    "  \"_id\": 0,\n" +
+                    "  \"column1\": 1\n" +
+                    "})".trim(), result.trim());
+
+            systemInMock.provideLines("y");
+            Thread.sleep(1000);
+
+        }
+    }
+
     @Test(expected = FileNotFoundException.class)
     public void sourceFileNotFound() throws IOException, ParseException, ClassNotFoundException, com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
         sourceFile.delete();
