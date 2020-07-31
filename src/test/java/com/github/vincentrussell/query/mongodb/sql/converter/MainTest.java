@@ -16,6 +16,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -107,34 +110,95 @@ public class MainTest {
     public void interactiveModeWithLooping() throws IOException,ParseException, ClassNotFoundException, InterruptedException, com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
         exit.expectSystemExitWithStatus(0);
         systemInMock.provideLines("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
-        try {
-            Main.main(new String[]{"-i", "-l"});
-        } finally {
-            Thread.sleep(1000);
-            assertThat(systemOutRule.getLog(),startsWith(Main.ENTER_SQL_TEXT));
-            String result = systemOutRule.getLog().replaceAll(Main.ENTER_SQL_TEXT,"");
-            assertEquals("******Mongo Query:*********\n" +
-                    "\n" +
-                    "db.my_table.find({\n" +
-                    "  \"$expr\": {\n" +
-                    "    \"$in\": [\n" +
-                    "      \"$value\",\n" +
-                    "      [\n" +
-                    "        \"theValue1\",\n" +
-                    "        \"theValue2\",\n" +
-                    "        \"theValue3\"\n" +
-                    "      ]\n" +
-                    "    ]\n" +
-                    "  }\n" +
-                    "} , {\n" +
-                    "  \"_id\": 0,\n" +
-                    "  \"column1\": 1\n" +
-                    "})".trim(), result.trim());
 
-            systemInMock.provideLines("y");
-            Thread.sleep(1000);
+        runInSeparateThread(new ExceptionRunnable() {
+            @Override
+            public void run() throws Exception {
+                Main.main(new String[]{"-i", "-l"});
+            }
+        });
 
-        }
+        assertThat(systemOutRule.getLog(),startsWith(Main.ENTER_SQL_TEXT));
+
+        assertEquals("******Mongo Query:*********\n" +
+                "\n" +
+                "db.my_table.find({\n" +
+                "  \"$expr\": {\n" +
+                "    \"$in\": [\n" +
+                "      \"$value\",\n" +
+                "      [\n" +
+                "        \"theValue1\",\n" +
+                "        \"theValue2\",\n" +
+                "        \"theValue3\"\n" +
+                "      ]\n" +
+                "    ]\n" +
+                "  }\n" +
+                "} , {\n" +
+                "  \"_id\": 0,\n" +
+                "  \"column1\": 1\n" +
+                "})".trim(), systemOutRule.getLog().replaceAll(Pattern.quote(Main.ENTER_SQL_TEXT),"")
+                .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").trim());
+
+        systemInMock.provideLines("y", "select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
+        Thread.sleep(1000);
+        systemInMock.provideLines("n");
+        Thread.sleep(1000);
+
+        assertEquals("******Mongo Query:*********\n" +
+                "\n" +
+                "db.my_table.find({\n" +
+                "  \"$expr\": {\n" +
+                "    \"$in\": [\n" +
+                "      \"$value\",\n" +
+                "      [\n" +
+                "        \"theValue1\",\n" +
+                "        \"theValue2\",\n" +
+                "        \"theValue3\"\n" +
+                "      ]\n" +
+                "    ]\n" +
+                "  }\n" +
+                "} , {\n" +
+                "  \"_id\": 0,\n" +
+                "  \"column1\": 1\n" +
+                "})\n" +
+                "\n" +
+                "\n" +
+                "\n" +
+                "\n" +
+                "******Mongo Query:*********\n" +
+                "\n" +
+                "db.my_table.find({\n" +
+                "  \"$expr\": {\n" +
+                "    \"$in\": [\n" +
+                "      \"$value\",\n" +
+                "      [\n" +
+                "        \"theValue1\",\n" +
+                "        \"theValue2\",\n" +
+                "        \"theValue3\"\n" +
+                "      ]\n" +
+                "    ]\n" +
+                "  }\n" +
+                "} , {\n" +
+                "  \"_id\": 0,\n" +
+                "  \"column1\": 1\n" +
+                "})".trim(), systemOutRule.getLog().replaceAll(Pattern.quote(Main.ENTER_SQL_TEXT),"")
+                .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").trim());
+
+    }
+
+    private void runInSeparateThread(final ExceptionRunnable runnable) throws InterruptedException {
+        final ExecutorService executorService = Executors.newFixedThreadPool(1);
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    runnable.run();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        Thread.sleep(1000);
     }
 
     @Test(expected = FileNotFoundException.class)
@@ -221,5 +285,10 @@ public class MainTest {
                     "})", systemOutRule.getLog().trim());
         }
     }
+
+    public interface ExceptionRunnable {
+        void run() throws Exception;
+    }
+
 
 }

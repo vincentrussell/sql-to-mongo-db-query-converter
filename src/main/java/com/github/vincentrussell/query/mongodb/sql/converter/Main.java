@@ -185,7 +185,16 @@ public final class Main {
                     QueryConverter queryConverter = getQueryConverter(inputStream);
 
                     if (hosts != null) {
-                        runQueryInMongo(cmd, hosts, outputStream, queryConverter);
+                        try {
+                            runQueryInMongo(cmd, hosts, outputStream, queryConverter);
+                        } catch (ParseException | IOException e) {
+                            if (loopMode) {
+                                e.printStackTrace(System.err);
+                                continue;
+                            } else {
+                                throw e;
+                            }
+                        }
                     } else {
                         IOUtils.write("\n\n******Mongo Query:*********\n\n", outputStream);
                         queryConverter.write(outputStream);
@@ -198,12 +207,9 @@ public final class Main {
                     if (shouldContinue()) {
                         continue;
                     }
-
                 }
-
                 break;
             }
-
         } catch (org.apache.commons.cli.ParseException e) {
             System.err.println(e.getMessage());
             help.printHelp(Main.class.getName(), options, true);
@@ -214,29 +220,10 @@ public final class Main {
     }
 
     private static boolean shouldContinue() throws IOException {
-        final ExecutorService executorService = Executors.newFixedThreadPool(1);
-
-        Future<Boolean> future = executorService.submit(new Callable<Boolean>() {
-            @Override
-            public Boolean call() throws Exception {
-                while (true) {
-                    String continueString;
-                    continueString = getCharacterInput(CONTINUE_TEXT);
-                    if ("n".equals(continueString.trim().toLowerCase())) {
-                        return false;
-                    } else if ("y".equals(continueString.trim().toLowerCase())) {
-                        return true;
-                    }
-                }
-            }
-        });
-
-        try {
-            return future.get(1, TimeUnit.MINUTES);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            return false;
+        if ("y".equals(getCharacterInput(CONTINUE_TEXT).trim().toLowerCase())) {
+            return true;
         }
-
+            return false;
     }
 
     private static void verifyArguments(final CommandLine cmd) throws org.apache.commons.cli.ParseException {
@@ -384,14 +371,34 @@ public final class Main {
         }
     }
 
-    private static String getCharacterInput(final String question) {
-        Scanner scanner = new Scanner(new UncloseableInputStream(System.in), Charsets.UTF_8.displayName());
-        System.out.print(question);
-        String choice = "";
-        if (scanner.hasNext()) {
-            choice = scanner.next();
+    private static String getCharacterInput(final String question) throws IOException {
+        final ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+        Future<String> future = executorService.submit(new Callable<String>() {
+            @SuppressWarnings("checkstyle:magicnumber")
+            @Override
+            public String call() throws Exception {
+                System.out.print(question);
+                while (true) {
+                    Scanner scanner = new Scanner(new UncloseableInputStream(System.in), Charsets.UTF_8.displayName());
+                    String choice = "";
+                    if (scanner.hasNext()) {
+                        choice = scanner.next();
+                    } else {
+                        Thread.sleep(200L);
+                        continue;
+                    }
+                    return choice;
+                }
+            }
+        });
+
+        try {
+            return future.get(1, TimeUnit.MINUTES);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            throw new IOException(e);
         }
-        return choice;
+
     }
 
     private static String toJson(final List<Document> documents) throws IOException {
