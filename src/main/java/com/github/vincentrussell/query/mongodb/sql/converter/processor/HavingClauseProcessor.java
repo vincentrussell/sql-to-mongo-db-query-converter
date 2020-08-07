@@ -21,11 +21,12 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
      * @param defaultFieldType
      * @param fieldNameToFieldTypeMapping
      * @param aliasHolder
+     * @param requiresAggregation
      */
     public HavingClauseProcessor(final FieldType defaultFieldType,
                                  final Map<String, FieldType> fieldNameToFieldTypeMapping,
-                                 final AliasHolder aliasHolder) {
-        super(defaultFieldType, fieldNameToFieldTypeMapping);
+                                 final AliasHolder aliasHolder, final boolean requiresAggregation) {
+        super(defaultFieldType, fieldNameToFieldTypeMapping, requiresAggregation);
         this.aliasHolder = aliasHolder;
     }
 

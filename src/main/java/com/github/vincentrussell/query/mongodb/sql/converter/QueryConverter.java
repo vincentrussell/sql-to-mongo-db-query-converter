@@ -264,6 +264,7 @@ public class QueryConverter {
         if (sqlCommandInfoHolder.getFromHolder().getBaseFrom().getClass() == SubSelect.class) {
             mongoDBQueryHolder.setPrevSteps(fromSQLCommandInfoHolderToAggregateSteps(
                     (SQLCommandInfoHolder) sqlCommandInfoHolder.getFromHolder().getBaseSQLHolder()));
+            mongoDBQueryHolder.setRequiresAggregation(true);
         }
 
         if (sqlCommandInfoHolder.isDistinct()) {
@@ -280,6 +281,7 @@ public class QueryConverter {
             }
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selects, groupBys));
             mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(selects, groupBys));
+            mongoDBQueryHolder.setRequiresAggregation(true);
         } else if (sqlCommandInfoHolder.isTotalGroup()) {
             List<SelectItem> selects = preprocessSelect(sqlCommandInfoHolder.getSelectItems(),
                     sqlCommandInfoHolder.getFromHolder());
@@ -312,6 +314,7 @@ public class QueryConverter {
         }
 
         if (sqlCommandInfoHolder.getJoins() != null) {
+            mongoDBQueryHolder.setRequiresAggregation(true);
             mongoDBQueryHolder.setJoinPipeline(
                     JoinProcessor.toPipelineSteps(this,
                             sqlCommandInfoHolder.getFromHolder(),
@@ -327,7 +330,7 @@ public class QueryConverter {
 
         if (sqlCommandInfoHolder.getWhereClause() != null) {
             WhereClauseProcessor whereClauseProcessor = new WhereClauseProcessor(defaultFieldType,
-                    fieldNameToFieldTypeMapping);
+                    fieldNameToFieldTypeMapping, mongoDBQueryHolder.isRequiresAggregation());
             Expression preprocessedWhere = preprocessWhere(sqlCommandInfoHolder.getWhereClause(),
                     sqlCommandInfoHolder.getFromHolder());
             if (preprocessedWhere != null) {
@@ -338,7 +341,8 @@ public class QueryConverter {
         }
         if (sqlCommandInfoHolder.getHavingClause() != null) {
             HavingClauseProcessor havingClauseProcessor = new HavingClauseProcessor(defaultFieldType,
-                    fieldNameToFieldTypeMapping, sqlCommandInfoHolder.getAliasHolder());
+                    fieldNameToFieldTypeMapping, sqlCommandInfoHolder.getAliasHolder(),
+                    mongoDBQueryHolder.isRequiresAggregation());
             mongoDBQueryHolder.setHaving((Document) havingClauseProcessor.parseExpression(new Document(),
                     sqlCommandInfoHolder.getHavingClause(), null));
         }

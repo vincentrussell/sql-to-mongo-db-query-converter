@@ -909,6 +909,15 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void selectAllTwoColumns() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE _id = index_9").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("_id","index_9"),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectNestedColumnsFromTableWithSimpleWhereClauseString() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select document.subdocument.column1, document.subdocument.column2 from my_table where value=\"theValue\"").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
