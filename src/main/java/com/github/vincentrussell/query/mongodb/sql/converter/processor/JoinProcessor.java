@@ -44,7 +44,7 @@ public final class JoinProcessor {
         Document matchJoinStep = new Document();
         onExp.accept(new OnVisitorMatchLookupBuilder(joinTableAlias, tholder.getBaseAliasTable()));
         WhereClauseProcessor whereClauseProcessor = new WhereClauseProcessor(FieldType.UNKNOWN,
-                Collections.<String, FieldType>emptyMap());
+                Collections.<String, FieldType>emptyMap(), true);
 
         matchJoinStep.put("$match", whereClauseProcessor
                 .parseExpression(new Document(), wherePartialExp != null

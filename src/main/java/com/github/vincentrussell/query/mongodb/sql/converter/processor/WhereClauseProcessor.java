@@ -42,16 +42,30 @@ public class WhereClauseProcessor {
 
     private final FieldType defaultFieldType;
     private final Map<String, FieldType> fieldNameToFieldTypeMapping;
+    private final boolean requiresAggregation;
 
     /**
      * Default constructor.
      * @param defaultFieldType
      * @param fieldNameToFieldTypeMapping
+     * @param requiresAggregation
+     */
+    public WhereClauseProcessor(final FieldType defaultFieldType,
+                                final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                final boolean requiresAggregation) {
+        this.defaultFieldType = defaultFieldType;
+        this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
+        this.requiresAggregation = requiresAggregation;
+    }
+
+    /**
+     * Construtor to use when no value for requiresAggregation.
+     * @param defaultFieldType
+     * @param fieldNameToFieldTypeMapping
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping) {
-        this.defaultFieldType = defaultFieldType;
-        this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
+        this(defaultFieldType, fieldNameToFieldTypeMapping, false);
     }
 
     //Parse comparative expression != = < > => <= into mongo expr
@@ -67,13 +81,18 @@ public class WhereClauseProcessor {
                     && !rightExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
             query.put("$expr", doc);
         } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)) {
-            Document doc = new Document();
-            String leftName = ((Column) leftExpression).getName(false);
-            String rightName = ((Column) rightExpression).getName(false);
-            doc.put(operator,
-                    Arrays.asList((leftName.startsWith("$") ? leftName : "$" + leftName),
-                            (rightName.startsWith("$") ? rightName : "$" + rightName)));
-            query.put("$expr", doc);
+            if (requiresAggregation) {
+                Document doc = new Document();
+                String leftName = ((Column) leftExpression).getName(false);
+                String rightName = ((Column) rightExpression).getName(false);
+                doc.put(operator,
+                        Arrays.asList((leftName.startsWith("$") ? leftName : "$" + leftName),
+                                (rightName.startsWith("$") ? rightName : "$" + rightName)));
+                query.put("$expr", doc);
+            } else {
+                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
+                        parseExpression(new Document(), rightExpression, leftExpression));
+            }
         } else if (Function.class.isInstance(rightExpression)) {
             Document doc = new Document();
             Object leftParse = parseExpression(new Document(), rightExpression, leftExpression);
