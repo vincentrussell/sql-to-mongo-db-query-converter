@@ -218,6 +218,27 @@ public class QueryConverterTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    public void testNegativeDoubleAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > -1.5").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Double.parseDouble("-1.5"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testNegativeLongAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > -90210").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Long.parseLong("-90210"))),mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void testTimestampAsValue() throws Exception {
         withTimeZone(TimeZone.getTimeZone("Europe/Paris"), new MyRunnable() {
             @Override

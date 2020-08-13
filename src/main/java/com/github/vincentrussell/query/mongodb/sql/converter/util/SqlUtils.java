@@ -71,6 +71,8 @@ public final class SqlUtils {
             YY_MM_DDFORMATTER,
             YYMMDDFORMATTER));
 
+    private static final Character NEGATIVE_NUMBER_SIGN = Character.valueOf('-');
+
     private SqlUtils() {
 
     }
@@ -101,22 +103,28 @@ public final class SqlUtils {
      * @param otherSide
      * @param defaultFieldType
      * @param fieldNameToFieldTypeMapping
+     * @param sign
      * @return the normalized value
      * @throws ParseException
      */
     public static Object getNormalizedValue(final Expression incomingExpression, final Expression otherSide,
                                             final FieldType defaultFieldType,
-                                            final Map<String, FieldType> fieldNameToFieldTypeMapping)
+                                            final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                            final Character sign)
             throws ParseException {
         FieldType fieldType = otherSide != null ? firstNonNull(
                 fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
                 defaultFieldType) : FieldType.UNKNOWN;
         if (LongValue.class.isInstance(incomingExpression)) {
-            return getNormalizedValue((((LongValue) incomingExpression).getValue()), fieldType);
+            return getNormalizedValue(convertToNegativeIfNeeded(((LongValue) incomingExpression).getValue(), sign),
+                    fieldType);
         } else if (DoubleValue.class.isInstance(incomingExpression)) {
-            return getNormalizedValue((((DoubleValue) incomingExpression).getValue()), fieldType);
+            return getNormalizedValue(convertToNegativeIfNeeded(((DoubleValue) incomingExpression).getValue(), sign),
+                    fieldType);
         } else if (SignedExpression.class.isInstance(incomingExpression)) {
-            return getNormalizedValue((((SignedExpression) incomingExpression).toString()), fieldType);
+            SignedExpression signedExpression = (SignedExpression) incomingExpression;
+            return getNormalizedValue(signedExpression.getExpression(), otherSide, defaultFieldType,
+                    fieldNameToFieldTypeMapping, signedExpression.getSign());
         } else if (StringValue.class.isInstance(incomingExpression)) {
             return getNormalizedValue((((StringValue) incomingExpression).getValue()), fieldType);
         } else if (Column.class.isInstance(incomingExpression)) {
@@ -128,6 +136,24 @@ public final class SqlUtils {
             return getNormalizedValue((((DateValue) incomingExpression).getValue()), fieldType);
         } else {
             throw new ParseException("can not parseNaturalLanguageDate: " + incomingExpression.toString());
+        }
+    }
+
+    private static Object convertToNegativeIfNeeded(final Number number, final Character sign) throws ParseException {
+        if (NEGATIVE_NUMBER_SIGN.equals(sign)) {
+            if (Integer.class.isInstance(number)) {
+                return -((Integer) number);
+            } else if (Long.class.isInstance(number)) {
+                return -((Long) number);
+            } else if (Double.class.isInstance(number)) {
+                return -((Double) number);
+            } else if (Float.class.isInstance(number)) {
+                return -((Float) number);
+            } else {
+               throw new ParseException(String.format("could not convert %s into negative number", number));
+            }
+        } else {
+            return number;
         }
     }
 
@@ -699,7 +725,7 @@ public final class SqlUtils {
      */
     public static Object nonFunctionToNode(final Expression exp) throws ParseException {
         return (SqlUtils.isColumn(exp) && !exp.toString().startsWith("$"))
-                ? ("$" + exp) : getNormalizedValue(exp, null, FieldType.UNKNOWN, null);
+                ? ("$" + exp) : getNormalizedValue(exp, null, FieldType.UNKNOWN, null, null);
     }
 
     /**

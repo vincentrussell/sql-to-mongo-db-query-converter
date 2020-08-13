@@ -258,7 +258,7 @@ public class WhereClauseProcessor {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
         } else {
             return SqlUtils.getNormalizedValue(incomingExpression, otherSide,
-                    defaultFieldType, fieldNameToFieldTypeMapping);
+                    defaultFieldType, fieldNameToFieldTypeMapping, null);
         }
         return query;
     }
@@ -300,7 +300,7 @@ public class WhereClauseProcessor {
             return objectList.size() == 1 ? objectList.get(0) : objectList;
         } else if (Expression.class.isInstance(object)) {
             return SqlUtils.getNormalizedValue((Expression) object, null,
-                    defaultFieldType, fieldNameToFieldTypeMapping);
+                    defaultFieldType, fieldNameToFieldTypeMapping, null);
         }
 
         return query.isEmpty() ? null : query;
