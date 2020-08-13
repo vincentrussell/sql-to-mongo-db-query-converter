@@ -707,6 +707,7 @@ more results? (y/n): n
 
 - Added checkstyle to build process
 - Code cleanup
+- Negative numbers are supported
 
 
 
