@@ -226,6 +226,15 @@ public class QueryConverterTest {
         assertEquals(document("avg", document("$gt", Double.parseDouble("-1.5"))),mongoDBQueryHolder.getQuery());
     }
 
+    @SuppressWarnings("unchecked")
+    public void testNegativePositiveAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > +1.5").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Double.parseDouble("+1.5"))),mongoDBQueryHolder.getQuery());
+    }
+
     @Test
     @SuppressWarnings("unchecked")
     public void testNegativeLongAsValue() throws ParseException {
@@ -234,6 +243,16 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("avg", document("$gt", Long.parseLong("-90210"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testPostitiveLongAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > +90210").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Long.parseLong("90210"))),mongoDBQueryHolder.getQuery());
     }
 
 
