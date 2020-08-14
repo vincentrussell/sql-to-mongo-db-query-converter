@@ -707,12 +707,14 @@ more results? (y/n): n
 
 - Added getQueryAsDocument to the QueryConverter
 - Upgraded guava to 24.1.1-jre
+- Added "Loop mode" with -l when running in CLI mode.
 
 **Bugs:**
 
 - Added checkstyle to build process
 - Code cleanup
 - Negative numbers are supported
+
 
 
 
