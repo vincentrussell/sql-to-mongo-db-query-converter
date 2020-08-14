@@ -10,6 +10,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import javax.print.Doc;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -22,9 +23,7 @@ import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class QueryConverterTest {
 
@@ -654,6 +653,27 @@ public class QueryConverterTest {
         		"    \"R\": \"$Restaurant\"\n" + 
         		"  }\n" + 
         		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void getQueryAsDocumentAggregation() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id = OID('5e97ae59c63d1b3ff8e07c74')").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Document document = queryConverter.getQueryAsDocument();
+        assertEquals("Restaurants", document.getString("collection"));
+        assertNotNull(document.getList("query", Document.class));
+    }
+
+    @Test
+    public void getQueryAsDocumentCountAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select * from my_table where value=1 OR value2=\"theValue\"").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Document document = queryConverter.getQueryAsDocument();
+        assertEquals("my_table", document.getString("collection"));
+        assertTrue(Document.class.isInstance(document.get("query")));
+        assertEquals(SQLCommandType.SELECT.name(), document.get("commandType"));
     }
 
     @Test

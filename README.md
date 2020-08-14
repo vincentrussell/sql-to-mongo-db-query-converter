@@ -703,6 +703,10 @@ more results? (y/n): n
 
 ## [1.15](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.15) (TBD)
 
+**Enhancements:**
+
+- Added getQueryAsDocument to the QueryConverter
+
 **Bugs:**
 
 - Added checkstyle to build process
