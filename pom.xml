@@ -74,7 +74,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>18.0</version>
+        <version>24.1.1-jre</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>
@@ -239,20 +239,6 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>com.github.spotbugs</groupId>
-          <artifactId>spotbugs-maven-plugin</artifactId>
-          <version>4.0.0</version>
-          <executions>
-            <execution>
-              <id>before-integration-test</id>
-              <phase>pre-integration-test</phase>
-              <goals>
-                <goal>check</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-        <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-checkstyle-plugin</artifactId>
           <version>3.1.1</version>
@@ -266,7 +252,24 @@
           <executions>
             <execution>
               <id>validate</id>
-              <phase>validate</phase>
+              <phase>compile</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-maven-plugin</artifactId>
+          <version>4.0.0</version>
+          <executions>
+            <execution>
+              <id>spotbugs</id>
+              <phase>compile</phase>
+              <configuration>
+                <excludeFilterFile>src/test/resources/spotbugs/spotbugs-exclude.xml</excludeFilterFile>
+              </configuration>
               <goals>
                 <goal>check</goal>
               </goals>
@@ -287,12 +290,12 @@
         </configuration>
       </plugin>
       <plugin>
-        <groupId>com.github.spotbugs</groupId>
-        <artifactId>spotbugs-maven-plugin</artifactId>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

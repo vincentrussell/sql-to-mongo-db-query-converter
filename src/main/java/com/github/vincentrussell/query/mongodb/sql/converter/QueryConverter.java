@@ -220,6 +220,12 @@ public class QueryConverter {
                         }
                         return false;
                     }
+
+                    @Override
+                    public boolean test(final SelectItem input) {
+                        return apply(input);
+                    }
+
                 }));
 
         SqlUtils.isFalse((selectItems.size() > 1
@@ -420,12 +426,22 @@ public class QueryConverter {
                         }
                         return false;
                     }
+
+                    @Override
+                    public boolean test(final OrderByElement input) {
+                        return apply(input);
+                    }
                 }));
         final List<OrderByElement> nonFunctionItems = Lists.newArrayList(Collections2.filter(orderByElements,
                 new Predicate<OrderByElement>() {
                     @Override
                     public boolean apply(final OrderByElement orderByElement) {
                         return !functionItems.contains(orderByElement);
+                    }
+
+                    @Override
+                    public boolean test(final OrderByElement input) {
+                        return apply(input);
                     }
 
                 }));
@@ -488,12 +504,22 @@ public class QueryConverter {
                         }
                         return false;
                     }
+
+                    @Override
+                    public boolean test(final SelectItem input) {
+                        return apply(input);
+                    }
                 }));
         final List<SelectItem> nonFunctionItems = Lists.newArrayList(Collections2.filter(selectItems,
                 new Predicate<SelectItem>() {
                     @Override
                     public boolean apply(final SelectItem selectItem) {
                         return !functionItems.contains(selectItem);
+                    }
+
+                    @Override
+                    public boolean test(final SelectItem input) {
+                        return apply(input);
                     }
 
                 }));
@@ -536,12 +562,23 @@ public class QueryConverter {
                         }
                         return false;
                     }
+
+                    @Override
+                    public boolean test(final SelectItem input) {
+                        return apply(input);
+                    }
+
                 }));
         final List<SelectItem> nonFunctionItems = Lists.newArrayList(Collections2.filter(selectItems,
                 new Predicate<SelectItem>() {
                     @Override
                     public boolean apply(final SelectItem selectItem) {
                         return !functionItems.contains(selectItem);
+                    }
+
+                    @Override
+                    public boolean test(final SelectItem input) {
+                        return apply(input);
                     }
 
                 }));
@@ -629,7 +666,7 @@ public class QueryConverter {
                         queryDocument.getList("query", Document.class),
                         new com.google.common.base.Function<Document, String>() {
                             @Override
-                            public String apply(final Document document) {
+                            public String apply(@Nonnull final Document document) {
                                 return prettyPrintJson(document.toJson(RELAXED));
                             }
                         })), outputStream);

@@ -11,6 +11,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.WriteModel;
+import net.sf.jsqlparser.statement.select.SelectItem;
 import org.apache.commons.io.IOUtils;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -744,6 +745,11 @@ public abstract class AbstractQueryConverterIT {
             public boolean apply(Document document) {
                 return document.getInteger("count") > 500;
             }
+
+            @Override
+            public boolean test(final Document input) {
+                return apply(input);
+            }
         }));
 
         JSONAssert.assertEquals("[{\n" +
@@ -794,6 +800,11 @@ public abstract class AbstractQueryConverterIT {
             public boolean apply(Document document) {
                 return document.getInteger("co") > 500;
             }
+
+            @Override
+            public boolean test(final Document input) {
+                return apply(input);
+            }
         }));
 
         JSONAssert.assertEquals("[{\n" +
@@ -843,6 +854,11 @@ public abstract class AbstractQueryConverterIT {
             @Override
             public boolean apply(Document document) {
                 return document.getInteger("co") > 500;
+            }
+
+            @Override
+            public boolean test(final Document input) {
+                return apply(input);
             }
         }));
 

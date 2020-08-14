@@ -706,6 +706,7 @@ more results? (y/n): n
 **Enhancements:**
 
 - Added getQueryAsDocument to the QueryConverter
+- Upgraded guava to 24.1.1-jre
 
 **Bugs:**
 
