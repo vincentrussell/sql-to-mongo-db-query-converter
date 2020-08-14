@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang.Validate.notNull;
 
@@ -607,29 +608,144 @@ public class QueryConverter {
      * @throws IOException when there is an issue writing to the {@link java.io.OutputStream}
      */
     public void write(final OutputStream outputStream) throws IOException {
+        Document queryDocument = getQueryAsDocument();
+        String collectionName = queryDocument.getString("collection");
+        boolean isAggregation = queryDocument.get("query") != null && List.class.isInstance(queryDocument.get("query"));
+        boolean isFindQuery = false;
+        if (queryDocument.get("distinct") != null) {
+            IOUtils.write("db." + collectionName + ".distinct(", outputStream);
+            IOUtils.write("\"" + queryDocument.get("distinct") + "\"", outputStream);
+            IOUtils.write(" , ", outputStream);
+            IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream);
+        } else if (Boolean.TRUE.equals(queryDocument.getBoolean("countAll")) && !isAggregation) {
+            IOUtils.write("db." + collectionName + ".count(", outputStream);
+            IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream);
+        } else {
+            if (isAggregation) {
+                IOUtils.write("db." + collectionName + ".aggregate(", outputStream);
+                IOUtils.write("[", outputStream);
+
+                IOUtils.write(Joiner.on(",").join(Lists.transform(
+                        queryDocument.getList("query", Document.class),
+                        new com.google.common.base.Function<Document, String>() {
+                            @Override
+                            public String apply(final Document document) {
+                                return prettyPrintJson(document.toJson(RELAXED));
+                            }
+                        })), outputStream);
+                IOUtils.write("]", outputStream);
+
+                Document options = (Document) queryDocument.get("options");
+                if (options != null && options.size() > 0) {
+                    IOUtils.write(",", outputStream);
+                    IOUtils.write(prettyPrintJson(options.toJson(RELAXED)), outputStream);
+                }
+
+
+            } else {
+                SQLCommandType sqlCommandType = SQLCommandType.valueOf(
+                        firstNonNull(queryDocument.get("commandType"), SQLCommandType.SELECT.name()).toString());
+                if (SQLCommandType.SELECT.equals(sqlCommandType)) {
+                    isFindQuery = true;
+                    IOUtils.write("db." + collectionName + ".find(", outputStream);
+                } else if (SQLCommandType.DELETE.equals(sqlCommandType)) {
+                    IOUtils.write("db." + collectionName + ".remove(", outputStream);
+                }
+                IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream);
+                if (queryDocument.get("projection") != null) {
+                    IOUtils.write(" , ", outputStream);
+                    IOUtils.write(prettyPrintJson(((Document) queryDocument.get("projection")).toJson(RELAXED)),
+                            outputStream);
+                }
+            }
+        }
+        IOUtils.write(")", outputStream);
+
+        if (isFindQuery) {
+            if (queryDocument.get("sort") != null) {
+                IOUtils.write(".sort(", outputStream);
+                IOUtils.write(prettyPrintJson(((Document) queryDocument.get("sort")).toJson(RELAXED)), outputStream);
+                IOUtils.write(")", outputStream);
+            }
+
+            if (queryDocument.get("offset") != null) {
+                IOUtils.write(".skip(", outputStream);
+                IOUtils.write(queryDocument.get("offset") + "", outputStream);
+                IOUtils.write(")", outputStream);
+            }
+
+            if (queryDocument.get("limit") != null) {
+                IOUtils.write(".limit(", outputStream);
+                IOUtils.write(queryDocument.get("limit") + "", outputStream);
+                IOUtils.write(")", outputStream);
+            }
+        }
+    }
+
+
+    /**
+     * get this query with supporting data in a document format.
+     * The document has the following fields:
+     * <pre>
+     *     {
+     *   "collection": "the collection the query is running on",
+     *   "query": "the query (Document) for aggregation (List) needed to run this query",
+     *   "commandType": "SELECT or DELETE",
+     *   "countAll": "true if this is a count all Query",
+     *   "distinct": "the field to do a distnct query on",
+     *   "options": "A Document with the options for this aggregation",
+     *   "projection": "The projection to use for this query"
+     * }
+     * </pre>
+     *
+     *
+     * For example:
+     * <pre>
+     *     {
+     *   "collection": "Restaurants",
+     *   "query": [
+     *     {
+     *       "$match": {
+     *         "$expr": {
+     *           "$eq": [
+     *             {
+     *               "$toObjectId": "5e97ae59c63d1b3ff8e07c74"
+     *             },
+     *             "$_id"
+     *           ]
+     *         }
+     *       }
+     *     },
+     *     {
+     *       "$project": {
+     *         "_id": 0,
+     *         "id": "$_id",
+     *         "R": "$Restaurant"
+     *       }
+     *     }
+     *   ]
+     * }
+     * </pre>
+     * @return the document object.
+     * @throws IOException
+     */
+    public Document getQueryAsDocument() throws IOException {
+        Document retValDocument = new Document();
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
         boolean isFindQuery = false;
+        final String collectionName = mongoDBQueryHolder.getCollection();
         if (mongoDBQueryHolder.isDistinct()) {
-            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".distinct(", outputStream);
-            IOUtils.write("\"" + getDistinctFieldName(mongoDBQueryHolder) + "\"", outputStream);
-            IOUtils.write(" , ", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(RELAXED)), outputStream);
+            retValDocument.put("collection", collectionName);
+            retValDocument.put("distinct", getDistinctFieldName(mongoDBQueryHolder));
+            retValDocument.put("query", mongoDBQueryHolder.getQuery());
         } else if (sqlCommandInfoHolder.isCountAll() && !isAggregate(mongoDBQueryHolder)) {
-            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".count(", outputStream);
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(RELAXED)), outputStream);
+            retValDocument.put("countAll", true);
+            retValDocument.put("collection", collectionName);
+            retValDocument.put("query", mongoDBQueryHolder.getQuery());
         } else if (isAggregate(mongoDBQueryHolder)) {
-            IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".aggregate(", outputStream);
-            IOUtils.write("[", outputStream);
-
-            IOUtils.write(Joiner.on(",").join(Lists.transform(
-                    generateAggSteps(mongoDBQueryHolder, sqlCommandInfoHolder),
-                    new com.google.common.base.Function<Document, String>() {
-                        @Override
-                        public String apply(final Document document) {
-                            return prettyPrintJson(document.toJson(RELAXED));
-                        }
-                    })), outputStream);
-            IOUtils.write("]", outputStream);
+            retValDocument.put("collection", collectionName);
+            List<Document> aggregationDocuments = generateAggSteps(mongoDBQueryHolder, sqlCommandInfoHolder);
+            retValDocument.put("query", aggregationDocuments);
 
             Document options = new Document();
             if (aggregationAllowDiskUse != null) {
@@ -641,46 +757,40 @@ public class QueryConverter {
             }
 
             if (options.size() > 0) {
-                IOUtils.write(",", outputStream);
-                IOUtils.write(prettyPrintJson(options.toJson(RELAXED)), outputStream);
+                retValDocument.put("options", options);
             }
 
 
         } else {
+            retValDocument.put("commandType", sqlCommandInfoHolder.getSqlCommandType().name());
             if (sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
                 isFindQuery = true;
-                IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".find(", outputStream);
+                retValDocument.put("collection", collectionName);
             } else if (sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.DELETE) {
-                IOUtils.write("db." + mongoDBQueryHolder.getCollection() + ".remove(", outputStream);
+                retValDocument.put("collection", collectionName);
             }
-            IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getQuery().toJson(RELAXED)), outputStream);
+            retValDocument.put("query", mongoDBQueryHolder.getQuery());
             if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0
                     && sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
-                IOUtils.write(" , ", outputStream);
-                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getProjection().toJson(RELAXED)), outputStream);
+                retValDocument.put("projection", mongoDBQueryHolder.getProjection());
             }
         }
-        IOUtils.write(")", outputStream);
 
         if (isFindQuery) {
             if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
-                IOUtils.write(".sort(", outputStream);
-                IOUtils.write(prettyPrintJson(mongoDBQueryHolder.getSort().toJson(RELAXED)), outputStream);
-                IOUtils.write(")", outputStream);
+                retValDocument.put("sort", mongoDBQueryHolder.getSort());
             }
 
             if (mongoDBQueryHolder.getOffset() != -1) {
-                IOUtils.write(".skip(", outputStream);
-                IOUtils.write(mongoDBQueryHolder.getOffset() + "", outputStream);
-                IOUtils.write(")", outputStream);
+                retValDocument.put("skip", mongoDBQueryHolder.getOffset());
             }
 
             if (mongoDBQueryHolder.getLimit() != -1) {
-                IOUtils.write(".limit(", outputStream);
-                IOUtils.write(mongoDBQueryHolder.getLimit() + "", outputStream);
-                IOUtils.write(")", outputStream);
+                retValDocument.put("limit", mongoDBQueryHolder.getLimit());
             }
         }
+
+        return retValDocument;
     }
 
     private boolean isAggregate(final MongoDBQueryHolder mongoDBQueryHolder) {
@@ -834,7 +944,7 @@ public class QueryConverter {
     }
 
 
-    private String prettyPrintJson(final String json) {
+    private static String prettyPrintJson(final String json) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         JsonParser jp = new JsonParser();
         JsonElement je = jp.parse(json);
