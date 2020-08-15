@@ -40,7 +40,7 @@ public class ParseException extends Exception {
      * cause.  <p>Note that the detail message associated with
      * {@code cause} is <i>not</i> automatically incorporated in
      * this exception's detail message.
-     * @param e
+     * @param e the caused-by throwable
      */
     public ParseException(final Throwable e) {
         super(fixErrorMessage(e));

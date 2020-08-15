@@ -11,9 +11,9 @@ public class RegexFunction {
 
     /**
      * Default Constructor.
-     * @param column
-     * @param regex
-     * @param isNot
+     * @param column the column that is a regex
+     * @param regex the regex
+     * @param isNot if you want to select the columns that do not match the regex
      */
     public RegexFunction(final String column, final String regex, final boolean isNot) {
         this.column = column;
@@ -39,7 +39,7 @@ public class RegexFunction {
 
     /**
      * Sets any mongo-specific options that are available for the regex.
-     * @param options
+     * @param options the options for this regex
      */
     public void setOptions(final String options) {
         this.options = options;

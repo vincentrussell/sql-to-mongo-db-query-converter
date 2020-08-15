@@ -13,18 +13,18 @@ public class AliasHolder {
 
     /**
      * Default constructor.
-     * @param aliasFromFieldHash
-     * @param fieldFromAliasHash
+     * @param aliasFromFieldMap the alias from the field map.
+     * @param fieldFromAliasMap the field to alias map.
      */
-    public AliasHolder(final HashMap<String, String> aliasFromFieldHash,
-                       final HashMap<String, String> fieldFromAliasHash) {
-        this.aliasFromFieldHash = aliasFromFieldHash;
-        this.fieldFromAliasHash = fieldFromAliasHash;
+    public AliasHolder(final HashMap<String, String> aliasFromFieldMap,
+                       final HashMap<String, String> fieldFromAliasMap) {
+        this.aliasFromFieldHash = aliasFromFieldMap;
+        this.fieldFromAliasHash = fieldFromAliasMap;
     }
 
     /**
      * Get the alias from a field name.
-     * @param field
+     * @param field the field that you want the alias for.
      * @return the alias from a field name.
      */
     public String getAliasFromFieldExp(final String field) {
@@ -33,9 +33,9 @@ public class AliasHolder {
 
     /**
      * Will return the field name given an alias.
-     * @param fieldOrAlias
+     * @param fieldOrAlias the field
      * @return the field name given an alias
-     * @throws ParseException
+     * @throws ParseException if the field is an ambiguous field
      */
     public String getFieldFromAliasOrField(final String fieldOrAlias) throws ParseException {
         if (!isAmbiguous(fieldOrAlias)) {

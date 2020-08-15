@@ -59,7 +59,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set if there is distinct used in the sql query.
-     * @param distinct
+     * @param distinct true if the query should be be distinct on a particular field
      */
     public void setDistinct(final boolean distinct) {
         this.distinct = distinct;
@@ -76,7 +76,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set they query from the where clause in the sql statement.
-     * @param query
+     * @param query the query in the form of {@link Document}
      */
     public void setQuery(final Document query) {
         notNull(query, "query is null");
@@ -96,7 +96,7 @@ public class MongoDBQueryHolder {
     /**
      * The column that is used in the distinct clause from the sql query or the projections
      * needed based on a group by sql statement.
-     * @param projection
+     * @param projection the projection from the query based on the sql statement
      */
     public void setProjection(final Document projection) {
         notNull(projection, "projection is null");
@@ -113,7 +113,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Set the sort information from the query based on the sql statement.
-     * @param sort
+     * @param sort the sort information from the query
      */
     public void setSort(final Document sort) {
         notNull(sort, "sort is null");
@@ -130,7 +130,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set to true if count(*) is used.
-     * @param countAll
+     * @param countAll true if count(*) is used
      */
     public void setCountAll(final boolean countAll) {
         this.countAll = countAll;
@@ -138,7 +138,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Set the fields that are used to group on.
-     * @param groupBys
+     * @param groupBys the fields that are used to group on
      */
     public void setGroupBys(final List<String> groupBys) {
         this.groupBys = groupBys;
@@ -162,7 +162,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set the having clause from the sql query.
-     * @param having
+     * @param having the having clause from the sql query
      */
     public void setHaving(final Document having) {
         notNull(having, "having is null");
@@ -179,7 +179,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set the projections needed when using aliases for columns.
-     * @param aliasProjection
+     * @param aliasProjection the projections needed when using aliases for columns
      */
     public void setAliasProjection(final Document aliasProjection) {
         this.aliasProjection = aliasProjection;
@@ -195,7 +195,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set the limit used from the sql query.
-     * @param limit
+     * @param limit the limit used for the sql query
      */
     public void setLimit(final long limit) {
         this.limit = limit;
@@ -211,7 +211,7 @@ public class MongoDBQueryHolder {
 
     /**
      * set the offset from the sql query.
-     * @param offset
+     * @param offset the offset from the sql query
      */
     public void setOffset(final long offset) {
         this.offset = offset;
@@ -235,7 +235,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Set the aggregation pipeline steps needed to perform a join.
-     * @param joinPipeline
+     * @param joinPipeline the aggregation pipeline steps needed to perform a join.
      */
     public void setJoinPipeline(final List<Document> joinPipeline) {
         this.joinPipeline = joinPipeline;
@@ -251,7 +251,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Will set the aggregation steps for this query.
-     * @param prevSteps
+     * @param prevSteps the aggregation steps for this query
      */
     public void setPrevSteps(final List<Document> prevSteps) {
         this.prevSteps = prevSteps;
@@ -259,7 +259,7 @@ public class MongoDBQueryHolder {
 
     /**
      * Set ff some aggregation is required by this query.
-     * @param requiresAggregation
+     * @param requiresAggregation ture if this sql query requires aggregation
      */
     public void setRequiresAggregation(final boolean requiresAggregation) {
         this.requiresAggregation = requiresAggregation;

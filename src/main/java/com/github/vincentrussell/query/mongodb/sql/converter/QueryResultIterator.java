@@ -8,7 +8,7 @@ import java.io.IOException;
 
 /**
  * Wrapper {@link java.util.Iterator} around the {@link MongoCursor}.
- * @param <T>
+ * @param <T> the type of elements returned by this iterator
  */
 public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
 
@@ -16,7 +16,7 @@ public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
 
     /**
      * Default constructor.
-     * @param mongoIterable
+     * @param mongoIterable the wrapped {@link MongoIterable}
      */
     public QueryResultIterator(final MongoIterable<T> mongoIterable) {
         this.mongoCursor = mongoIterable.iterator();
@@ -24,7 +24,8 @@ public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
 
     /**
      * {@inheritDoc}
-     * @return
+     * @return the next element if there was one. If {@code endOfData} was called during execution,
+     * the return value will be ignored.
      */
     @Override
     protected T computeNext() {

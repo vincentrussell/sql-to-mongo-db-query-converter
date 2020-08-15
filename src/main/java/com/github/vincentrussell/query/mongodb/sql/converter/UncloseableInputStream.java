@@ -11,7 +11,7 @@ public class UncloseableInputStream extends FilterInputStream {
 
     /**
      * Default constructor.
-     * @param in
+     * @param in the wrapped {@link InputStream}
      */
     public UncloseableInputStream(final InputStream in) {
         super(in);

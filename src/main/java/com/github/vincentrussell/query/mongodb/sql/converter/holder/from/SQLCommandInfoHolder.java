@@ -64,7 +64,7 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
     }
 
     @Override
-    public String getBaseTableName() throws ParseException {
+    public String getBaseTableName() {
         return from.getBaseFromTableName();
     }
 
@@ -95,9 +95,8 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
     /**
      * get the base table name from this query.
      * @return the base table name
-     * @throws ParseException
      */
-    public String getTable() throws ParseException {
+    public String getTable() {
         return from.getBaseFromTableName();
     }
 
@@ -238,10 +237,11 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
 
         /**
          * Set the select or delete statement from the parsed sql string.
-         * @param statement
+         * @param statement the {@link Statement}
          * @return the builder
-         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException
-         * @throws ParseException
+         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException if there is an issue
+         * the parsing the sql
+         * @throws ParseException if there is an issue the parsing the sql
          */
         public Builder setStatement(final Statement statement)
                 throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
@@ -275,10 +275,11 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
 
         /**
          * Set the select query information for this query.
-         * @param plainSelect
+         * @param plainSelect the {@link PlainSelect}
          * @return the builder
-         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException
-         * @throws ParseException
+         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException if there is an issue
+         * the parsing the sql
+         * @throws ParseException if there is an issue the parsing the sql
          */
         public Builder setPlainSelect(final PlainSelect plainSelect)
                 throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
@@ -309,10 +310,11 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
 
         /**
          * Set the delete information for this query if it is a delete query.
-         * @param delete
+         * @param delete the {@link Delete} object
          * @return the builder
-         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException
-         * @throws ParseException
+         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException if there is an issue
+         * parsing the sql
+         * @throws ParseException if there is an issue parsing the sql
          */
         public Builder setDelete(final Delete delete)
                 throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
@@ -356,8 +358,8 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
 
         /**
          * create a {@link Builder}.
-         * @param defaultFieldType
-         * @param fieldNameToFieldTypeMapping
+         * @param defaultFieldType the default {@link FieldType}
+         * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} map
          * @return the builder
          */
         public static Builder create(final FieldType defaultFieldType,

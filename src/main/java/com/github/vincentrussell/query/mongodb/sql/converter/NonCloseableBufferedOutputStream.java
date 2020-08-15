@@ -12,7 +12,7 @@ public class NonCloseableBufferedOutputStream extends BufferedOutputStream {
 
     /**
      * Default constructor.
-     * @param out
+     * @param out the wrapped {@link OutputStream}
      */
     public NonCloseableBufferedOutputStream(final OutputStream out) {
         super(out);
@@ -20,9 +20,11 @@ public class NonCloseableBufferedOutputStream extends BufferedOutputStream {
 
 
     /**
-     * Does not close this output stream and releases any system resources ssociated with the stream.
+     * Does not close this output stream and releases any system resources associated with the stream.
      * Only calls flush on the output stream.
-     * @throws IOException
+     * @exception  IOException  if an I/O error occurs.
+     * @see        java.io.FilterOutputStream#flush()
+     * @see        java.io.FilterOutputStream#out
      */
     @Override
     public void close() throws IOException {

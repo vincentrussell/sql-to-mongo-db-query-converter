@@ -10,7 +10,7 @@ public class ExpressionHolder {
 
     /**
      * Default constructor.
-     * @param expression
+     * @param expression the expression
      */
     public ExpressionHolder(final Expression expression) {
         this.expression = expression;
@@ -26,7 +26,7 @@ public class ExpressionHolder {
 
     /**
      * set the expression.
-     * @param expression
+     * @param expression the expression
      */
     public void setExpression(final Expression expression) {
         this.expression = expression;

@@ -24,14 +24,14 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
      * This flag will be true is there is some "or" expression.
      * It that case match expression go in the main pipeline after lookup.
      */
-    private MutableBoolean haveOrExpression = new MutableBoolean();
+    private final MutableBoolean haveOrExpression;
     private boolean isBaseAliasOrValue;
 
     /**
      * Default constructor.
-     * @param baseAliasTable
-     * @param outputMatch
-     * @param haveOrExpression
+     * @param baseAliasTable the alias for the base table.
+     * @param outputMatch the {@link ExpressionHolder}
+     * @param haveOrExpression if there is an or expression
      */
     public WhereVisitorMatchAndLookupPipelineMatchBuilder(final String baseAliasTable,
                                                           final ExpressionHolder outputMatch,

@@ -26,9 +26,9 @@ public class TimeoutInputStream extends InputStream {
 
     /**
      * Default constructor.
-     * @param inputStream
-     * @param timeout
-     * @param timeUnit
+     * @param inputStream the linked {@link InputStream}
+     * @param timeout the timeout amount
+     * @param timeUnit the unit for the timeout
      */
     public TimeoutInputStream(final InputStream inputStream, final long timeout, final TimeUnit timeUnit) {
         this.inputStream = inputStream;

@@ -46,9 +46,9 @@ public class WhereClauseProcessor {
 
     /**
      * Default constructor.
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
-     * @param requiresAggregation
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} mapping
+     * @param requiresAggregation if aggregation is detected for the sql query
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping,
@@ -60,8 +60,8 @@ public class WhereClauseProcessor {
 
     /**
      * Construtor to use when no value for requiresAggregation.
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} map
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping) {
@@ -120,11 +120,11 @@ public class WhereClauseProcessor {
 
     /**
      * Recursive function responsible for stepping through the sql structure and converting it into a mongo structure.
-     * @param query
-     * @param incomingExpression
-     * @param otherSide
+     * @param query the query in {@link Document} format
+     * @param incomingExpression the incoming {@link Expression}
+     * @param otherSide the {@link Expression} on the other side
      * @return the converted mongo structure.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the incomingExpression
      */
     public Object parseExpression(final Document query,
                                   final Expression incomingExpression, final Expression otherSide)
@@ -275,12 +275,12 @@ public class WhereClauseProcessor {
 
     /**
      * Recurse through functions in the sql structure to generate mongo query structure.
-     * @param query
-     * @param object
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
+     * @param query the query in {@link Document} format
+     * @param object the value
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to{@link FieldType} map
      * @return the mongo structure
-     * @throws ParseException
+     * @throws ParseException if the value of the object param could not be parsed
      */
     protected Object recurseFunctions(final Document query, final Object object,
                                       final FieldType defaultFieldType,

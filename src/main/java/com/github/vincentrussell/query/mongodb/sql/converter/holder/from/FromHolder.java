@@ -25,8 +25,8 @@ public class FromHolder {
 
     /**
      * Default Constructor.
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the mapping from field name to {@link FieldType}
      */
     public FromHolder(final FieldType defaultFieldType, final Map<String, FieldType> fieldNameToFieldTypeMapping) {
         this.defaultFieldType = defaultFieldType;
@@ -68,10 +68,11 @@ public class FromHolder {
 
     /**
      * Add information from the From clause of this query.
-     * @param from
-     * @param alias
-     * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException
-     * @throws ParseException
+     * @param from the {@link FromItem}
+     * @param alias the alias
+     * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException if there is an issue processing
+     * components from the sql statement
+     * @throws ParseException if there is a problem processing the {@link FromItem}
      */
     public void addFrom(final FromItem from, final String alias)
             throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
@@ -89,37 +90,33 @@ public class FromHolder {
     /**
      * Get the table name from the base from.
      * @return the table name from the base from.
-     * @throws ParseException
      */
-    public String getBaseFromTableName() throws ParseException {
+    public String getBaseFromTableName()  {
         return fromToSQLHolder.get(baseFrom).getBaseTableName();
     }
 
     /**
      * Get the base {@link FromItem}.
      * @return the base {@link FromItem}
-     * @throws ParseException
      */
-    public FromItem getBaseFrom() throws ParseException {
+    public FromItem getBaseFrom() {
         return baseFrom;
     }
 
     /**
      * get the {@link SQLInfoHolder} from base {@link FromItem}.
      * @return the {@link SQLInfoHolder} from base {@link FromItem}
-     * @throws ParseException
      */
-    public SQLInfoHolder getBaseSQLHolder() throws ParseException {
+    public SQLInfoHolder getBaseSQLHolder() {
         return fromToSQLHolder.get(baseFrom);
     }
 
     /**
      * get the {@link SQLInfoHolder} from the provided {@link FromItem}.
-     * @param fromItem
+     * @param fromItem the {@link FromItem} from the sql query
      * @return the {@link SQLInfoHolder} from the provided {@link FromItem}
-     * @throws ParseException
      */
-    public SQLInfoHolder getSQLHolder(final FromItem fromItem) throws ParseException {
+    public SQLInfoHolder getSQLHolder(final FromItem fromItem) {
         return fromToSQLHolder.get(fromItem);
     }
 

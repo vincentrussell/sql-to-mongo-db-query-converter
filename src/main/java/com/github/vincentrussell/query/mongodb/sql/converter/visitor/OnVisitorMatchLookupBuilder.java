@@ -14,8 +14,8 @@ public class OnVisitorMatchLookupBuilder extends ExpressionVisitorAdapter {
 
     /**
      * Default constructor.
-     * @param joinAliasTable
-     * @param baseAliasTable
+     * @param joinAliasTable the alias for the join table.
+     * @param baseAliasTable the alias for the base table.
      */
     public OnVisitorMatchLookupBuilder(final String joinAliasTable, final String baseAliasTable) {
         this.joinAliasTable = joinAliasTable;

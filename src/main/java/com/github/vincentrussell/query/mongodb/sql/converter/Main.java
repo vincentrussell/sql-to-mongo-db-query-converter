@@ -154,10 +154,10 @@ public final class Main {
 
     /**
      * Main method.
-     * @param args
-     * @throws IOException
-     * @throws ParseException
-     * @throws org.apache.commons.cli.ParseException
+     * @param args the args for the program
+     * @throws IOException if there is problem reading the sql file or writing to an output file
+     * @throws ParseException if there is a problem parsing the sql
+     * @throws org.apache.commons.cli.ParseException if there is a problem processing the args.
      */
     public static void main(final String[] args) throws IOException,
             ParseException, org.apache.commons.cli.ParseException {

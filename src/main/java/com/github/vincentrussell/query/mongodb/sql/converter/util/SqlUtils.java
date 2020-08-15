@@ -80,7 +80,7 @@ public final class SqlUtils {
     /**
      * Will get the string value for an expression and remove double double quotes if they are present like,
      * i.e: ""45 days ago"".
-     * @param expression
+     * @param expression the {@link Expression}
      * @return the string value for an expression and remove double double quotes if they are present
      */
     public static String getStringValue(final Expression expression) {
@@ -99,13 +99,13 @@ public final class SqlUtils {
 
     /**
      * Take an {@link Expression} and normalize it.
-     * @param incomingExpression
-     * @param otherSide
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
-     * @param sign
+     * @param incomingExpression the incoming expression
+     * @param otherSide the other side of the expression
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} map
+     * @param sign a negative or positive sign
      * @return the normalized value
-     * @throws ParseException
+     * @throws ParseException if there is a parsing issue
      */
     public static Object getNormalizedValue(final Expression incomingExpression, final Expression otherSide,
                                             final FieldType defaultFieldType,
@@ -159,10 +159,10 @@ public final class SqlUtils {
 
     /**
      * Take an {@link Object} and normalize it.
-     * @param value
-     * @param fieldType
+     * @param value the value to normalize
+     * @param fieldType the {@link FieldType}
      * @return the normalized value
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static Object getNormalizedValue(final Object value, final FieldType fieldType) throws ParseException {
         if (fieldType == null || FieldType.UNKNOWN.equals(fieldType)) {
@@ -194,9 +194,9 @@ public final class SqlUtils {
 
     /**
      * get limit as long.
-     * @param limit
+     * @param limit the limit as a long
      * @return the limit
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static long getLimitAsLong(final Limit limit) throws ParseException {
         if (limit != null) {
@@ -207,7 +207,7 @@ public final class SqlUtils {
 
     /**
      * get offset as long.
-     * @param offset
+     * @param offset the offset
      * @return the offset
      */
     public static long getOffsetAsLong(final Offset offset) {
@@ -219,8 +219,8 @@ public final class SqlUtils {
 
     /**
      * Will replace double single quotes in regex with a single single quote,
-     * i.e: "^[ae"don''tgaf]+$" -> "^[ae"don'tgaf]+$".
-     * @param regex
+     * i.e: "^[ae"don''tgaf]+$" -&gt; "^[ae"don'tgaf]+$".
+     * @param regex the regex
      * @return the regex without double single quotes
      */
     public static String fixDoubleSingleQuotes(final String regex) {
@@ -229,7 +229,7 @@ public final class SqlUtils {
 
     /**
      * Will return tue if the query is select *.
-     * @param selectItems
+     * @param selectItems list of {@link SelectItem}s
      * @return true if select *
      */
     public static boolean isSelectAll(final List<SelectItem> selectItems) {
@@ -243,7 +243,7 @@ public final class SqlUtils {
 
     /**
      * Will return true if query is doing a count(*).
-     * @param selectItems
+     * @param selectItems list of {@link SelectItem}s
      * @return true if query is doing a count(*)
      */
     public static boolean isCountAll(final List<SelectItem> selectItems) {
@@ -264,7 +264,7 @@ public final class SqlUtils {
 
     /**
      * Convert object to boolean.
-     * @param value
+     * @param value the value to convert to boolean
      * @return boolean value of object
      */
     public static Object getObjectAsBoolean(final Object value) {
@@ -277,9 +277,9 @@ public final class SqlUtils {
 
     /**
      * Convert object to {@link Date} object.
-     * @param value
+     * @param value the object to convert to a {@link Date}
      * @return date object
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static Object getObjectAsDate(final Object value) throws ParseException {
         if (String.class.isInstance(value)) {
@@ -303,7 +303,7 @@ public final class SqlUtils {
 
     /**
      * Parse natural language to Date object.
-     * @param text
+     * @param text the natural language text to convert to a date
      * @return parsed date
      */
     public static Date parseNaturalLanguageDate(final String text) {
@@ -320,9 +320,9 @@ public final class SqlUtils {
 
     /**
      * Get object as number.
-     * @param value
+     * @param value the object to convert to a number
      * @return number
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static Object getObjectAsNumber(final Object value) throws ParseException {
         if (String.class.isInstance(value)) {
@@ -346,7 +346,7 @@ public final class SqlUtils {
 
     /**
      * Force an object to being a string.
-     * @param value
+     * @param value the object to try to force to a string
      * @return the object converted to a string
      */
     public static String forceString(final Object value) {
@@ -359,18 +359,18 @@ public final class SqlUtils {
 
     /**
      * convert {@link net.sf.jsqlparser.parser.ParseException} to {@link ParseException}.
-     * @param incomingException
+     * @param parseException the {@link net.sf.jsqlparser.parser.ParseException}
      * @return the {@link ParseException}
      */
     public static ParseException convertParseException(
-            final net.sf.jsqlparser.parser.ParseException incomingException) {
-            return new ParseException(incomingException);
+            final net.sf.jsqlparser.parser.ParseException parseException) {
+            return new ParseException(parseException);
     }
 
 
     /**
      * Will replace a LIKE sql query with the format for a regex.
-     * @param value
+     * @param value the regex
      * @return a regex that represents the LIKE format.
      */
     public static String replaceRegexCharacters(final String value) {
@@ -389,7 +389,7 @@ public final class SqlUtils {
 
     /**
      * Get the columns used for the group by from the {@link PlainSelect}.
-     * @param plainSelect
+     * @param plainSelect the {@link PlainSelect} object
      * @return the columns used for the group by from the {@link PlainSelect}.
      */
     public static List<String> getGroupByColumnReferences(final PlainSelect plainSelect) {
@@ -409,10 +409,10 @@ public final class SqlUtils {
     /**
      * Will take the expression and create an {@link ObjectIdFunction} if the expression is an ObjectId function.
      * Otherwise it will return null.
-     * @param whereClauseProcessor
-     * @param incomingExpression
+     * @param whereClauseProcessor the {@link WhereClauseProcessor}
+     * @param incomingExpression the incoming expression
      * @return the {@link ObjectIdFunction}
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static ObjectIdFunction isObjectIdFunction(final WhereClauseProcessor whereClauseProcessor,
                                                       final Expression incomingExpression) throws ParseException {
@@ -460,9 +460,9 @@ public final class SqlUtils {
 
     /**
      * return a {@link DateFunction} if this {@link Expression} is a date.
-     * @param incomingExpression
+     * @param incomingExpression the {@link Expression} object
      * @return the {@link DateFunction} or null if not a date.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static DateFunction getDateFunction(final Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
@@ -490,9 +490,9 @@ public final class SqlUtils {
 
     /**
      * return a {@link RegexFunction} if this {@link Expression} is a regex.
-     * @param incomingExpression
+     * @param incomingExpression the {@link Expression} object
      * @return the {@link RegexFunction} or null if not a regex.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     @SuppressWarnings("checkstyle:magicnumber")
     public static RegexFunction isRegexFunction(final Expression incomingExpression) throws ParseException {
@@ -598,7 +598,7 @@ public final class SqlUtils {
 
     /**
      * Is the expression a column.
-     * @param expression
+     * @param expression the {@link Expression}
      * @return true if is a column.
      */
     public static boolean isColumn(final Expression expression) {
@@ -607,8 +607,8 @@ public final class SqlUtils {
 
     /**
      * Remove tablename from column.  For instance will rename column from c.column1 to column1.
-     * @param column
-     * @param aliasBase
+     * @param column the column
+     * @param aliasBase the alias base
      * @return the column without the tablename
      */
     public static Column removeAliasFromColumn(final Column column, final String aliasBase) {
@@ -620,7 +620,7 @@ public final class SqlUtils {
 
     /**
      * For nested fields we need it, no alias, clear first part "t1."column1.nested1, alias is mandatory.
-     * @param column
+     * @param column the column object
      * @return the nested fields without the first part
      */
     public static String getColumnNameFromColumn(final Column column) {
@@ -635,8 +635,8 @@ public final class SqlUtils {
     /**
      * Will return true if the alias is an alias referenced in the column.  For instance, i.e: tableAlias r is a
      * table alias in the column r.cuisine.
-     * @param column
-     * @param tableAlias
+     * @param column the column
+     * @param tableAlias the table alias
      * @return true if the alias is an alias referenced in the column.
      */
     public static boolean isTableAliasOfColumn(final Column column, final String tableAlias) {
@@ -646,17 +646,17 @@ public final class SqlUtils {
 
     /**
      * If join starts with the text "join " set the join as an inner join.
-     * @param j
+     * @param join the {@link Join}
      */
-    public static void updateJoinType(final Join j) {
-        if (j.toString().toLowerCase().startsWith("join ")) {
-            j.setInner(true);
+    public static void updateJoinType(final Join join) {
+        if (join.toString().toLowerCase().startsWith("join ")) {
+            join.setInner(true);
         }
     }
 
     /**
      * Is this expression one that would justify aggregation, like: max().
-     * @param field
+     * @param field the field
      * @return true if the expession would justify aggregation.
      */
     public static boolean isAggregateExpression(final String field) {
@@ -668,39 +668,39 @@ public final class SqlUtils {
 
     /**
      * Get the name for field to be used in aggregation based on the function name and the alias.
-     * @param f
-     * @param alias
+     * @param function the function
+     * @param alias the alias
      * @return the name for the field.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
-    public static String generateAggField(final Function f, final Alias alias) throws ParseException {
+    public static String generateAggField(final Function function, final Alias alias) throws ParseException {
         String aliasStr = (alias == null ? null : alias.getName());
-        return generateAggField(f, aliasStr);
+        return generateAggField(function, aliasStr);
     }
 
     /**
      * Get the name for field to be used in aggregation based on the function name and the alias.
-     * @param f
-     * @param alias
+     * @param function the function name
+     * @param alias the alias
      * @return the name for the field.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
-    public static String generateAggField(final Function f, final String alias) throws ParseException {
-        String field = getFieldFromFunction(f);
-        String function = f.getName().toLowerCase();
-        if ("*".equals(field) || function.equals("count")) {
-            return (alias == null ? function : alias);
+    public static String generateAggField(final Function function, final String alias) throws ParseException {
+        String field = getFieldFromFunction(function);
+        String functionName = function.getName().toLowerCase();
+        if ("*".equals(field) || functionName.equals("count")) {
+            return (alias == null ? functionName : alias);
         } else {
-            return (alias == null ? function + "_" + field.replaceAll("\\.", "_") : alias);
+            return (alias == null ? functionName + "_" + field.replaceAll("\\.", "_") : alias);
         }
 
     }
 
     /**
-     * Get field name from the function, i.e: MAX(advance_amount) -> advance_amount.
-     * @param function
+     * Get field name from the function, i.e: MAX(advance_amount) -&gt; advance_amount.
+     * @param function the {@link Function} object
      * @return the field name from the function.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static String getFieldFromFunction(final Function function) throws ParseException {
         List<String> parameters = function.getParameters() == null
@@ -719,9 +719,9 @@ public final class SqlUtils {
 
     /**
      * Will prepend $ to the expression if it is a column.
-     * @param exp
+     * @param exp the {@link Expression} object
      * @return string with prepended $ to the expression if it is a column.
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the query
      */
     public static Object nonFunctionToNode(final Expression exp) throws ParseException {
         return (SqlUtils.isColumn(exp) && !exp.toString().startsWith("$"))
@@ -730,7 +730,7 @@ public final class SqlUtils {
 
     /**
      * Will return true if any of the {@link SelectItem}s has a function that justifies aggregation like max().
-     * @param selectItems
+     * @param selectItems list of {@link SelectItem}s
      * @return true if any of the {@link SelectItem}s has a function that justifies aggregation like max()
      */
     public static boolean isTotalGroup(final List<SelectItem> selectItems) {
@@ -762,11 +762,10 @@ public final class SqlUtils {
 
     /**
      * Will translate function name for speciality function names.
-     * @param functionName
+     * @param functionName the function name to translate
      * @return the translated function name.
-     * @throws ParseException
      */
-    public static String translateFunctionName(final String functionName) throws ParseException {
+    public static String translateFunctionName(final String functionName) {
         String transfunction = FUNCTION_MAPPER.get(functionName);
         if (transfunction != null) {
             return transfunction;

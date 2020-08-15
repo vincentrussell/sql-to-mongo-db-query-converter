@@ -95,14 +95,14 @@ public final class JoinProcessor {
      *                 }
      *               }
      * </pre>
-     * @param tholder
-     * @param joinTableName
-     * @param joinTableAlias
-     * @param onExp
-     * @param mixedOnAndWhereExp
-     * @param subqueryDocs
+     * @param tholder the {@link FromHolder}
+     * @param joinTableName the join table name
+     * @param joinTableAlias the alias for the join table
+     * @param onExp {@link Expression}
+     * @param mixedOnAndWhereExp the mixed on and where {@link Expression}
+     * @param subqueryDocs the sub query {@link Document}s
      * @return the lookup step
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the sql
      */
     private static Document generateLookupStep(final FromHolder tholder, final String joinTableName,
                                                final String joinTableAlias, final Expression onExp,
@@ -132,11 +132,11 @@ public final class JoinProcessor {
      *             }
      *          }
      * </pre>
-     * @param tholder
-     * @param joinTableAlias
-     * @param isLeft
+     * @param tholder the {@link FromHolder}
+     * @param joinTableAlias the alias of the join table
+     * @param isLeft true if is a left join
      * @return the unwind step
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the sql
      */
     private static Document generateUnwindStep(final FromHolder tholder,
                                                final String joinTableAlias,
@@ -167,10 +167,10 @@ public final class JoinProcessor {
      *              }
      *          }
      * </pre>
-     * @param tholder
-     * @param whereExpression
+     * @param tholder the {@link FromHolder}
+     * @param whereExpression the where expression from the query
      * @return the unwind step
-     * @throws ParseException
+     * @throws ParseException if there is an issue parsing the sql
      */
     private static Document generateMatchAfterJoin(final FromHolder tholder,
                                                    final Expression whereExpression) throws ParseException {
@@ -181,13 +181,13 @@ public final class JoinProcessor {
 
     /**
      *  Create the aggregation pipeline steps needed to perform a join.
-     * @param queryConverter
-     * @param tholder
-     * @param ljoins
-     * @param whereExpression
+     * @param queryConverter the {@link QueryConverter}
+     * @param tholder the {@link FromHolder}
+     * @param ljoins the list of joined tables
+     * @param whereExpression the where expression from the query
      * @return the aggregation pipeline steps
-     * @throws ParseException
-     * @throws net.sf.jsqlparser.parser.ParseException
+     * @throws ParseException if there is an issue parsing the sql
+     * @throws net.sf.jsqlparser.parser.ParseException if there is an issue parsing the sql
      */
     public static List<Document> toPipelineSteps(final QueryConverter queryConverter,
                                                  final FromHolder tholder, final List<Join> ljoins,

@@ -21,11 +21,11 @@ public class DateFunction {
 
     /**
      * Default Constructor.
-     * @param format
-     * @param value
-     * @param column
-     * @param comparisonOperator
-     * @throws ParseException
+     * @param format the format in {@link java.text.SimpleDateFormat} on "natural"
+     * @param value the date to format
+     * @param column the column that is a date
+     * @param comparisonOperator the {@link ComparisonOperator}
+     * @throws ParseException if the date can not be parsed
      */
     public DateFunction(final String format, final String value,
                         final String column, final ComparisonOperator comparisonOperator) throws ParseException {

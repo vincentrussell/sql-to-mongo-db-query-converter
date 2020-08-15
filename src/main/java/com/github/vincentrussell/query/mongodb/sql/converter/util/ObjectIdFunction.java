@@ -22,13 +22,11 @@ public class ObjectIdFunction {
 
     /**
      * Default constructor.
-     * @param column
-     * @param value
-     * @param expression
-     * @throws ParseException
+     * @param column the column that is an objectId
+     * @param value the value of the objectId
+     * @param expression {@link Expression}
      */
-    public ObjectIdFunction(final String column, final Object value, final Expression expression)
-            throws ParseException {
+    public ObjectIdFunction(final String column, final Object value, final Expression expression) {
         this.column = column;
         this.value = value;
         this.comparisonExpression = expression;
@@ -45,7 +43,7 @@ public class ObjectIdFunction {
     /**
      * convert this ObjectId into a mongo document.
      * @return the mongo document
-     * @throws ParseException
+     * @throws ParseException when the objectId could not be converted into a document.
      */
     public Object toDocument() throws ParseException {
         if (EqualsTo.class.isInstance(comparisonExpression)) {
@@ -63,6 +61,6 @@ public class ObjectIdFunction {
                         }
                     }));
         }
-        throw new ParseException("Count not convert ObjectId function into document");
+        throw new ParseException("could not convert ObjectId function into document");
     }
 }

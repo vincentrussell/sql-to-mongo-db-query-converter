@@ -12,7 +12,7 @@ public class ExpVisitorEraseAliasTableBaseBuilder extends ExpressionVisitorAdapt
 
     /**
      * Default constructor.
-     * @param baseAliasTable
+     * @param baseAliasTable the alias for the base table
      */
     public ExpVisitorEraseAliasTableBaseBuilder(final String baseAliasTable) {
         this.baseAliasTable = baseAliasTable;

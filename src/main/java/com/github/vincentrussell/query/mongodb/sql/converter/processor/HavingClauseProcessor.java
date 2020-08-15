@@ -18,10 +18,10 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
 
     /**
      * Default Constructor.
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
-     * @param aliasHolder
-     * @param requiresAggregation
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} mapping
+     * @param aliasHolder the {@link AliasHolder}
+     * @param requiresAggregation true if this sql statement requires aggregation
      */
     public HavingClauseProcessor(final FieldType defaultFieldType,
                                  final Map<String, FieldType> fieldNameToFieldTypeMapping,
@@ -32,12 +32,12 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
 
     /**
      * Recurse through functions in the sql structure to generate mongo query structure.
-     * @param query
-     * @param object
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
+     * @param query the query object
+     * @param object the value that needs to be parsed
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to {@link FieldType}
      * @return the mongo structure
-     * @throws ParseException
+     * @throws ParseException if the value cannot be parsed
      */
     @Override //for use alias because it's after group expression so alias is already applied
     protected Object recurseFunctions(final Document query,

@@ -15,9 +15,9 @@ public class OnVisitorLetsBuilder extends ExpressionVisitorAdapter {
 
     /**
      * Default constructor.
-     * @param onDocument
-     * @param joinAliasTable
-     * @param baseAliasTable
+     * @param onDocument the new document.
+     * @param joinAliasTable the alias for the join table
+     * @param baseAliasTable the alias for the base table
      */
     public OnVisitorLetsBuilder(final Document onDocument, final String joinAliasTable, final String baseAliasTable) {
         this.onDocument = onDocument;

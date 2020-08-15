@@ -250,10 +250,10 @@ public class QueryConverter {
 
     /**
      * Will convert the query into aggregation steps.
-     * @param sqlCommandInfoHolder
+     * @param sqlCommandInfoHolder the {@link SQLCommandInfoHolder}
      * @return the aggregation steps
-     * @throws ParseException
-     * @throws net.sf.jsqlparser.parser.ParseException
+     * @throws ParseException if there is an issue parsing the sql
+     * @throws net.sf.jsqlparser.parser.ParseException if there is an issue parsing the sql
      */
     public List<Document> fromSQLCommandInfoHolderToAggregateSteps(final SQLCommandInfoHolder sqlCommandInfoHolder)
             throws ParseException, net.sf.jsqlparser.parser.ParseException {
@@ -764,9 +764,8 @@ public class QueryConverter {
      * }
      * </pre>
      * @return the document object.
-     * @throws IOException
      */
-    public Document getQueryAsDocument() throws IOException {
+    public Document getQueryAsDocument() {
         Document retValDocument = new Document();
         MongoDBQueryHolder mongoDBQueryHolder = getMongoQuery();
         boolean isFindQuery = false;
@@ -1001,7 +1000,7 @@ public class QueryConverter {
 
         /**
          * set the inputstream that contains the sql string.
-         * @param inputStream
+         * @param inputStream the {@link InputStream} with the sql string
          * @return the builder
          */
         public Builder sqlInputStream(final InputStream inputStream) {
@@ -1012,7 +1011,7 @@ public class QueryConverter {
 
         /**
          * set the sql string.
-         * @param sql
+         * @param sql the sql string
          * @return the builder
          */
         public Builder sqlString(final String sql) {
@@ -1023,7 +1022,7 @@ public class QueryConverter {
 
         /**
          * set the column to {@link FieldType} mapping.
-         * @param fieldNameToFieldTypeMapping
+         * @param fieldNameToFieldTypeMapping the mapping from field name to {@link FieldType}
          * @return the builder
          */
         public Builder fieldNameToFieldTypeMapping(final Map<String, FieldType> fieldNameToFieldTypeMapping) {
@@ -1034,7 +1033,7 @@ public class QueryConverter {
 
         /**
          * set the default {@link FieldType}.
-         * @param defaultFieldType
+         * @param defaultFieldType the default {@link FieldType}
          * @return builder
          */
         public Builder defaultFieldType(final FieldType defaultFieldType) {
@@ -1045,7 +1044,7 @@ public class QueryConverter {
 
         /**
          * set whether or not aggregation is allowed to use disk use.
-         * @param aggregationAllowDiskUse
+         * @param aggregationAllowDiskUse set to true to allow disk use during aggregation
          * @return the builder
          */
         public Builder aggregationAllowDiskUse(final Boolean aggregationAllowDiskUse) {
@@ -1056,7 +1055,7 @@ public class QueryConverter {
 
         /**
          * set the batch size for aggregation.
-         * @param aggregationBatchSize
+         * @param aggregationBatchSize the batch size option to use for aggregation
          * @return the builder
          */
         public Builder aggregationBatchSize(final Integer aggregationBatchSize) {
@@ -1068,7 +1067,7 @@ public class QueryConverter {
         /**
          * build the {@link QueryConverter}.
          * @return the {@link QueryConverter}
-         * @throws ParseException
+         * @throws ParseException if there was a problem processing the sql
          */
         public QueryConverter build() throws ParseException {
             return new QueryConverter(inputStream, fieldNameToFieldTypeMapping,
