@@ -16,7 +16,6 @@ public class SQLTableInfoHolder implements SQLInfoHolder {
 
     /**
      * {@inheritDoc}
-     * @return
      */
     @Override
     public String getBaseTableName() {

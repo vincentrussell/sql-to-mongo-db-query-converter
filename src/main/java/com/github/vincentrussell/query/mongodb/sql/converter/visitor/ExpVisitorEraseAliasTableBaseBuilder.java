@@ -20,7 +20,6 @@ public class ExpVisitorEraseAliasTableBaseBuilder extends ExpressionVisitorAdapt
 
     /**
      * {@inheritDoc}
-     * @param column
      */
     @Override
     public void visit(final Column column) {

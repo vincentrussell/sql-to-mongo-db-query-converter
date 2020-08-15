@@ -38,8 +38,6 @@ public class TimeoutInputStream extends InputStream {
 
     /**
      * {@inheritDoc}
-     * @return
-     * @throws IOException
      */
     @Override
     public int read() throws IOException {
@@ -67,7 +65,6 @@ public class TimeoutInputStream extends InputStream {
 
     /**
      * {@inheritDoc}
-     * @throws IOException
      */
     @Override
     public void close() throws IOException {

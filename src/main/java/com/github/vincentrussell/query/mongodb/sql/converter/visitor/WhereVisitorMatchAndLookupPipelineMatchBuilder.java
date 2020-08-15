@@ -54,7 +54,6 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
 
     /**
      * {@inheritDoc}
-     * @param column
      */
     @Override
     public void visit(final Column column) {
@@ -65,7 +64,6 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
 
     /**
      * {@inheritDoc}
-     * @param expr
      */
     @Override
     public void visit(final OrExpression expr) {
@@ -74,7 +72,6 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
 
     /**
      * {@inheritDoc}
-     * @param expr
      */
     @Override
     public void visit(final IsNullExpression expr) {
@@ -85,7 +82,6 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
 
     /**
      * {@inheritDoc}
-     * @param expr
      */
     @Override
     protected void visitBinaryExpression(final BinaryExpression expr) {

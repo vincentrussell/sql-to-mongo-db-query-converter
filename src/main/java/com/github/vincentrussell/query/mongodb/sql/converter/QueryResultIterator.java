@@ -39,7 +39,6 @@ public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
 
     /**
      * {@inheritDoc}
-     * @throws IOException
      */
     @Override
     public void close() throws IOException {

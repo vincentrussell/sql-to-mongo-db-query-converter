@@ -27,7 +27,6 @@ public class OnVisitorLetsBuilder extends ExpressionVisitorAdapter {
 
     /**
      * {@inheritDoc}
-     * @param column
      */
     @Override
     public void visit(final Column column) {

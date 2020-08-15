@@ -24,7 +24,6 @@ public class OnVisitorMatchLookupBuilder extends ExpressionVisitorAdapter {
 
     /**
      * {@inheritDoc}
-     * @param column
      */
     @Override
     public void visit(final Column column) {
