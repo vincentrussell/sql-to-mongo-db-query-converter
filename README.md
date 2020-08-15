@@ -42,6 +42,7 @@ usage: com.github.vincentrussell.query.mongodb.sql.converter.Main [-s
  -s,--sourceFile <arg>        the source file.
  -sql,--sql <arg>             the select statement
  -i,--interactiveMode         interactive mode
+ -l,--loopMode                interactive loopMode mode
  -d,--destinationFile <arg>   the destination file.  Defaults to
                               System.out
  -h,--host <arg>              hosts and ports in the following format
