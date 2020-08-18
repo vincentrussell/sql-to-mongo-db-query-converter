@@ -593,7 +593,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(documentValuesArray("$and", document("$expr",documentValuesArray("$eq", document("$someFunction", "123"), "1234")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+        assertEquals(documentValuesArray("$and", documentValuesArray("$eq", document("$someFunction", "123"), "1234"), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -635,24 +635,19 @@ public class QueryConverterTest {
                 .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id = OID('5e97ae59c63d1b3ff8e07c74')").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
-        assertEquals("db.Restaurants.aggregate([{\n" + 
-        		"  \"$match\": {\n" + 
-        		"    \"$expr\": {\n" + 
-        		"      \"$eq\": [\n" + 
-        		"        {\n" + 
-        		"          \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
-        		"        },\n" + 
-        		"        \"$_id\"\n" + 
-        		"      ]\n" + 
-        		"    }\n" + 
-        		"  }\n" + 
-        		"},{\n" + 
-        		"  \"$project\": {\n" + 
-        		"    \"_id\": 0,\n" + 
-        		"    \"id\": \"$_id\",\n" + 
-        		"    \"R\": \"$Restaurant\"\n" + 
-        		"  }\n" + 
-        		"}])",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.Restaurants.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"_id\": {\n" +
+                "      \"$oid\": \"5e97ae59c63d1b3ff8e07c74\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"_id\": 0,\n" +
+                "    \"id\": \"$_id\",\n" +
+                "    \"R\": \"$Restaurant\"\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
     }
 
     @Test
@@ -704,38 +699,35 @@ public class QueryConverterTest {
                 .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id IN (OID('5e97ae59c63d1b3ff8e07c74'),OID('5e97ae58c63d1b3ff8e07c73'),OID('5e97ae58c63d1b3ff8e07c72'),OID('5e97ae58c63d1b3ff8e07c71'),OID('5e97ae58c63d1b3ff8e07c70'))").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
-        assertEquals("db.Restaurants.aggregate([{\n" + 
-        		"  \"$match\": {\n" + 
-        		"    \"$expr\": {\n" + 
-        		"      \"$in\": [\n" + 
-        		"        \"$_id\",\n" + 
-        		"        [\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c73\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c72\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c71\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c70\"\n" + 
-        		"          }\n" + 
-        		"        ]\n" + 
-        		"      ]\n" + 
-        		"    }\n" + 
-        		"  }\n" + 
-        		"},{\n" + 
-        		"  \"$project\": {\n" + 
-        		"    \"_id\": 0,\n" + 
-        		"    \"id\": \"$_id\",\n" + 
-        		"    \"R\": \"$Restaurant\"\n" + 
-        		"  }\n" + 
-        		"}])",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.Restaurants.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"_id\": {\n" +
+                "      \"$in\": [\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae59c63d1b3ff8e07c74\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c73\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c72\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c71\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c70\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"_id\": 0,\n" +
+                "    \"id\": \"$_id\",\n" +
+                "    \"R\": \"$Restaurant\"\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
     @Test
@@ -1062,7 +1054,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
+        assertEquals((document("value", documentValuesArray("$in","theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -1072,7 +1064,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("$expr",documentValuesArray("$nin","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",documentValuesArray("$nin", "theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
     }
 
     @Test

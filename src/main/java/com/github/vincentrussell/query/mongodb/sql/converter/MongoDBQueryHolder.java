@@ -25,7 +25,7 @@ public class MongoDBQueryHolder {
      * Aggregate previous steps.
      */
     private List<Document> prevSteps;
-    private boolean requiresAggregation = false;
+    private boolean requiresMultistepAggregation = false;
 
     /**
      * Pojo to hold the MongoDB data.
@@ -259,17 +259,17 @@ public class MongoDBQueryHolder {
 
     /**
      * Set ff some aggregation is required by this query.
-     * @param requiresAggregation ture if this sql query requires aggregation
+     * @param requiresMultistepAggregation ture if this sql query requires aggregation
      */
-    public void setRequiresAggregation(final boolean requiresAggregation) {
-        this.requiresAggregation = requiresAggregation;
+    public void setRequiresMultistepAggregation(final boolean requiresMultistepAggregation) {
+        this.requiresMultistepAggregation = requiresMultistepAggregation;
     }
 
     /**
      * if some aggregation is required by this query.
      * @return if some aggregation is required by this query.
      */
-    public boolean isRequiresAggregation() {
-        return requiresAggregation;
+    public boolean isRequiresMultistepAggregation() {
+        return requiresMultistepAggregation;
     }
 }
