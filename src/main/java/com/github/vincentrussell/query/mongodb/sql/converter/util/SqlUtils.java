@@ -421,11 +421,25 @@ public final class SqlUtils {
             String rightExpression = getStringValue(comparisonOperator.getRightExpression());
             if (Function.class.isInstance(comparisonOperator.getLeftExpression())) {
                 Function function = ((Function) comparisonOperator.getLeftExpression());
-                if ("objectid".equals(function.getName().toLowerCase())
+                if ("toobjectid".equals(function.getName().toLowerCase())
                         && (function.getParameters().getExpressions().size() == 1)
                         && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
                     String column = getStringValue(function.getParameters().getExpressions().get(0));
                     return new ObjectIdFunction(column, rightExpression, comparisonOperator);
+                } else if ("objectid".equals(function.getName().toLowerCase())
+                        && (function.getParameters().getExpressions().size() == 1)
+                        && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                    String column = getStringValue(function.getParameters().getExpressions().get(0));
+                    return new ObjectIdFunction(column, rightExpression, comparisonOperator);
+                }
+            } else if (Function.class.isInstance(comparisonOperator.getRightExpression())) {
+                Function function = ((Function) comparisonOperator.getRightExpression());
+                if ("toobjectid".equals(translateFunctionName(function.getName()).toLowerCase())
+                        && (function.getParameters().getExpressions().size() == 1)
+                        && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                    String column = getStringValue(comparisonOperator.getLeftExpression());
+                    return new ObjectIdFunction(column, getStringValue(
+                            function.getParameters().getExpressions().get(0)), comparisonOperator);
                 }
             }
         } else if (InExpression.class.isInstance(incomingExpression)) {
@@ -453,6 +467,14 @@ public final class SqlUtils {
                             });
                     return new ObjectIdFunction(column, rightExpression, inExpression);
                 }
+            }
+        } else if (Function.class.isInstance(incomingExpression)) {
+            Function function = ((Function) incomingExpression);
+            if ("toobjectid".equals(translateFunctionName(function.getName()).toLowerCase())
+                    && (function.getParameters().getExpressions().size() == 1)
+                    && StringValue.class.isInstance(function.getParameters().getExpressions().get(0))) {
+                return new ObjectIdFunction(null, getStringValue(
+                        function.getParameters().getExpressions().get(0)), new EqualsTo());
             }
         }
         return null;
@@ -719,12 +741,14 @@ public final class SqlUtils {
 
     /**
      * Will prepend $ to the expression if it is a column.
-     * @param exp the {@link Expression} object
+     * @param exp the expression
+     * @param requiresMultistepAggregation if requires aggregation
      * @return string with prepended $ to the expression if it is a column.
      * @throws ParseException if there is an issue parsing the query
      */
-    public static Object nonFunctionToNode(final Expression exp) throws ParseException {
-        return (SqlUtils.isColumn(exp) && !exp.toString().startsWith("$"))
+    public static Object nonFunctionToNode(final Expression exp, final boolean requiresMultistepAggregation)
+            throws ParseException {
+        return (SqlUtils.isColumn(exp) && !exp.toString().startsWith("$") && requiresMultistepAggregation)
                 ? ("$" + exp) : getNormalizedValue(exp, null, FieldType.UNKNOWN, null, null);
     }
 

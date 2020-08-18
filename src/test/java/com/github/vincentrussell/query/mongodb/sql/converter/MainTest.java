@@ -86,21 +86,18 @@ public class MainTest {
             String result = systemOutRule.getLog().replaceAll(Main.ENTER_SQL_TEXT,"");
             assertEquals("******Mongo Query:*********\n" + 
             		"\n" + 
-            		"db.my_table.find({\n" + 
-            		"  \"$expr\": {\n" + 
-            		"    \"$in\": [\n" + 
-            		"      \"$value\",\n" + 
-            		"      [\n" + 
-            		"        \"theValue1\",\n" + 
-            		"        \"theValue2\",\n" + 
-            		"        \"theValue3\"\n" + 
-            		"      ]\n" + 
-            		"    ]\n" + 
-            		"  }\n" + 
-            		"} , {\n" + 
-            		"  \"_id\": 0,\n" + 
-            		"  \"column1\": 1\n" + 
-            		"})".trim(), result.trim());
+            		"db.my_table.find({\n" +
+                    "  \"value\": {\n" +
+                    "    \"$in\": [\n" +
+                    "      \"theValue1\",\n" +
+                    "      \"theValue2\",\n" +
+                    "      \"theValue3\"\n" +
+                    "    ]\n" +
+                    "  }\n" +
+                    "} , {\n" +
+                    "  \"_id\": 0,\n" +
+                    "  \"column1\": 1\n" +
+                    "})".trim(), result.trim());
 
         }
     }
@@ -123,14 +120,11 @@ public class MainTest {
         assertEquals("******Mongo Query:*********\n" +
                 "\n" +
                 "db.my_table.find({\n" +
-                "  \"$expr\": {\n" +
+                "  \"value\": {\n" +
                 "    \"$in\": [\n" +
-                "      \"$value\",\n" +
-                "      [\n" +
-                "        \"theValue1\",\n" +
-                "        \"theValue2\",\n" +
-                "        \"theValue3\"\n" +
-                "      ]\n" +
+                "      \"theValue1\",\n" +
+                "      \"theValue2\",\n" +
+                "      \"theValue3\"\n" +
                 "    ]\n" +
                 "  }\n" +
                 "} , {\n" +
@@ -147,14 +141,11 @@ public class MainTest {
         assertEquals("******Mongo Query:*********\n" +
                 "\n" +
                 "db.my_table.find({\n" +
-                "  \"$expr\": {\n" +
+                "  \"value\": {\n" +
                 "    \"$in\": [\n" +
-                "      \"$value\",\n" +
-                "      [\n" +
-                "        \"theValue1\",\n" +
-                "        \"theValue2\",\n" +
-                "        \"theValue3\"\n" +
-                "      ]\n" +
+                "      \"theValue1\",\n" +
+                "      \"theValue2\",\n" +
+                "      \"theValue3\"\n" +
                 "    ]\n" +
                 "  }\n" +
                 "} , {\n" +
@@ -168,14 +159,11 @@ public class MainTest {
                 "******Mongo Query:*********\n" +
                 "\n" +
                 "db.my_table.find({\n" +
-                "  \"$expr\": {\n" +
+                "  \"value\": {\n" +
                 "    \"$in\": [\n" +
-                "      \"$value\",\n" +
-                "      [\n" +
-                "        \"theValue1\",\n" +
-                "        \"theValue2\",\n" +
-                "        \"theValue3\"\n" +
-                "      ]\n" +
+                "      \"theValue1\",\n" +
+                "      \"theValue2\",\n" +
+                "      \"theValue3\"\n" +
                 "    ]\n" +
                 "  }\n" +
                 "} , {\n" +

@@ -42,20 +42,20 @@ public class WhereClauseProcessor {
 
     private final FieldType defaultFieldType;
     private final Map<String, FieldType> fieldNameToFieldTypeMapping;
-    private final boolean requiresAggregation;
+    private final boolean requiresMultistepAggregation;
 
     /**
      * Default constructor.
      * @param defaultFieldType the default {@link FieldType}
      * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} mapping
-     * @param requiresAggregation if aggregation is detected for the sql query
+     * @param requiresMultistepAggregation if aggregation is detected for the sql query
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping,
-                                final boolean requiresAggregation) {
+                                final boolean requiresMultistepAggregation) {
         this.defaultFieldType = defaultFieldType;
         this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
-        this.requiresAggregation = requiresAggregation;
+        this.requiresMultistepAggregation = requiresMultistepAggregation;
     }
 
     /**
@@ -79,9 +79,13 @@ public class WhereClauseProcessor {
             Object rightParse = parseExpression(new Document(), rightExpression, leftExpression);
             doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(rightExpression)
                     && !rightExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
-            query.put("$expr", doc);
+            if (requiresMultistepAggregation) {
+                query.put("$expr", doc);
+            } else {
+                query.putAll(doc);
+            }
         } else if (SqlUtils.isColumn(leftExpression) && SqlUtils.isColumn(rightExpression)) {
-            if (requiresAggregation) {
+            if (requiresMultistepAggregation) {
                 Document doc = new Document();
                 String leftName = ((Column) leftExpression).getName(false);
                 String rightName = ((Column) rightExpression).getName(false);
@@ -99,7 +103,11 @@ public class WhereClauseProcessor {
             Object rightParse = parseExpression(new Document(), leftExpression, rightExpression);
             doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(leftExpression)
                     && !leftExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
-            query.put("$expr", doc);
+            if (requiresMultistepAggregation) {
+                query.put("$expr", doc);
+            } else {
+                query.putAll(doc);
+            }
         } else if (SqlUtils.isColumn(leftExpression)) {
             Document subdocument = new Document();
             if (operator.equals("$eq")) {
@@ -113,8 +121,13 @@ public class WhereClauseProcessor {
         } else {
             Document doc = new Document();
             Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
-            doc.put(operator, Arrays.asList(leftParse, SqlUtils.nonFunctionToNode(rightExpression)));
-            query.put("$expr", doc);
+            doc.put(operator, Arrays.asList(leftParse, SqlUtils.nonFunctionToNode(
+                    rightExpression, requiresMultistepAggregation)));
+            if (requiresMultistepAggregation) {
+                query.put("$expr", doc);
+            } else {
+                query.putAll(doc);
+            }
         }
     }
 
@@ -220,9 +233,15 @@ public class WhereClauseProcessor {
                 } else {
                     String mongoInFunction = inExpression.isNot() ? "$nin" : "$in";
                     Document doc = new Document();
-                    List<Object> lobj = Arrays.asList(SqlUtils.nonFunctionToNode(leftExpression), objectList);
-                    doc.put(mongoInFunction, lobj);
-                    query.put("$expr", doc);
+                    if (requiresMultistepAggregation) {
+                        List<Object> lobj = Arrays.asList(
+                                SqlUtils.nonFunctionToNode(leftExpression, requiresMultistepAggregation), objectList);
+                        doc.put(mongoInFunction, lobj);
+                        query.put("$expr", doc);
+                    } else {
+                        doc.put(leftExpressionAsString, new Document().append(mongoInFunction, objectList));
+                        query.putAll(doc);
+                    }
 
                 }
             }
@@ -245,12 +264,15 @@ public class WhereClauseProcessor {
         } else if (Function.class.isInstance(incomingExpression)) {
             Function function = ((Function) incomingExpression);
             RegexFunction regexFunction = SqlUtils.isRegexFunction(incomingExpression);
+            ObjectIdFunction objectIdFunction = SqlUtils.isObjectIdFunction(this, incomingExpression);
             if (regexFunction != null) {
                 Document regexDocument = new Document("$regex", regexFunction.getRegex());
                 if (regexFunction.getOptions() != null) {
                     regexDocument.append("$options", regexFunction.getOptions());
                 }
                 query.put(regexFunction.getColumn(), wrapIfIsNot(regexDocument, regexFunction));
+            } else if (objectIdFunction != null) {
+                return objectIdFunction.toDocument();
             } else {
                 return recurseFunctions(query, function, defaultFieldType, fieldNameToFieldTypeMapping);
             }

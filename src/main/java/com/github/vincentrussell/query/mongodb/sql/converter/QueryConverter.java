@@ -58,7 +58,10 @@ import static com.google.common.base.MoreObjects.firstNonNull;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang.Validate.notNull;
 
-public class QueryConverter {
+/**
+ * Main class responsible for query conversion.
+ */
+public final class QueryConverter {
     private final CCJSqlParser jSqlParser;
     private final Integer aggregationBatchSize;
     private final Boolean aggregationAllowDiskUse;
@@ -70,98 +73,7 @@ public class QueryConverter {
 
     private static final JsonWriterSettings RELAXED = JsonWriterSettings.builder().outputMode(JsonMode.RELAXED).build();
 
-    /**
-     * Create a QueryConverter not params for aggregate translation.
-     *
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter() throws ParseException {
-        fieldNameToFieldTypeMapping = Collections.<String, FieldType>emptyMap();
-        defaultFieldType = FieldType.UNKNOWN;
-        sqlCommandInfoHolder = null;
-        mongoDBQueryHolder = null;
-        jSqlParser = null;
-        aggregationBatchSize = null;
-        aggregationAllowDiskUse = null;
-    }
 
-    /**
-     * Create a QueryConverter with a string.
-     *
-     * @param sql the sql statement
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter(final String sql) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)),
-                Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
-    }
-
-    /**
-     * Create a QueryConverter with a string.
-     *
-     * @param sql                         the sql statement
-     * @param fieldNameToFieldTypeMapping mapping for each field
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter(final String sql,
-                          final Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), fieldNameToFieldTypeMapping, FieldType.UNKNOWN);
-    }
-
-    /**
-     * Create a QueryConverter with a string.
-     *
-     * @param sql       sql string
-     * @param fieldType the default {@link FieldType} to be used
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter(final String sql, final FieldType fieldType) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)),
-                Collections.<String, FieldType>emptyMap(), fieldType);
-    }
-
-    /**
-     * Create a QueryConverter with a string.
-     *
-     * @param sql                         sql string
-     * @param fieldNameToFieldTypeMapping mapping for each field
-     * @param defaultFieldType            defaultFieldType the default {@link FieldType} to be used
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter(final String sql, final Map<String, FieldType> fieldNameToFieldTypeMapping,
-                          final FieldType defaultFieldType) throws ParseException {
-        this(new ByteArrayInputStream(sql.getBytes(Charsets.UTF_8)), fieldNameToFieldTypeMapping, defaultFieldType);
-    }
-
-    /**
-     * Create a QueryConverter with a string.
-     *
-     * @param inputStream an input stream that has the sql statement in it
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter(final InputStream inputStream) throws ParseException {
-        this(inputStream, Collections.<String, FieldType>emptyMap(), FieldType.UNKNOWN);
-    }
-
-    /**
-     * Create a QueryConverter with an InputStream.
-     *
-     * @param inputStream                 an input stream that has the sql statement in it
-     * @param fieldNameToFieldTypeMapping mapping for each field
-     * @param defaultFieldType            the default {@link FieldType} to be used
-     * @throws ParseException when the sql query cannot be parsed
-     */
-    @Deprecated
-    public QueryConverter(final InputStream inputStream, final Map<String, FieldType> fieldNameToFieldTypeMapping,
-                          final FieldType defaultFieldType) throws ParseException {
-        this(inputStream, fieldNameToFieldTypeMapping, defaultFieldType, false, -1);
-    }
 
     /**
      * Create a QueryConverter with an InputStream.
@@ -173,8 +85,7 @@ public class QueryConverter {
      * @param aggregationBatchSize        set the batch size for aggregation
      * @throws ParseException when the sql query cannot be parsed
      */
-    @Deprecated
-    public QueryConverter(final InputStream inputStream, final Map<String, FieldType> fieldNameToFieldTypeMapping,
+    private QueryConverter(final InputStream inputStream, final Map<String, FieldType> fieldNameToFieldTypeMapping,
                           final FieldType defaultFieldType, final Boolean aggregationAllowDiskUse,
                           final Integer aggregationBatchSize) throws ParseException {
         try {
@@ -271,7 +182,7 @@ public class QueryConverter {
         if (sqlCommandInfoHolder.getFromHolder().getBaseFrom().getClass() == SubSelect.class) {
             mongoDBQueryHolder.setPrevSteps(fromSQLCommandInfoHolderToAggregateSteps(
                     (SQLCommandInfoHolder) sqlCommandInfoHolder.getFromHolder().getBaseSQLHolder()));
-            mongoDBQueryHolder.setRequiresAggregation(true);
+            mongoDBQueryHolder.setRequiresMultistepAggregation(true);
         }
 
         if (sqlCommandInfoHolder.isDistinct()) {
@@ -288,7 +199,7 @@ public class QueryConverter {
             }
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selects, groupBys));
             mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(selects, groupBys));
-            mongoDBQueryHolder.setRequiresAggregation(true);
+            mongoDBQueryHolder.setRequiresMultistepAggregation(true);
         } else if (sqlCommandInfoHolder.isTotalGroup()) {
             List<SelectItem> selects = preprocessSelect(sqlCommandInfoHolder.getSelectItems(),
                     sqlCommandInfoHolder.getFromHolder());
@@ -321,7 +232,7 @@ public class QueryConverter {
         }
 
         if (sqlCommandInfoHolder.getJoins() != null) {
-            mongoDBQueryHolder.setRequiresAggregation(true);
+            mongoDBQueryHolder.setRequiresMultistepAggregation(true);
             mongoDBQueryHolder.setJoinPipeline(
                     JoinProcessor.toPipelineSteps(this,
                             sqlCommandInfoHolder.getFromHolder(),
@@ -337,7 +248,7 @@ public class QueryConverter {
 
         if (sqlCommandInfoHolder.getWhereClause() != null) {
             WhereClauseProcessor whereClauseProcessor = new WhereClauseProcessor(defaultFieldType,
-                    fieldNameToFieldTypeMapping, mongoDBQueryHolder.isRequiresAggregation());
+                    fieldNameToFieldTypeMapping, mongoDBQueryHolder.isRequiresMultistepAggregation());
             Expression preprocessedWhere = preprocessWhere(sqlCommandInfoHolder.getWhereClause(),
                     sqlCommandInfoHolder.getFromHolder());
             if (preprocessedWhere != null) {
@@ -349,7 +260,7 @@ public class QueryConverter {
         if (sqlCommandInfoHolder.getHavingClause() != null) {
             HavingClauseProcessor havingClauseProcessor = new HavingClauseProcessor(defaultFieldType,
                     fieldNameToFieldTypeMapping, sqlCommandInfoHolder.getAliasHolder(),
-                    mongoDBQueryHolder.isRequiresAggregation());
+                    mongoDBQueryHolder.isRequiresMultistepAggregation());
             mongoDBQueryHolder.setHaving((Document) havingClauseProcessor.parseExpression(new Document(),
                     sqlCommandInfoHolder.getHavingClause(), null));
         }

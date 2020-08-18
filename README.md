@@ -702,6 +702,16 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.16](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.16) (2020-08-18)
+
+**Enhancements:**
+
+- remove deprecated constructors on QueryConverter
+
+**Bugs:**
+
+- Simplifying use of $expr function
+
 ## [1.15](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.15) (2020-08-15)
 
 **Enhancements:**
