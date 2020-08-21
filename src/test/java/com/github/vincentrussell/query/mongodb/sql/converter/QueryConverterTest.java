@@ -56,6 +56,37 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void betweenWithNumbers() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE Price BETWEEN 10 AND 20").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("Price", document("$gte", 10L)),
+                document("Price", document("$lte", 20L))), mongoDBQueryHolder.getQuery());
+    }
+
+
+
+    @Test
+    public void betweenWithStrings() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE ProductName BETWEEN 'Carnarvon Tigers' AND 'Mozzarella di Giovanni'").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("ProductName", document("$gte", "Carnarvon Tigers")),
+                document("ProductName", document("$lte", "Mozzarella di Giovanni"))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void betweenWithDates() throws ParseException, java.text.ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE date BETWEEN \"2012-12-01\" AND \"2012-12-02\"").fieldNameToFieldTypeMapping(new HashMap(){{
+            put("date",FieldType.DATE);
+        }}).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("date", document("$gte", toDate("yyyy-MM-dd", "2012-12-01"))),
+                document("date", document("$lte", toDate("yyyy-MM-dd", "2012-12-02")))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectFieldSurroundedInQuotesInFunctions() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where ignoreCaseMatch(\"field1\",\"value\") OR \"field1\" = \"value\"").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -170,7 +201,11 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("value",document("$gt", new SimpleDateFormat("yyyy-MM-dd").parse("2012-12-01"))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$gt", toDate("yyyy-MM-dd", "2012-12-01"))),mongoDBQueryHolder.getQuery());
+    }
+
+    private Date toDate(String dateFormat, String dateString) throws java.text.ParseException {
+        return new SimpleDateFormat(dateFormat).parse(dateString);
     }
 
     @Test
@@ -287,8 +322,7 @@ public class QueryConverterTest {
                 MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
                 assertEquals(0,mongoDBQueryHolder.getProjection().size());
                 assertEquals("my_table",mongoDBQueryHolder.getCollection());
-                assertEquals(document("date", document("$gt", new SimpleDateFormat("E dd MMM yyyy HH:mm:ss.SSS z")
-                        .parse("Fri 11 Oct 2019 12:12:23.234 CEST"))),mongoDBQueryHolder.getQuery());
+                assertEquals(document("date", document("$gt", toDate("E dd MMM yyyy HH:mm:ss.SSS z", "Fri 11 Oct 2019 12:12:23.234 CEST"))),mongoDBQueryHolder.getQuery());
             }
         });
     }
@@ -304,8 +338,7 @@ public class QueryConverterTest {
                 MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
                 assertEquals(0,mongoDBQueryHolder.getProjection().size());
                 assertEquals("my_table",mongoDBQueryHolder.getCollection());
-                assertEquals(document("date", document("$gt", new SimpleDateFormat("yyyy-MM-dd")
-                        .parse("2019-10-11"))),mongoDBQueryHolder.getQuery());
+                assertEquals(document("date", document("$gt", toDate("yyyy-MM-dd", "2019-10-11"))),mongoDBQueryHolder.getQuery());
             }
         });
     }

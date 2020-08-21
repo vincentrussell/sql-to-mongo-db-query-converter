@@ -15,6 +15,7 @@ import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
+import net.sf.jsqlparser.expression.operators.relational.Between;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
@@ -144,6 +145,7 @@ public class WhereClauseProcessor {
      * @return the converted mongo structure.
      * @throws ParseException if there is an issue parsing the incomingExpression
      */
+    @SuppressWarnings("checkstyle:methodlength")
     public Object parseExpression(final Document query,
                                   final Expression incomingExpression, final Expression otherSide)
             throws ParseException {
@@ -250,6 +252,17 @@ public class WhereClauseProcessor {
 
                 }
             }
+        } else if (Between.class.isInstance(incomingExpression)) {
+            Between between = (Between) incomingExpression;
+            GreaterThanEquals start = new GreaterThanEquals();
+            start.setLeftExpression(between.getLeftExpression());
+            start.setRightExpression(between.getBetweenExpressionStart());
+
+            MinorThanEquals end = new MinorThanEquals();
+            end.setLeftExpression(between.getLeftExpression());
+            end.setRightExpression(between.getBetweenExpressionEnd());
+            AndExpression andExpression = new AndExpression(start, end);
+            return parseExpression(query, andExpression, otherSide);
         } else if (AndExpression.class.isInstance(incomingExpression)) {
             handleAndOr("$and", (BinaryExpression) incomingExpression, query);
         } else if (OrExpression.class.isInstance(incomingExpression)) {
@@ -260,11 +273,9 @@ public class WhereClauseProcessor {
             return expression;
         } else if (NotExpression.class.isInstance(incomingExpression)) {
             Expression expression = ((NotExpression) incomingExpression).getExpression();
-
             if (Parenthesis.class.isInstance(expression)) {
                 return new Document("$nor", Arrays.asList(parseExpression(query, expression, otherSide)));
             }
-
             return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));
         } else if (Function.class.isInstance(incomingExpression)) {
             Function function = ((Function) incomingExpression);
