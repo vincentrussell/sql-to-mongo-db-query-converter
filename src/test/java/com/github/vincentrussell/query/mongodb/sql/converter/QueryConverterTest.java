@@ -55,6 +55,7 @@ public class QueryConverterTest {
         assertEquals(document("References.field", 129L), mongoDBQueryHolder.getQuery());
     }
 
+
     @Test
     public void betweenWithNumbers() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
@@ -62,6 +63,15 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(documentValuesArray("$and", document("Price", document("$gte", 10L)),
                 document("Price", document("$lte", 20L))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void notBetweenWithNumbers() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE Price NOT BETWEEN 10 AND 20").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("Price", document("$not",document("$gte", 10L))),
+                document("Price", document("$not", document("$lte", 20L)))), mongoDBQueryHolder.getQuery());
     }
 
 

@@ -261,7 +261,8 @@ public class WhereClauseProcessor {
             MinorThanEquals end = new MinorThanEquals();
             end.setLeftExpression(between.getLeftExpression());
             end.setRightExpression(between.getBetweenExpressionEnd());
-            AndExpression andExpression = new AndExpression(start, end);
+            AndExpression andExpression = new AndExpression(between.isNot()
+                    ? new NotExpression(start) : start, between.isNot() ? new NotExpression(end) : end);
             return parseExpression(query, andExpression, otherSide);
         } else if (AndExpression.class.isInstance(incomingExpression)) {
             handleAndOr("$and", (BinaryExpression) incomingExpression, query);
@@ -272,11 +273,18 @@ public class WhereClauseProcessor {
             Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
             return expression;
         } else if (NotExpression.class.isInstance(incomingExpression)) {
-            Expression expression = ((NotExpression) incomingExpression).getExpression();
+            NotExpression notExpression = (NotExpression) incomingExpression;
+            Expression expression = notExpression.getExpression();
             if (Parenthesis.class.isInstance(expression)) {
                 return new Document("$nor", Arrays.asList(parseExpression(query, expression, otherSide)));
+            } else if (Column.class.isInstance(expression)) {
+                return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));
+            } else if (ComparisonOperator.class.isInstance(expression)) {
+                Document parsedDocument = (Document) parseExpression(query, expression, otherSide);
+                String column = parsedDocument.keySet().iterator().next();
+                Document value = parsedDocument.get(column, Document.class);
+                return new Document(column, new Document("$not", value));
             }
-            return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));
         } else if (Function.class.isInstance(incomingExpression)) {
             Function function = ((Function) incomingExpression);
             RegexFunction regexFunction = SqlUtils.isRegexFunction(incomingExpression);
