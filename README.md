@@ -702,6 +702,19 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.17](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.17) (TBD)
+
+**Enhancements:**
+
+- support for BETWEEN keyword
+
+**Bugs:**
+
+- Remove use of $eq operator when not needed
+
+
+# Change Log
+
 ## [1.16](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.16) (2020-08-18)
 
 **Enhancements:**
