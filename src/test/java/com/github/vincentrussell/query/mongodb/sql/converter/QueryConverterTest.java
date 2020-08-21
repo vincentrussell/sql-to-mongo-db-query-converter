@@ -42,6 +42,27 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void selectFieldSurroundedInQuotes() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE \"References.field\" = \"abc123\"").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("References.field", "abc123"), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectFieldSurroundedInQuotesAndNumber() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE \"References.field\" = 129").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("References.field", 129L), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectFieldSurroundedInQuotesInFunctions() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where ignoreCaseMatch(\"field1\",\"value\") OR \"field1\" = \"value\"").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("$or", objsToList(documentValuesArray("$ignoreCaseMatch", "field1", "value"), document("field1", "value"))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectAllFromTableWithoutWhereClauseLimit() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table\n" +
                 "limit 10").build();

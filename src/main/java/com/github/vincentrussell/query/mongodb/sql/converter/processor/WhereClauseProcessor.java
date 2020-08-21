@@ -126,7 +126,12 @@ public class WhereClauseProcessor {
             if (requiresMultistepAggregation) {
                 query.put("$expr", doc);
             } else {
-                query.putAll(doc);
+                if ("eq".equals(comparatorType) && String.class.isInstance(leftParse)) {
+                    query.put(leftParse.toString(), parseExpression(new Document(),
+                            rightExpression, leftExpression));
+                } else {
+                    query.putAll(doc);
+                }
             }
         }
     }
