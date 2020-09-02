@@ -747,6 +747,37 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void functionWithArgsTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select * from my_table WHERE nestedObject(field) = 'value' AND nestedObject(field1) = 'value' AND field3 IS NOT NULL")
+                .defaultFieldType(FieldType.STRING).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and",
+                documentValuesArray("$eq", document("$nestedObject", "field"), "value"),
+                documentValuesArray("$eq", document("$nestedObject", "field1"), "value"),
+                document("field3", document("$exists", true))
+        ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void nestedNotEqualTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select * from my_table WHERE field1 = 'value1' ANd type != 'value' AND \"field3\" != true AND length != 5")
+                .defaultFieldType(FieldType.STRING).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and",
+                document("field1", "value1"),
+                document("type", document("$ne", "value")),
+                document("field3", document("$ne", "true")),
+                document("length", document("$ne", "5"))
+        ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void objectIdFunctionInTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder()
                 .sqlString("select * from my_table where OBJECTID('_id') IN ('53102b43bf1044ed8b0ba36b', '54651022bffebc03098b4568') AND (foo = 'bar')")
