@@ -4,7 +4,7 @@
 
   <groupId>com.github.vincentrussell</groupId>
   <artifactId>sql-to-mongo-db-query-converter</artifactId>
-  <version>1.11-SNAPSHOT</version>
+  <version>1.19-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>sql-to-mongo-db-query-converter</name>
@@ -74,7 +74,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>18.0</version>
+        <version>24.1.1-jre</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>
@@ -239,13 +239,37 @@
     <pluginManagement>
       <plugins>
         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>3.1.1</version>
+          <configuration>
+            <configLocation>src/test/resources/checkstyle/checkstyle.xml</configLocation>
+            <encoding>UTF-8</encoding>
+            <consoleOutput>true</consoleOutput>
+            <failsOnError>true</failsOnError>
+            <linkXRef>false</linkXRef>
+          </configuration>
+          <executions>
+            <execution>
+              <id>validate</id>
+              <phase>compile</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
           <groupId>com.github.spotbugs</groupId>
           <artifactId>spotbugs-maven-plugin</artifactId>
           <version>4.0.0</version>
           <executions>
             <execution>
-              <id>before-integration-test</id>
-              <phase>pre-integration-test</phase>
+              <id>spotbugs</id>
+              <phase>compile</phase>
+              <configuration>
+                <excludeFilterFile>src/test/resources/spotbugs/spotbugs-exclude.xml</excludeFilterFile>
+              </configuration>
               <goals>
                 <goal>check</goal>
               </goals>
@@ -264,6 +288,10 @@
           <source>${jdk.version}</source>
           <target>${jdk.version}</target>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
       </plugin>
       <plugin>
         <groupId>com.github.spotbugs</groupId>

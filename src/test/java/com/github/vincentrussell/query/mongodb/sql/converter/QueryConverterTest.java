@@ -10,13 +10,17 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import javax.print.Doc;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
@@ -35,6 +39,68 @@ public class QueryConverterTest {
         assertEquals(-1,mongoDBQueryHolder.getLimit());
         assertEquals(-1,mongoDBQueryHolder.getOffset());
         assertEquals(0,mongoDBQueryHolder.getQuery().size());
+    }
+
+    @Test
+    public void selectFieldSurroundedInQuotes() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE \"References.field\" = \"abc123\"").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("References.field", "abc123"), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectFieldSurroundedInQuotesAndNumber() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE \"References.field\" = 129").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("References.field", 129L), mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
+    public void betweenWithNumbers() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE Price BETWEEN 10 AND 20").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("Price", document("$gte", 10L)),
+                document("Price", document("$lte", 20L))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void notBetweenWithNumbers() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE Price NOT BETWEEN 10 AND 20").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("Price", document("$not",document("$gte", 10L))),
+                document("Price", document("$not", document("$lte", 20L)))), mongoDBQueryHolder.getQuery());
+    }
+
+
+
+    @Test
+    public void betweenWithStrings() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE ProductName BETWEEN 'Carnarvon Tigers' AND 'Mozzarella di Giovanni'").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("ProductName", document("$gte", "Carnarvon Tigers")),
+                document("ProductName", document("$lte", "Mozzarella di Giovanni"))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void betweenWithDates() throws ParseException, java.text.ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
+                "WHERE date BETWEEN \"2012-12-01\" AND \"2012-12-02\"").fieldNameToFieldTypeMapping(new HashMap(){{
+            put("date",FieldType.DATE);
+        }}).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and", document("date", document("$gte", toDate("yyyy-MM-dd", "2012-12-01"))),
+                document("date", document("$lte", toDate("yyyy-MM-dd", "2012-12-02")))), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void selectFieldSurroundedInQuotesInFunctions() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where ignoreCaseMatch(\"field1\",\"value\") OR \"field1\" = \"value\"").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("$or", objsToList(documentValuesArray("$ignoreCaseMatch", "field1", "value"), document("field1", "value"))), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -145,7 +211,11 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(document("value",document("$gt", new SimpleDateFormat("yyyy-MM-dd").parse("2012-12-01"))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",document("$gt", toDate("yyyy-MM-dd", "2012-12-01"))),mongoDBQueryHolder.getQuery());
+    }
+
+    private Date toDate(String dateFormat, String dateString) throws java.text.ParseException {
+        return new SimpleDateFormat(dateFormat).parse(dateString);
     }
 
     @Test
@@ -199,6 +269,98 @@ public class QueryConverterTest {
         Date resultDate = mongoDBQueryHolder.getQuery().get("value",Document.class).get("$gt",Date.class);
         DateTime fortyFiveDaysAgo = new DateTime().minusDays(45);
         assertTrue(new Interval(fortyFiveDaysAgo.minusMinutes(5),fortyFiveDaysAgo.plusMinutes(5)).contains(new DateTime(resultDate)));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testDoubleAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > 1.5").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Double.parseDouble("1.5"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testNegativeDoubleAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > -1.5").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Double.parseDouble("-1.5"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @SuppressWarnings("unchecked")
+    public void testNegativePositiveAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > +1.5").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Double.parseDouble("+1.5"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testNegativeLongAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > -90210").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Long.parseLong("-90210"))),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testPostitiveLongAsValue() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where avg > +90210").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("avg", document("$gt", Long.parseLong("90210"))),mongoDBQueryHolder.getQuery());
+    }
+
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTimestampAsValue() throws Exception {
+        withTimeZone(TimeZone.getTimeZone("Europe/Paris"), new MyRunnable() {
+            @Override
+            public void run() throws  Exception {
+                QueryConverter queryConverter = new QueryConverter.Builder()
+                        .sqlString("select * from my_table where date > {ts '2019-10-11 12:12:23.234'}").build();
+                MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+                assertEquals(0,mongoDBQueryHolder.getProjection().size());
+                assertEquals("my_table",mongoDBQueryHolder.getCollection());
+                assertEquals(document("date", document("$gt", toDate("E dd MMM yyyy HH:mm:ss.SSS z", "Fri 11 Oct 2019 12:12:23.234 CEST"))),mongoDBQueryHolder.getQuery());
+            }
+        });
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testDateAsValue() throws Exception {
+        withTimeZone(TimeZone.getTimeZone("Europe/Paris"), new MyRunnable() {
+            @Override
+            public void run() throws  Exception {
+                QueryConverter queryConverter = new QueryConverter.Builder()
+                        .sqlString("select * from my_table where date > {d '2019-10-11'}").build();
+                MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+                assertEquals(0,mongoDBQueryHolder.getProjection().size());
+                assertEquals("my_table",mongoDBQueryHolder.getCollection());
+                assertEquals(document("date", document("$gt", toDate("yyyy-MM-dd", "2019-10-11"))),mongoDBQueryHolder.getQuery());
+            }
+        });
+    }
+
+    private void withTimeZone(TimeZone timeZone, MyRunnable runnable) throws Exception {
+        TimeZone currentTimeZone = Calendar.getInstance().getTimeZone();
+        try {
+            TimeZone.setDefault(timeZone);
+            runnable.run();
+        } finally {
+            TimeZone.setDefault(currentTimeZone);
+        }
     }
 
     @Test
@@ -262,6 +424,15 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("column",document("$regex","^[ae\"gaf]+$")),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void notRegexMatch() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where notRegexMatch(column,'^[ae\"gaf]+$') = true ").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("column", document("$not", Pattern.compile("^[ae\"gaf]+$"))).toJson(),mongoDBQueryHolder.getQuery().toJson());
     }
 
     @Test
@@ -405,16 +576,16 @@ public class QueryConverterTest {
 
     @Test
     public void countAllFromTableWithNotLikeQuery() throws ParseException {
-        expectedException.expect(ParseException.class);
-        expectedException.expectMessage("NOT LIKE queries not supported");
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from my_table where value NOT LIKE 'start%'").build();
+        Document document = queryConverter.getMongoQuery().getQuery();
+        assertEquals(document("value", document("$not", Pattern.compile("^start.*$"))).toJson(), document.toJson());
     }
 
     @Test
     public void selectAllFromTableWithNotLikeQuery() throws ParseException {
-        expectedException.expect(ParseException.class);
-        expectedException.expectMessage("NOT LIKE queries not supported");
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value NOT LIKE 'start%'").build();
+        Document document = queryConverter.getMongoQuery().getQuery();
+        assertEquals(document("value", document("$not", Pattern.compile("^start.*$"))).toJson(), document.toJson());
     }
 
     @Test
@@ -486,7 +657,7 @@ public class QueryConverterTest {
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
-        assertEquals(documentValuesArray("$and", document("$expr",documentValuesArray("$eq", document("$someFunction", "123"), "1234")), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+        assertEquals(documentValuesArray("$and", documentValuesArray("$eq", document("$someFunction", "123"), "1234"), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -528,24 +699,40 @@ public class QueryConverterTest {
                 .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id = OID('5e97ae59c63d1b3ff8e07c74')").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
-        assertEquals("db.Restaurants.aggregate([{\n" + 
-        		"  \"$match\": {\n" + 
-        		"    \"$expr\": {\n" + 
-        		"      \"$eq\": [\n" + 
-        		"        {\n" + 
-        		"          \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
-        		"        },\n" + 
-        		"        \"$_id\"\n" + 
-        		"      ]\n" + 
-        		"    }\n" + 
-        		"  }\n" + 
-        		"},{\n" + 
-        		"  \"$project\": {\n" + 
-        		"    \"_id\": 0,\n" + 
-        		"    \"id\": \"$_id\",\n" + 
-        		"    \"R\": \"$Restaurant\"\n" + 
-        		"  }\n" + 
-        		"}])",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.Restaurants.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"_id\": {\n" +
+                "      \"$oid\": \"5e97ae59c63d1b3ff8e07c74\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"_id\": 0,\n" +
+                "    \"id\": \"$_id\",\n" +
+                "    \"R\": \"$Restaurant\"\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void getQueryAsDocumentAggregation() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id = OID('5e97ae59c63d1b3ff8e07c74')").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Document document = queryConverter.getQueryAsDocument();
+        assertEquals("Restaurants", document.getString("collection"));
+        assertNotNull(document.getList("query", Document.class));
+    }
+
+    @Test
+    public void getQueryAsDocumentCountAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select * from my_table where value=1 OR value2=\"theValue\"").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Document document = queryConverter.getQueryAsDocument();
+        assertEquals("my_table", document.getString("collection"));
+        assertTrue(Document.class.isInstance(document.get("query")));
+        assertEquals(SQLCommandType.SELECT.name(), document.get("commandType"));
     }
 
     @Test
@@ -557,6 +744,37 @@ public class QueryConverterTest {
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(documentValuesArray("$and", document("_id", document("$ne", new ObjectId("53102b43bf1044ed8b0ba36b"))), document("foo", "bar") ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void functionWithArgsTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select * from my_table WHERE nestedObject(field) = 'value' AND nestedObject(field1) = 'value' AND field3 IS NOT NULL")
+                .defaultFieldType(FieldType.STRING).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and",
+                documentValuesArray("$eq", document("$nestedObject", "field"), "value"),
+                documentValuesArray("$eq", document("$nestedObject", "field1"), "value"),
+                document("field3", document("$exists", true))
+        ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
+    public void nestedNotEqualTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+                .sqlString("select * from my_table WHERE field1 = 'value1' ANd type != 'value' AND \"field3\" != true AND length != 5")
+                .defaultFieldType(FieldType.STRING).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and",
+                document("field1", "value1"),
+                document("type", document("$ne", "value")),
+                document("field3", document("$ne", "true")),
+                document("length", document("$ne", "5"))
+        ), mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -576,38 +794,35 @@ public class QueryConverterTest {
                 .sqlString("select t._id as id, t.Restaurant as R from Restaurants as t  where t._id IN (OID('5e97ae59c63d1b3ff8e07c74'),OID('5e97ae58c63d1b3ff8e07c73'),OID('5e97ae58c63d1b3ff8e07c72'),OID('5e97ae58c63d1b3ff8e07c71'),OID('5e97ae58c63d1b3ff8e07c70'))").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
-        assertEquals("db.Restaurants.aggregate([{\n" + 
-        		"  \"$match\": {\n" + 
-        		"    \"$expr\": {\n" + 
-        		"      \"$in\": [\n" + 
-        		"        \"$_id\",\n" + 
-        		"        [\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae59c63d1b3ff8e07c74\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c73\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c72\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c71\"\n" + 
-        		"          },\n" + 
-        		"          {\n" + 
-        		"            \"$toObjectId\": \"5e97ae58c63d1b3ff8e07c70\"\n" + 
-        		"          }\n" + 
-        		"        ]\n" + 
-        		"      ]\n" + 
-        		"    }\n" + 
-        		"  }\n" + 
-        		"},{\n" + 
-        		"  \"$project\": {\n" + 
-        		"    \"_id\": 0,\n" + 
-        		"    \"id\": \"$_id\",\n" + 
-        		"    \"R\": \"$Restaurant\"\n" + 
-        		"  }\n" + 
-        		"}])",byteArrayOutputStream.toString("UTF-8"));
+        assertEquals("db.Restaurants.aggregate([{\n" +
+                "  \"$match\": {\n" +
+                "    \"_id\": {\n" +
+                "      \"$in\": [\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae59c63d1b3ff8e07c74\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c73\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c72\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c71\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"$oid\": \"5e97ae58c63d1b3ff8e07c70\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"_id\": 0,\n" +
+                "    \"id\": \"$_id\",\n" +
+                "    \"R\": \"$Restaurant\"\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
     @Test
@@ -841,6 +1056,15 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void selectAllTwoColumns() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE _id = index_9").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(document("_id","index_9"),mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void selectNestedColumnsFromTableWithSimpleWhereClauseString() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select document.subdocument.column1, document.subdocument.column2 from my_table where value=\"theValue\"").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -855,6 +1079,17 @@ public class QueryConverterTest {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("Unsupported subselect expression"));
         new QueryConverter.Builder().sqlString("select (select id from table2), column2 from my_table where value=\"theValue\"").build();
+    }
+
+    @Test
+    public void multipleNotStatements() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Customers\n" +
+                "WHERE NOT (Country='Germany' AND City='Berlin') and NOT (Country='Mexico');").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(documentValuesArray("$and",
+               documentValuesArray("$nor", documentValuesArray("$and", document("Country", "Germany"), document("City", "Berlin"))),
+                documentValuesArray("$nor", document("Country", "Mexico"))),mongoDBQueryHolder.getQuery());
+        assertEquals(SQLCommandType.SELECT, mongoDBQueryHolder.getSqlCommandType());
     }
 
     @Test
@@ -903,7 +1138,7 @@ public class QueryConverterTest {
     @Test
     public void selectFromMultipleTables() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("Join type not suported"));
+        expectedException.expectMessage(containsString("Join type not supported"));
         new QueryConverter.Builder().sqlString("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value=\"theValue\"").build();
     }
 
@@ -914,7 +1149,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
+        assertEquals((document("value", documentValuesArray("$in","theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -924,7 +1159,7 @@ public class QueryConverterTest {
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
         assertEquals(document("_id",0).append("column1",1),mongoDBQueryHolder.getProjection());
-        assertEquals(document("$expr",documentValuesArray("$nin","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
+        assertEquals(document("value",documentValuesArray("$nin", "theValue1","theValue2","theValue3")),mongoDBQueryHolder.getQuery());
     }
 
     @Test
@@ -2337,6 +2572,186 @@ public class QueryConverterTest {
     }
     
     @Test
+    public void countAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) as c from Restaurants").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Restaurants.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void sumAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select sum(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"sum_Helsinki_population\": {\n" + 
+        		"      \"$sum\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"sum_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void sumAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select sum(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$sum\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void minAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select min(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"min_Helsinki_population\": {\n" + 
+        		"      \"$min\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"min_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void minAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select min(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$min\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void maxAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select max(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"max_Helsinki_population\": {\n" + 
+        		"      \"$max\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"max_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void maxAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select max(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$max\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void avgAll() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(Helsinki.population) from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"avg_Helsinki_population\": {\n" + 
+        		"      \"$avg\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"avg_Helsinki_population\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void avgAllWithAlias() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(Helsinki.population) as c from HelsinkiPopulation").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.aggregate([{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"c\": {\n" + 
+        		"      \"$avg\": \"$Helsinki.population\"\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"c\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
     public void doubleEquals() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage("unable to parse complete sql string. one reason for this is the use of double equals (==).");
@@ -2527,6 +2942,10 @@ public class QueryConverterTest {
     
     private static List<Object> objsToList(Object... values) {
         return Arrays.asList(values);
+    }
+
+    public interface MyRunnable {
+        void run() throws Exception;
     }
 
 }

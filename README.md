@@ -1,4 +1,4 @@
-# sql-to-mongo-db-query-converter
+# sql-to-mongo-db-query-converter [![Maven Central](https://img.shields.io/maven-central/v/com.github.vincentrussell/sql-to-mongo-db-query-converter.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.github.vincentrussell%22%20AND%20a:%22sql-to-mongo-db-query-converter%22) [![Build Status](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter.svg?branch=master)](https://travis-ci.org/vincentrussell/sql-to-mongo-db-query-converter)
 
 sql-to-mongo-db-query-converter helps you build quieres for MongoDb based on Queries provided in SQL.   
 
@@ -10,7 +10,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 <dependency>
    <groupId>com.github.vincentrussell</groupId>
    <artifactId>sql-to-mongo-db-query-converter</artifactId>
-   <version>1.10</version>
+   <version>1.18</version>
 </dependency>
 ```
 
@@ -31,7 +31,7 @@ Document sort = mongoDBQueryHolder.getSort();
 ## Running it as a standalone jar
 
 ```
-java -jar sql-to-mongo-db-query-converter-1.10-standalone.jar -s sql.file -d destination.json
+java -jar sql-to-mongo-db-query-converter-1.18-standalone.jar -s sql.file -d destination.json
 ```
 ### Options
 
@@ -42,6 +42,7 @@ usage: com.github.vincentrussell.query.mongodb.sql.converter.Main [-s
  -s,--sourceFile <arg>        the source file.
  -sql,--sql <arg>             the select statement
  -i,--interactiveMode         interactive mode
+ -l,--loopMode                interactive loopMode mode
  -d,--destinationFile <arg>   the destination file.  Defaults to
                               System.out
  -h,--host <arg>              hosts and ports in the following format
@@ -66,7 +67,7 @@ To specify an initial batch size for the cursor
 ## Interactive mode
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.10-standalone.jar -i
+java -jar target/sql-to-mongo-db-query-converter-1.18-standalone.jar -i
 Enter input sql:
 
 
@@ -150,6 +151,21 @@ db.my_table.find({
 })
 ```
 
+###NOT Regex match
+
+```
+select * from my_table where notRegexMatch(column,'^[ae"gaf]+$')
+
+
+******Result:*********
+
+db.my_table.find({
+  "column": {
+    "$not": /^[ae\"gaf]+$/
+  }
+})
+```
+
 ###Distinct
 
 ```
@@ -176,6 +192,21 @@ select * from my_table where value LIKE 'start%'
 db.my_table.find({
   "value": {
     "$regex": "^start.*$"
+  }
+})
+```
+
+###Like
+
+```
+select * from my_table where value NOT LIKE 'start%'
+
+
+******Result:*********
+
+db.my_table.find({
+  "value": {
+    "$not": /^start.*$/
   }
 })
 ```
@@ -358,6 +389,22 @@ db.Restaurants.aggregate([
                          ])
 ```
 
+###Count without GROUP BY
+```
+select count(*) as c from table
+
+******Mongo Query:*********
+db.table.aggregate([{ "$group": { "_id": {}, "c": { "$sum": 1 } } },{ "$project": { "c": 1, "_id": 0 } }])
+```
+
+###Avg without GROUP BY
+
+```
+select avg(field) as avg from table
+
+******Mongo Query:*********
+db.table.aggregate([{ "$group": { "_id": {}, "avg": { "$avg": "$field" } } },{ "$project": { "avg": 1, "_id": 0 } }])
+```
 
 ###Joins
 
@@ -585,12 +632,18 @@ select a, count(*) from table group by a limit 3 offset 4
 is equivalent to the $skip function in mongodb json query language
 ```
 
+###Using column names that start with a number.  Sorround it in quotes:
+
+```
+SELECT * FROM tb_test WHERE "3rd_column" = 10
+```
+
 ###Direct Mongo Integration
 
 You can run the queries against an actual mongodb database and take a look at the results.  The default return batch size is 50.
 
 ```
-java -jar target/sql-to-mongo-db-query-converter-1.10-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
+java -jar target/sql-to-mongo-db-query-converter-1.18-SNAPSHOT-standalone.jar -i -h localhost:3086 -db local -b 5
 Enter input sql:
 
 
@@ -649,7 +702,81 @@ more results? (y/n): n
 
 # Change Log
 
-## [1.11](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.11) (TBD)
+## [1.18](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.18) (2020-09-02)
+
+**Bugs:**
+
+- functions not handled properly with operators like $eq
+
+## [1.17](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.17) (2020-08-21)
+
+**Enhancements:**
+
+- support for BETWEEN keyword
+
+**Bugs:**
+
+- Remove use of $eq operator when not needed
+
+
+# Change Log
+
+## [1.16](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.16) (2020-08-18)
+
+**Enhancements:**
+
+- remove deprecated constructors on QueryConverter
+
+**Bugs:**
+
+- Simplifying use of $expr function
+
+## [1.15](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.15) (2020-08-15)
+
+**Enhancements:**
+
+- Added getQueryAsDocument to the QueryConverter
+- Upgraded guava to 24.1.1-jre
+- Added "Loop mode" with -l when running in CLI mode.
+
+**Bugs:**
+
+- Added checkstyle to build process
+- Code cleanup
+- Negative numbers are supported
+
+
+
+
+# Change Log
+
+## [1.14](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.14) (2020-07-22)
+
+**Enhancements:**
+
+- Support for Double values
+- Support for Timestamp values, i.e: {ts '2019-10-11 12:12:23.234'}
+- Support for Date values, i.e: {d '2019-10-11'}
+
+
+## [1.13](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.13) (2020-07-16)
+
+**Enhancements:**
+
+- Support for NOT LIKE queries
+- added notRegexMatch function
+
+**Bugs:**
+
+- NOT expressions with parentheses not working properly, i.e: NOT (Country = 'Albania')
+
+## [1.12](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.12) (2020-07-07)
+
+**Enhancements:**
+
+- Fix queries using IN keyword.  They were broken in 1.11
+
+## [1.11](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.11) (2020-05-22)
 
 **Enhancements:**
 
@@ -658,6 +785,7 @@ more results? (y/n): n
 - Created the ability to prove the following options to aggregation: aggregationAllowDiskUse and aggregationBatchSize
 - Support for having clause
 - Upgrading com.github.jsqlparser:jsqlparser from v1.4 to v3.1
+- Supporting group operations (avg, max, min, count, sum) without "group by" clause for performing a total group.
 
 # Change Log
 

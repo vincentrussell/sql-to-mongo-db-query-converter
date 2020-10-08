@@ -890,6 +890,170 @@ public class QueryConverterJoinTest {
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
     
+    @Test
+    public void writeJoinWithAllCount() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from Table1 as t join Table2 as e on e._id = OID(t.Table1.eventId) where 1 = 1 AND t.Table1.eventId='111111' AND e.Table2.tid='2222222'").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Table1.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$and\": [\n" + 
+        		"      {\n" + 
+        		"        \"$expr\": {\n" + 
+        		"          \"$eq\": [\n" + 
+        		"            1,\n" + 
+        		"            1\n" + 
+        		"          ]\n" + 
+        		"        }\n" + 
+        		"      },\n" + 
+        		"      {\n" + 
+        		"        \"Table1.eventId\": \"111111\"\n" + 
+        		"      }\n" + 
+        		"    ]\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$lookup\": {\n" + 
+        		"    \"from\": \"Table2\",\n" + 
+        		"    \"let\": {\n" + 
+        		"      \"table1_eventid\": \"$Table1.eventId\"\n" + 
+        		"    },\n" + 
+        		"    \"pipeline\": [\n" + 
+        		"      {\n" + 
+        		"        \"$match\": {\n" + 
+        		"          \"$and\": [\n" + 
+        		"            {\n" + 
+        		"              \"$expr\": {\n" + 
+        		"                \"$eq\": [\n" + 
+        		"                  {\n" + 
+        		"                    \"$toObjectId\": \"$$table1_eventid\"\n" + 
+        		"                  },\n" + 
+        		"                  \"$_id\"\n" + 
+        		"                ]\n" + 
+        		"              }\n" + 
+        		"            },\n" + 
+        		"            {\n" + 
+        		"              \"$and\": [\n" + 
+        		"                {\n" + 
+        		"                  \"$expr\": {\n" + 
+        		"                    \"$eq\": [\n" + 
+        		"                      1,\n" + 
+        		"                      1\n" + 
+        		"                    ]\n" + 
+        		"                  }\n" + 
+        		"                },\n" + 
+        		"                {\n" + 
+        		"                  \"Table2.tid\": \"2222222\"\n" + 
+        		"                }\n" + 
+        		"              ]\n" + 
+        		"            }\n" + 
+        		"          ]\n" + 
+        		"        }\n" + 
+        		"      }\n" + 
+        		"    ],\n" + 
+        		"    \"as\": \"e\"\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$unwind\": {\n" + 
+        		"    \"path\": \"$e\",\n" + 
+        		"    \"preserveNullAndEmptyArrays\": false\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"count\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"count\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
+    @Test
+    public void writeJoinWithAllCountNestedDif() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select count(*) from Table1 as t join Table2 as e on e._id = OID(t.root1.eventId) where 1 = 1 AND t.root1.eventId='111111' AND e.root2.tid='2222222'").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.Table1.aggregate([{\n" + 
+        		"  \"$match\": {\n" + 
+        		"    \"$and\": [\n" + 
+        		"      {\n" + 
+        		"        \"$expr\": {\n" + 
+        		"          \"$eq\": [\n" + 
+        		"            1,\n" + 
+        		"            1\n" + 
+        		"          ]\n" + 
+        		"        }\n" + 
+        		"      },\n" + 
+        		"      {\n" + 
+        		"        \"root1.eventId\": \"111111\"\n" + 
+        		"      }\n" + 
+        		"    ]\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$lookup\": {\n" + 
+        		"    \"from\": \"Table2\",\n" + 
+        		"    \"let\": {\n" + 
+        		"      \"root1_eventid\": \"$root1.eventId\"\n" + 
+        		"    },\n" + 
+        		"    \"pipeline\": [\n" + 
+        		"      {\n" + 
+        		"        \"$match\": {\n" + 
+        		"          \"$and\": [\n" + 
+        		"            {\n" + 
+        		"              \"$expr\": {\n" + 
+        		"                \"$eq\": [\n" + 
+        		"                  {\n" + 
+        		"                    \"$toObjectId\": \"$$root1_eventid\"\n" + 
+        		"                  },\n" + 
+        		"                  \"$_id\"\n" + 
+        		"                ]\n" + 
+        		"              }\n" + 
+        		"            },\n" + 
+        		"            {\n" + 
+        		"              \"$and\": [\n" + 
+        		"                {\n" + 
+        		"                  \"$expr\": {\n" + 
+        		"                    \"$eq\": [\n" + 
+        		"                      1,\n" + 
+        		"                      1\n" + 
+        		"                    ]\n" + 
+        		"                  }\n" + 
+        		"                },\n" + 
+        		"                {\n" + 
+        		"                  \"root2.tid\": \"2222222\"\n" + 
+        		"                }\n" + 
+        		"              ]\n" + 
+        		"            }\n" + 
+        		"          ]\n" + 
+        		"        }\n" + 
+        		"      }\n" + 
+        		"    ],\n" + 
+        		"    \"as\": \"e\"\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$unwind\": {\n" + 
+        		"    \"path\": \"$e\",\n" + 
+        		"    \"preserveNullAndEmptyArrays\": false\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$group\": {\n" + 
+        		"    \"_id\": {},\n" + 
+        		"    \"count\": {\n" + 
+        		"      \"$sum\": 1\n" + 
+        		"    }\n" + 
+        		"  }\n" + 
+        		"},{\n" + 
+        		"  \"$project\": {\n" + 
+        		"    \"count\": 1,\n" + 
+        		"    \"_id\": 0\n" + 
+        		"  }\n" + 
+        		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+    
     private static Document document(String key, Object... values) {
         Document document = new Document();
         if (values !=null && values.length > 1) {

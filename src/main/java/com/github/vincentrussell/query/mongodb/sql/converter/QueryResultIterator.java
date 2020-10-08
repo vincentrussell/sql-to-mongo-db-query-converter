@@ -6,14 +6,27 @@ import org.calrissian.mango.collect.AbstractCloseableIterator;
 
 import java.io.IOException;
 
+/**
+ * Wrapper {@link java.util.Iterator} around the {@link MongoCursor}.
+ * @param <T> the type of elements returned by this iterator
+ */
 public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
 
     private final MongoCursor<T> mongoCursor;
 
-    public QueryResultIterator(MongoIterable<T> mongoIterable) {
+    /**
+     * Default constructor.
+     * @param mongoIterable the wrapped {@link MongoIterable}
+     */
+    public QueryResultIterator(final MongoIterable<T> mongoIterable) {
         this.mongoCursor = mongoIterable.iterator();
     }
 
+    /**
+     * {@inheritDoc}
+     * @return the next element if there was one. If {@code endOfData} was called during execution,
+     * the return value will be ignored.
+     */
     @Override
     protected T computeNext() {
         if (mongoCursor.hasNext()) {
@@ -24,6 +37,9 @@ public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
         return endOfData();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void close() throws IOException {
         mongoCursor.close();
