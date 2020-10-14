@@ -616,9 +616,9 @@ public final class QueryConverter {
                 IOUtils.write(")", outputStream);
             }
 
-            if (queryDocument.get("offset") != null) {
+            if (queryDocument.get("skip") != null) {
                 IOUtils.write(".skip(", outputStream);
-                IOUtils.write(queryDocument.get("offset") + "", outputStream);
+                IOUtils.write(queryDocument.get("skip") + "", outputStream);
                 IOUtils.write(")", outputStream);
             }
 

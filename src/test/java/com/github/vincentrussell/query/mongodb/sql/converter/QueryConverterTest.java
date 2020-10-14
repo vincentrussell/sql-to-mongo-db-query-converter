@@ -2750,6 +2750,30 @@ public class QueryConverterTest {
         		"  }\n" + 
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
+
+    @Test
+    public void simpleQueryLimit() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from HelsinkiPopulation limit 4").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.find({}).limit(4)",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void simpleQueryOffset() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from HelsinkiPopulation offset 2").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.find({}).skip(2)",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void simpleQueryOffsetLimit() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from HelsinkiPopulation offset 2 limit 4").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.find({}).skip(2).limit(4)",byteArrayOutputStream.toString("UTF-8"));
+    }
     
     @Test
     public void doubleEquals() throws ParseException {
