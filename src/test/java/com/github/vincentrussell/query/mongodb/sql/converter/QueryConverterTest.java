@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -215,7 +216,7 @@ public class QueryConverterTest {
     }
 
     private Date toDate(String dateFormat, String dateString) throws java.text.ParseException {
-        return new SimpleDateFormat(dateFormat).parse(dateString);
+        return new SimpleDateFormat(dateFormat, Locale.ENGLISH).parse(dateString);
     }
 
     @Test
