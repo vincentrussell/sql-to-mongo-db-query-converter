@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -215,7 +216,7 @@ public class QueryConverterTest {
     }
 
     private Date toDate(String dateFormat, String dateString) throws java.text.ParseException {
-        return new SimpleDateFormat(dateFormat).parse(dateString);
+        return new SimpleDateFormat(dateFormat, Locale.ENGLISH).parse(dateString);
     }
 
     @Test
@@ -2749,6 +2750,30 @@ public class QueryConverterTest {
         		"    \"_id\": 0\n" + 
         		"  }\n" + 
         		"}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void simpleQueryLimit() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from HelsinkiPopulation limit 4").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.find({}).limit(4)",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void simpleQueryOffset() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from HelsinkiPopulation offset 2").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.find({}).skip(2)",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
+    public void simpleQueryOffsetLimit() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from HelsinkiPopulation offset 2 limit 4").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.HelsinkiPopulation.find({}).skip(2).limit(4)",byteArrayOutputStream.toString("UTF-8"));
     }
     
     @Test

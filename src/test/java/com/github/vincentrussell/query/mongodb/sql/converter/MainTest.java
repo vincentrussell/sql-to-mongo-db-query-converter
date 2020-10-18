@@ -131,7 +131,7 @@ public class MainTest {
                 "  \"_id\": 0,\n" +
                 "  \"column1\": 1\n" +
                 "})".trim(), systemOutRule.getLog().replaceAll(Pattern.quote(Main.ENTER_SQL_TEXT),"")
-                .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").trim());
+                .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").replaceAll("\r","").trim());
 
         systemInMock.provideLines("y", "select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
         Thread.sleep(1000);
@@ -170,7 +170,7 @@ public class MainTest {
                 "  \"_id\": 0,\n" +
                 "  \"column1\": 1\n" +
                 "})".trim(), systemOutRule.getLog().replaceAll(Pattern.quote(Main.ENTER_SQL_TEXT),"")
-                .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").trim());
+                .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").replaceAll("\r","").trim());
 
     }
 
