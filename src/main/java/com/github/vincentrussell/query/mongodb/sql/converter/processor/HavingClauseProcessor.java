@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public class HavingClauseProcessor extends WhereClauseProcessor {
 
-    private AliasHolder aliasHolder;
+
 
     /**
      * Default Constructor.
@@ -26,8 +26,7 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
     public HavingClauseProcessor(final FieldType defaultFieldType,
                                  final Map<String, FieldType> fieldNameToFieldTypeMapping,
                                  final AliasHolder aliasHolder, final boolean requiresAggregation) {
-        super(defaultFieldType, fieldNameToFieldTypeMapping, requiresAggregation);
-        this.aliasHolder = aliasHolder;
+        super(defaultFieldType, fieldNameToFieldTypeMapping, requiresAggregation, aliasHolder);
     }
 
     /**
@@ -50,7 +49,7 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
             String strFunction = function.toString();
             if (SqlUtils.isAggregateExpression(strFunction)) {
                 String alias = aliasHolder.getAliasFromFieldExp(function.toString());
-                return "$" + SqlUtils.generateAggField(function, alias);
+                return "$" + SqlUtils.generateAggField(function, alias).getValue();
             }
         }
         return super.recurseFunctions(query, object, defaultFieldType, fieldNameToFieldTypeMapping);

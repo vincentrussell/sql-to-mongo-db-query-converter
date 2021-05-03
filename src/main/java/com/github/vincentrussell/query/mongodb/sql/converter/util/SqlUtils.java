@@ -2,6 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.processor.WhereClauseProcessor;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -39,6 +40,7 @@ import org.joda.time.format.ISODateTimeFormat;
 
 import javax.annotation.Nonnull;
 import java.math.BigInteger;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -97,6 +99,7 @@ public final class SqlUtils {
         return expression.toString();
     }
 
+
     /**
      * Take an {@link Expression} and normalize it.
      * @param incomingExpression the incoming expression
@@ -110,6 +113,28 @@ public final class SqlUtils {
     public static Object getNormalizedValue(final Expression incomingExpression, final Expression otherSide,
                                             final FieldType defaultFieldType,
                                             final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                            final Character sign) throws ParseException {
+        return getNormalizedValue(incomingExpression, otherSide, defaultFieldType, fieldNameToFieldTypeMapping,
+                new AliasHolder(), sign);
+    }
+
+
+
+    /**
+     * Take an {@link Expression} and normalize it.
+     * @param incomingExpression the incoming expression
+     * @param otherSide the other side of the expression
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} map
+     * @param aliasHolder an aliasHolder
+     * @param sign a negative or positive sign
+     * @return the normalized value
+     * @throws ParseException if there is a parsing issue
+     */
+    public static Object getNormalizedValue(final Expression incomingExpression, final Expression otherSide,
+                                            final FieldType defaultFieldType,
+                                            final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                            final AliasHolder aliasHolder,
                                             final Character sign)
             throws ParseException {
         FieldType fieldType = otherSide != null ? firstNonNull(
@@ -124,11 +149,17 @@ public final class SqlUtils {
         } else if (SignedExpression.class.isInstance(incomingExpression)) {
             SignedExpression signedExpression = (SignedExpression) incomingExpression;
             return getNormalizedValue(signedExpression.getExpression(), otherSide, defaultFieldType,
-                    fieldNameToFieldTypeMapping, signedExpression.getSign());
+                    fieldNameToFieldTypeMapping, aliasHolder, signedExpression.getSign());
         } else if (StringValue.class.isInstance(incomingExpression)) {
             return getNormalizedValue((((StringValue) incomingExpression).getValue()), fieldType);
         } else if (Column.class.isInstance(incomingExpression)) {
-            return getNormalizedValue(getStringValue(incomingExpression), fieldType);
+            Object normalizedColumn = getNormalizedValue(getStringValue(incomingExpression), fieldType);
+            if (aliasHolder != null && !aliasHolder.isEmpty()
+                    && String.class.isInstance(normalizedColumn)
+                    && aliasHolder.containsAliasForFieldExp((String) normalizedColumn)) {
+                return aliasHolder.getAliasFromFieldExp((String) normalizedColumn);
+            }
+            return normalizedColumn;
         } else if (TimestampValue.class.isInstance(incomingExpression)) {
             return getNormalizedValue(
                     new Date((((TimestampValue) incomingExpression).getValue().getTime())), fieldType);
@@ -692,10 +723,11 @@ public final class SqlUtils {
      * Get the name for field to be used in aggregation based on the function name and the alias.
      * @param function the function
      * @param alias the alias
-     * @return the name for the field.
+     * @return the field name to the alias mapping.
      * @throws ParseException if there is an issue parsing the query
      */
-    public static String generateAggField(final Function function, final Alias alias) throws ParseException {
+    public static Map.Entry<String, String> generateAggField(final Function function,
+                                                             final Alias alias) throws ParseException {
         String aliasStr = (alias == null ? null : alias.getName());
         return generateAggField(function, aliasStr);
     }
@@ -704,16 +736,18 @@ public final class SqlUtils {
      * Get the name for field to be used in aggregation based on the function name and the alias.
      * @param function the function name
      * @param alias the alias
-     * @return the name for the field.
+     * @return the field name to the alias mapping.
      * @throws ParseException if there is an issue parsing the query
      */
-    public static String generateAggField(final Function function, final String alias) throws ParseException {
+    public static Map.Entry<String, String> generateAggField(final Function function,
+                                                             final String alias) throws ParseException {
         String field = getFieldFromFunction(function);
         String functionName = function.getName().toLowerCase();
         if ("*".equals(field) || functionName.equals("count")) {
-            return (alias == null ? functionName : alias);
+            return new AbstractMap.SimpleEntry<>(field, (alias == null ? functionName : alias));
         } else {
-            return (alias == null ? functionName + "_" + field.replaceAll("\\.", "_") : alias);
+            return new AbstractMap.SimpleEntry<>(field, (alias == null
+                    ? functionName + "_" + field.replaceAll("\\.", "_") : alias));
         }
 
     }

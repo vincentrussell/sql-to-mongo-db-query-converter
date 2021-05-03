@@ -13,9 +13,12 @@ import com.github.vincentrussell.query.mongodb.sql.converter.visitor.WhereVisito
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -40,6 +43,7 @@ import org.apache.commons.lang.mutable.MutableBoolean;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
@@ -47,6 +51,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -198,14 +203,19 @@ public final class QueryConverter {
                 mongoDBQueryHolder.setGroupBys(groupBys);
             }
             mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selects, groupBys));
-            mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(selects, groupBys));
+            AliasProjectionForGroupItems aliasProjectionForGroupItems = createAliasProjectionForGroupItems(
+                    selects, groupBys);
+            mongoDBQueryHolder.setAliasProjection(aliasProjectionForGroupItems.getDocument());
             mongoDBQueryHolder.setRequiresMultistepAggregation(true);
         } else if (sqlCommandInfoHolder.isTotalGroup()) {
             List<SelectItem> selects = preprocessSelect(sqlCommandInfoHolder.getSelectItems(),
                     sqlCommandInfoHolder.getFromHolder());
             Document d = createProjectionsFromSelectItems(selects, null);
             mongoDBQueryHolder.setProjection(d);
-            mongoDBQueryHolder.setAliasProjection(createAliasProjectionForGroupItems(selects, null));
+            AliasProjectionForGroupItems aliasProjectionForGroupItems = createAliasProjectionForGroupItems(
+                    selects, null);
+            sqlCommandInfoHolder.getAliasHolder().combine(aliasProjectionForGroupItems.getFieldToAliasMapping());
+            mongoDBQueryHolder.setAliasProjection(aliasProjectionForGroupItems.getDocument());
         } else if (!SqlUtils.isSelectAll(sqlCommandInfoHolder.getSelectItems())) {
             document.put("_id", 0);
             for (SelectItem selectItem : sqlCommandInfoHolder.getSelectItems()) {
@@ -455,9 +465,10 @@ public final class QueryConverter {
         return document;
     }
 
-    private Document createAliasProjectionForGroupItems(final List<SelectItem> selectItems,
+    private AliasProjectionForGroupItems createAliasProjectionForGroupItems(final List<SelectItem> selectItems,
                                                         final List<String> groupBys) throws ParseException {
-        Document document = new Document();
+
+        AliasProjectionForGroupItems aliasProjectionForGroupItems = new AliasProjectionForGroupItems();
 
         final List<SelectItem> functionItems = Lists.newArrayList(Iterables.filter(selectItems,
                 new Predicate<SelectItem>() {
@@ -500,7 +511,7 @@ public final class QueryConverter {
             String columnName = SqlUtils.getStringValue(column);
             Alias alias = selectExpressionItem.getAlias();
             String nameOrAlias = (alias != null ? alias.getName() : columnName);
-            document.put(nameOrAlias, "$_id");
+            aliasProjectionForGroupItems.getDocument().put(nameOrAlias, "$_id");
         } else {
             for (SelectItem selectItem : nonFunctionItems) {
                 SelectExpressionItem selectExpressionItem = ((SelectExpressionItem) selectItem);
@@ -508,7 +519,8 @@ public final class QueryConverter {
                 String columnName = SqlUtils.getStringValue(column);
                 Alias alias = selectExpressionItem.getAlias();
                 String nameOrAlias = (alias != null ? alias.getName() : columnName);
-                document.put(nameOrAlias, "$_id." + columnName.replaceAll("\\.", "_"));
+                aliasProjectionForGroupItems.getDocument().put(nameOrAlias,
+                        "$_id." + columnName.replaceAll("\\.", "_"));
             }
         }
 
@@ -516,18 +528,21 @@ public final class QueryConverter {
             SelectExpressionItem selectExpressionItem = ((SelectExpressionItem) selectItem);
             Function function = (Function) selectExpressionItem.getExpression();
             Alias alias = selectExpressionItem.getAlias();
-            document.put(SqlUtils.generateAggField(function, alias), 1);
+            Entry<String, String> fieldToAliasMapping = SqlUtils.generateAggField(function, alias);
+            String aliasedField = fieldToAliasMapping.getValue();
+            aliasProjectionForGroupItems.putAlias(fieldToAliasMapping.getKey(), fieldToAliasMapping.getValue());
+            aliasProjectionForGroupItems.getDocument().put(aliasedField, 1);
         }
 
-        document.put("_id", 0);
+        aliasProjectionForGroupItems.getDocument().put("_id", 0);
 
-        return document;
+        return aliasProjectionForGroupItems;
     }
 
     private void parseFunctionForAggregation(final Function function, final Document document,
                                              final List<String> groupBys, final Alias alias) throws ParseException {
         String op = function.getName().toLowerCase();
-        String aggField = SqlUtils.generateAggField(function, alias);
+        String aggField = SqlUtils.generateAggField(function, alias).getValue();
         switch (op) {
             case "count":
                 document.put(aggField, new Document("$sum", 1));
@@ -986,5 +1001,42 @@ public final class QueryConverter {
         }
     }
 
+    private static class AliasProjectionForGroupItems {
+        private Map<String, String> fieldToAliasMapping = new HashMap<>();
+        private Document document = new Document();
+
+
+        public AliasHolder getFieldToAliasMapping() {
+            Map<String, String> inversedMap = Maps.transformValues(Multimaps.invertFrom(
+                    Multimaps.forMap(fieldToAliasMapping), ArrayListMultimap.<String, String>create()).asMap(),
+                    new com.google.common.base.Function<Collection<String>, String>() {
+                @Override
+                public @Nullable String apply(final Collection<String> input) {
+                    return Iterables.getFirst(input, null);
+                }
+            });
+            return new AliasHolder(fieldToAliasMapping, inversedMap);
+        }
+
+        public String putAlias(final String field, final String alias) {
+            if (field != null) {
+                return fieldToAliasMapping.put(field, alias);
+            }
+            return null;
+        }
+
+        public void putAll(final Map<? extends String, ? extends String> m) {
+            fieldToAliasMapping.putAll(m);
+        }
+
+        public Document getDocument() {
+            return document;
+        }
+
+        public AliasProjectionForGroupItems setDocument(final Document document) {
+            this.document = document;
+            return this;
+        }
+    }
 
 }

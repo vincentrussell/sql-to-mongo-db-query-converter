@@ -272,4 +272,6 @@ public class MongoDBQueryHolder {
     public boolean isRequiresMultistepAggregation() {
         return requiresMultistepAggregation;
     }
+
 }
+

@@ -1095,6 +1095,17 @@ public abstract class AbstractQueryConverterIT {
         		"}]",toJson(results),false);
     }
 
+
+    @Test
+    public void avgQueryAliasWhereHaving() throws ParseException, JSONException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(_id) as av from "+COLLECTION_FILMS+" having (av > 10)").build();
+        QueryResultIterator<Document> distinctIterable = queryConverter.run(mongoDatabase);
+        List<Document> results = Lists.newArrayList(distinctIterable);
+        JSONAssert.assertEquals("[{\n" +
+                "	\"av\": 500.5\n" +
+                "}]",toJson(results),false);
+    }
+
     @Test
     public void countGroupByQueryHavingByCountAlias() throws ParseException, IOException, JSONException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select cuisine, count(cuisine) as cc from "+COLLECTION+" WHERE borough = 'Manhattan' GROUP BY cuisine HAVING cc > 500").build();

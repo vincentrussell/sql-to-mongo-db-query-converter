@@ -2,6 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter.processor;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
+import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.DateFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.ObjectIdFunction;
 import com.github.vincentrussell.query.mongodb.sql.converter.util.RegexFunction;
@@ -44,19 +45,35 @@ public class WhereClauseProcessor {
     private final FieldType defaultFieldType;
     private final Map<String, FieldType> fieldNameToFieldTypeMapping;
     private final boolean requiresMultistepAggregation;
+    @SuppressWarnings("checkstyle:VisibilityModifier")
+    protected AliasHolder aliasHolder;
 
     /**
      * Default constructor.
      * @param defaultFieldType the default {@link FieldType}
      * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} mapping
      * @param requiresMultistepAggregation if aggregation is detected for the sql query
+     * @param aliasHolder
+     */
+    public WhereClauseProcessor(final FieldType defaultFieldType,
+                                final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                final boolean requiresMultistepAggregation, final AliasHolder aliasHolder) {
+        this.defaultFieldType = defaultFieldType;
+        this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
+        this.requiresMultistepAggregation = requiresMultistepAggregation;
+        this.aliasHolder = aliasHolder;
+    }
+
+    /**
+     * Constructor without AliasHolder.
+     * @param defaultFieldType
+     * @param fieldNameToFieldTypeMapping
+     * @param requiresMultistepAggregation
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping,
                                 final boolean requiresMultistepAggregation) {
-        this.defaultFieldType = defaultFieldType;
-        this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping;
-        this.requiresMultistepAggregation = requiresMultistepAggregation;
+       this(defaultFieldType, fieldNameToFieldTypeMapping, requiresMultistepAggregation, new AliasHolder());
     }
 
     /**
@@ -309,7 +326,7 @@ public class WhereClauseProcessor {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
         } else {
             return SqlUtils.getNormalizedValue(incomingExpression, otherSide,
-                    defaultFieldType, fieldNameToFieldTypeMapping, null);
+                    defaultFieldType, fieldNameToFieldTypeMapping, aliasHolder, null);
         }
         return query;
     }

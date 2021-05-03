@@ -2,24 +2,32 @@ package com.github.vincentrussell.query.mongodb.sql.converter.holder;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * The class holds mapping between fields and aliases.
  */
 public class AliasHolder {
-    private HashMap<String, String> aliasFromFieldHash;
-    private HashMap<String, String> fieldFromAliasHash;
+    private Map<String, String> aliasFromFieldHash;
+    private Map<String, String> fieldFromAliasHash;
 
     /**
      * Default constructor.
      * @param aliasFromFieldMap the alias from the field map.
      * @param fieldFromAliasMap the field to alias map.
      */
-    public AliasHolder(final HashMap<String, String> aliasFromFieldMap,
-                       final HashMap<String, String> fieldFromAliasMap) {
+    public AliasHolder(final Map<String, String> aliasFromFieldMap,
+                       final Map<String, String> fieldFromAliasMap) {
         this.aliasFromFieldHash = aliasFromFieldMap;
         this.fieldFromAliasHash = fieldFromAliasMap;
+    }
+
+    /**
+     * Constructor with empty values.
+     */
+    public AliasHolder() {
+        this(Collections.<String, String>emptyMap(), Collections.<String, String>emptyMap());
     }
 
     /**
@@ -29,6 +37,15 @@ public class AliasHolder {
      */
     public String getAliasFromFieldExp(final String field) {
         return aliasFromFieldHash.get(field);
+    }
+
+    /**
+     * is there an alias for this field?
+     * @param field
+     * @return true if there is an alias for this field
+     */
+    public boolean containsAliasForFieldExp(final String field) {
+        return aliasFromFieldHash.containsKey(field);
     }
 
     /**
@@ -64,4 +81,12 @@ public class AliasHolder {
         return aliasFromField != null && fieldFromAlias != null && !aliasFromField.equals(fieldFromAlias);
     }
 
+    /**
+     * Combine two alias holders.
+     * @param aliasHolder
+     */
+    public void combine(final AliasHolder aliasHolder) {
+        aliasFromFieldHash.putAll(aliasHolder.aliasFromFieldHash);
+        fieldFromAliasHash.putAll(aliasHolder.fieldFromAliasHash);
+    }
 }

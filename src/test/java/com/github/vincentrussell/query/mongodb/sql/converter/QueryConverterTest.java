@@ -2949,6 +2949,34 @@ public class QueryConverterTest {
         assertEquals(document("agent_code",document("$regex","^AW.{1}.*$")),mongoDBQueryHolder.getQuery());
     }
 
+
+    @Test
+    public void testAvgSelectWithHavingClause() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select avg(rating) from table having (rating < 40);"
+        ).build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.table.aggregate([{\n" +
+                "  \"$group\": {\n" +
+                "    \"_id\": {},\n" +
+                "    \"avg_rating\": {\n" +
+                "      \"$avg\": \"$rating\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$match\": {\n" +
+                "    \"avg_rating\": {\n" +
+                "      \"$lt\": 40\n" +
+                "    }\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$project\": {\n" +
+                "    \"avg_rating\": 1,\n" +
+                "    \"_id\": 0\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
     private static Document document(String key, Object... values) {
         Document document = new Document();
         if (values !=null && values.length > 1) {
