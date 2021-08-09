@@ -1,6 +1,8 @@
 package com.github.vincentrussell.query.mongodb.sql.converter.rule;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import de.flapdoodle.embed.mongo.MongodExecutable;
@@ -46,7 +48,7 @@ public class MongoRule extends ExternalResource {
 
         mongodExecutable = starter.prepare(mongodConfig);
         mongodProcess = mongodExecutable.start();
-        mongoClient = new MongoClient("localhost",port);
+        mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost:" + port));
     }
 
     public MongoDatabase getDatabase(String databaseName) {
