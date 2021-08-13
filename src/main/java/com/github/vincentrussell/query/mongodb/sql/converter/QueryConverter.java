@@ -788,7 +788,7 @@ public final class QueryConverter {
                 return (T) new QueryResultIterator<>(mongoCollection.distinct(
                         getDistinctFieldName(mongoDBQueryHolder), mongoDBQueryHolder.getQuery(), String.class));
             } else if (sqlCommandInfoHolder.isCountAll() && !isAggregate(mongoDBQueryHolder)) {
-                return (T) Long.valueOf(mongoCollection.count(mongoDBQueryHolder.getQuery()));
+                return (T) Long.valueOf(mongoCollection.countDocuments(mongoDBQueryHolder.getQuery()));
             } else if (isAggregate(mongoDBQueryHolder)) {
 
                 AggregateIterable aggregate = mongoCollection.aggregate(

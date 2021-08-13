@@ -46,7 +46,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jdk.version>1.8</jdk.version>
     <slf4j.version>1.6.1</slf4j.version>
-    <mongodb.version>3.12.0</mongodb.version>
+    <mongodb.version>4.3.1</mongodb.version>
   </properties>
 
   <dependencyManagement>
@@ -98,7 +98,7 @@
       </dependency>
       <dependency>
         <groupId>org.mongodb</groupId>
-        <artifactId>mongodb-driver</artifactId>
+        <artifactId>mongodb-driver-sync</artifactId>
         <version>${mongodb.version}</version>
       </dependency>
       <dependency>
@@ -209,7 +209,7 @@
     </dependency>
     <dependency>
       <groupId>org.mongodb</groupId>
-      <artifactId>mongodb-driver</artifactId>
+      <artifactId>mongodb-driver-sync</artifactId>
     </dependency>
     <dependency>
       <groupId>de.flapdoodle.embed</groupId>
