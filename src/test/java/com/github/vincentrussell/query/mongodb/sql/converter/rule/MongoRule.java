@@ -6,11 +6,11 @@ import com.mongodb.client.MongoDatabase;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.IMongodConfig;
-import de.flapdoodle.embed.mongo.config.MongoCmdOptionsBuilder;
-import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.ImmutableMongoCmdOptions;
+import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
+import de.flapdoodle.embed.process.runtime.Network;
 import org.junit.rules.ExternalResource;
 
 import java.io.IOException;
@@ -35,13 +35,13 @@ public class MongoRule extends ExternalResource {
 
     @Override
     protected void before() throws Throwable {
-        IMongodConfig mongodConfig = new MongodConfigBuilder()
+        MongodConfig mongodConfig = MongodConfig.builder()
                 .version(version)
-                .cmdOptions(new MongoCmdOptionsBuilder()
+                .cmdOptions(ImmutableMongoCmdOptions.builder()
                         .useNoPrealloc(false)
                         .useSmallFiles(false)
                         .build())
-                .net(new Net("localhost",port, false))
+                .net(new Net(port, Network.localhostIsIPv6()))
                 .build();
 
         mongodExecutable = starter.prepare(mongodConfig);

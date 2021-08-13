@@ -15,7 +15,7 @@ Add a dependency to `com.github.vincentrussell:sql-to-mongo-db-query-converter`.
 ```
 
 ## Requirements
-- JDK 1.7 or higher
+- JDK 1.8 or higher
 
 ## Running it from Java
 
@@ -703,6 +703,11 @@ more results? (y/n): n
 # Change Log
 
 ## [1.19](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.19) (2021-05-04)
+
+**Enhancements:**
+
+- upgrade flapdoodle to 3.0.0
+- upgrade required jdk to 1.8
 
 **Bugs:**
 
