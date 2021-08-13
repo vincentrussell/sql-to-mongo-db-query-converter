@@ -2,7 +2,8 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.rule.MongoRule;
 import com.google.common.collect.Lists;
-import de.flapdoodle.embed.mongo.distribution.Version;
+import de.flapdoodle.embed.mongo.distribution.Feature;
+import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
@@ -11,14 +12,15 @@ import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class MongoV4_0QueryConverterIT extends AbstractQueryConverterIT {
+public class MongoV4_3_1QueryConverterIT extends AbstractQueryConverterIT {
 
     @ClassRule
-    public static MongoRule mongoRule = new MongoRule(Version.Main.V4_0);
+    public static MongoRule mongoRule = new MongoRule(Version.V4_3_1);
 
     public MongoRule getMongoRule() {
         return mongoRule;
@@ -383,6 +385,38 @@ public class MongoV4_0QueryConverterIT extends AbstractQueryConverterIT {
                 "	\"total\": 68,\n" +
                 "	\"local\": 31\n" +
                 "}]",toJson(results),false);
+    }
+
+    public enum Version implements IFeatureAwareVersion {
+
+        V4_3_1("4.3.1", Feature.SYNC_DELAY, Feature.STORAGE_ENGINE, Feature.ONLY_64BIT,
+                Feature.NO_CHUNKSIZE_ARG, Feature.MONGOS_CONFIGDB_SET_STYLE, Feature.NO_HTTP_INTERFACE_ARG,
+                Feature.ONLY_WITH_SSL, Feature.ONLY_WINDOWS_2008_SERVER, Feature.NO_SOLARIS_SUPPORT,
+                Feature.NO_BIND_IP_TO_LOCALHOST);
+
+
+        private final String specificVersion;
+        private EnumSet<Feature> features;
+
+        Version(String vName, Feature...features) {
+            this.specificVersion = vName;
+            this.features = Feature.asSet(features);
+        }
+
+        @Override
+        public boolean enabled(Feature feature) {
+            return features.contains(feature);
+        }
+
+        @Override
+        public EnumSet<Feature> getFeatures() {
+            return EnumSet.copyOf(features);
+        }
+
+        @Override
+        public String asInDownloadPath() {
+            return specificVersion;
+        }
     }
 
 }
