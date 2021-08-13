@@ -5,9 +5,13 @@ import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.mongodb.MongoClient;
+import com.mongodb.Block;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClients;
+import com.mongodb.connection.ClusterSettings;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -419,7 +423,7 @@ public final class Main {
     private static MongoClient getMongoClient(final String[] hosts,
                                               final String authdb, final String username, final String password) {
         final Pattern hostAndPort = Pattern.compile("^(.[^:]*){1}([:]){0,1}(\\d+){0,1}$");
-        List<ServerAddress> serverAddresses = Lists.transform(Arrays.asList(hosts),
+        final List<ServerAddress> serverAddresses = Lists.transform(Arrays.asList(hosts),
                 new Function<String, ServerAddress>() {
                     @Override
                     public ServerAddress apply(@Nonnull final String string) {
@@ -435,12 +439,22 @@ public final class Main {
                         }
                     }
                 });
+
+        final MongoClientSettings.Builder mongoClientSettingsBuilder = MongoClientSettings.builder();
+
+        mongoClientSettingsBuilder.applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+            public void apply(final com.mongodb.connection.ClusterSettings.Builder builder) {
+                builder.hosts(serverAddresses);
+            }
+        });
+
         if (username != null && password != null) {
-            return new MongoClient(serverAddresses,
-                    Arrays.asList(MongoCredential.createCredential(username, authdb, password.toCharArray())));
-        } else {
-            return new MongoClient(serverAddresses);
+            final char[] p = password.toCharArray();
+            final MongoCredential credential = MongoCredential.createCredential(username, authdb, p);
+            mongoClientSettingsBuilder.credential(credential);
         }
+
+        return MongoClients.create(mongoClientSettingsBuilder.build());
     }
 
     private static void isTrue(final boolean expression, final String message)

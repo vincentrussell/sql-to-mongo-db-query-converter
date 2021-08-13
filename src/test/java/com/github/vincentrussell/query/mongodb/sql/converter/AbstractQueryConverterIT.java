@@ -1231,7 +1231,7 @@ public abstract class AbstractQueryConverterIT {
             newCollection.insertOne(new Document("_id", "2").append("key", "value"));
             newCollection.insertOne(new Document("_id", "3").append("key", "value"));
             newCollection.insertOne(new Document("_id", "4").append("key2", "value2"));
-            assertEquals(3, newCollection.count(new BsonDocument("key", new BsonString("value"))));
+            assertEquals(3, newCollection.countDocuments(new BsonDocument("key", new BsonString("value"))));
             QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from " + collection + " where key = 'value'").build();
             long deleteCount = queryConverter.run(mongoDatabase);
             assertEquals(3, deleteCount);
