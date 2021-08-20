@@ -43,9 +43,9 @@ import org.apache.commons.lang.mutable.MutableBoolean;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1011,7 +1011,8 @@ public final class QueryConverter {
                     Multimaps.forMap(fieldToAliasMapping), ArrayListMultimap.<String, String>create()).asMap(),
                     new com.google.common.base.Function<Collection<String>, String>() {
                 @Override
-                public @Nullable String apply(final Collection<String> input) {
+                public @Nullable
+                String apply(final Collection<String> input) {
                     return Iterables.getFirst(input, null);
                 }
             });
