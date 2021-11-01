@@ -22,6 +22,7 @@ jobs:
     strategy:
       matrix:
         java: [ '8' ]
+        distribution: [ 'adopt' ]
     name: Java ${{ matrix.Java }} AIO Package
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -32,6 +33,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.java }}
+          distribution: ${{ matrix.distribution }}
           cache: 'maven'
       - name: Build project with Maven - JDK ${{ matrix.java }}
         run: mvn -B package --file pom.xml
