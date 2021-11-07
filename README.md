@@ -709,6 +709,7 @@ more results? (y/n): n
 - upgrade flapdoodle to 3.0.0
 - upgrade required jdk to 1.8
 - upgrade mongoclient to 4.2.3
+- upgrade jsqlparser to  4.2
 
 **Bugs:**
 
