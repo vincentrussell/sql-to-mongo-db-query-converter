@@ -105,7 +105,7 @@ db.my_collection.find({
 ###Dates
 
 ```
-select * from my_table where date(column,'YYY-MM-DD') >= '2016-12-12'
+select * from my_table where date(column,'YYYY-MM-DD') >= '2016-12-12'
 
 
 ******Result:*********
