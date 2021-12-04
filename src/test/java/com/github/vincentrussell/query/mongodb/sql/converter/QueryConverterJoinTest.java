@@ -1053,6 +1053,57 @@ public class QueryConverterJoinTest {
         		"  }\n" + 
         		"}])",byteArrayOutputStream.toString("UTF-8"));
     }
+
+
+	@Test
+	public void joinsWithInExpression() throws ParseException, IOException {
+		QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.type from attributes as t1 inner join status as t2 on t1.status = t2.id where t1.type in ( 'USER', 'PARKING')").build();
+		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+		queryConverter.write(byteArrayOutputStream);
+		assertEquals("db.attributes.aggregate([{\n" +
+				"  \"$match\": {\n" +
+				"    \"$expr\": {\n" +
+				"      \"$in\": [\n" +
+				"        \"$type\",\n" +
+				"        [\n" +
+				"          \"USER\",\n" +
+				"          \"PARKING\"\n" +
+				"        ]\n" +
+				"      ]\n" +
+				"    }\n" +
+				"  }\n" +
+				"},{\n" +
+				"  \"$lookup\": {\n" +
+				"    \"from\": \"status\",\n" +
+				"    \"let\": {\n" +
+				"      \"status\": \"$status\"\n" +
+				"    },\n" +
+				"    \"pipeline\": [\n" +
+				"      {\n" +
+				"        \"$match\": {\n" +
+				"          \"$expr\": {\n" +
+				"            \"$eq\": [\n" +
+				"              \"$$status\",\n" +
+				"              \"$id\"\n" +
+				"            ]\n" +
+				"          }\n" +
+				"        }\n" +
+				"      }\n" +
+				"    ],\n" +
+				"    \"as\": \"t2\"\n" +
+				"  }\n" +
+				"},{\n" +
+				"  \"$unwind\": {\n" +
+				"    \"path\": \"$t2\",\n" +
+				"    \"preserveNullAndEmptyArrays\": false\n" +
+				"  }\n" +
+				"},{\n" +
+				"  \"$project\": {\n" +
+				"    \"_id\": 0,\n" +
+				"    \"type\": 1\n" +
+				"  }\n" +
+				"}])",byteArrayOutputStream.toString("UTF-8"));
+	}
     
     private static Document document(String key, Object... values) {
         Document document = new Document();

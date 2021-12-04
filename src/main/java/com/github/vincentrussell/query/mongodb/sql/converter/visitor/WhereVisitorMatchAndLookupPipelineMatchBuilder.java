@@ -7,6 +7,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
 import net.sf.jsqlparser.schema.Column;
 import org.apache.commons.lang.mutable.MutableBoolean;
@@ -62,6 +63,7 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
         }
     }
 
+
     /**
      * {@inheritDoc}
      */
@@ -92,6 +94,23 @@ public class WhereVisitorMatchAndLookupPipelineMatchBuilder extends ExpressionVi
         } else {
             expr.getRightExpression().accept(this);
             if (this.isBaseAliasOrValue && !(expr instanceof AndExpression || expr instanceof OrExpression)) {
+                this.setOrAndExpression(outputMatch, expr);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void visit(final InExpression expr) {
+        this.isBaseAliasOrValue = true;
+        expr.getLeftExpression().accept(this);
+        if (!this.isBaseAliasOrValue) {
+            expr.getRightItemsList().accept(this);
+        } else {
+            expr.getRightItemsList().accept(this);
+            if (this.isBaseAliasOrValue) {
                 this.setOrAndExpression(outputMatch, expr);
             }
         }
