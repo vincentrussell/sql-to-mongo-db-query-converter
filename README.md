@@ -702,7 +702,7 @@ more results? (y/n): n
 
 # Change Log
 
-## [1.19](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.19) (2021-05-04)
+## [1.19](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.19) (2021-12-04)
 
 **Enhancements:**
 
@@ -714,6 +714,7 @@ more results? (y/n): n
 **Bugs:**
 
 - alias not working properly in having clause.
+- in expressions not working with joins
 
 ## [1.18](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.18) (2020-09-02)
 
