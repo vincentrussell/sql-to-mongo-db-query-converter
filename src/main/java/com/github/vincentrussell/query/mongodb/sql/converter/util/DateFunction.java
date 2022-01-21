@@ -2,6 +2,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
@@ -64,6 +65,8 @@ public class DateFunction {
             this.comparisonExpression = "$lte";
         } else if (MinorThan.class.isInstance(comparisonFunction)) {
             this.comparisonExpression = "$lt";
+        } else if (EqualsTo.class.isInstance(comparisonFunction)) {
+            this.comparisonExpression = "$eq";
         } else {
             throw new ParseException("could not parseNaturalLanguageDate string expression: "
                     + comparisonFunction.getStringExpression());

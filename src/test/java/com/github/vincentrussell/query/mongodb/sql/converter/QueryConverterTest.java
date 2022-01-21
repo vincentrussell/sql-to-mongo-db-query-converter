@@ -601,6 +601,17 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void fuzzyDateEqTest() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where date(column,'natural') = '5000 days ago'").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        Date resultDate = mongoDBQueryHolder.getQuery().get("column",Document.class).get("$eq",Date.class);
+        DateTime fiveThousandDaysAgo = new DateTime().minusDays(5000);
+        assertTrue(new Interval(fiveThousandDaysAgo.minusMinutes(5),fiveThousandDaysAgo.plusMinutes(5)).contains(new DateTime(resultDate)));
+    }
+
+    @Test
     public void fuzzyDateUnparseable() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("could not natural language date: quarter hour ago"));
