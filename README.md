@@ -702,6 +702,12 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.20](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.20) (TBD)
+
+**Bugs:**
+
+- equals operand not working with dates
+
 ## [1.19](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.19) (2021-12-05)
 
 **Enhancements:**
