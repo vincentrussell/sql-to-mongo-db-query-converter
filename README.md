@@ -704,6 +704,10 @@ more results? (y/n): n
 
 ## [1.20](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.20) (TBD)
 
+**Enhancements:**
+
+- upgrade jsqlparser to  4.3
+
 **Bugs:**
 
 - equals operand not working with dates

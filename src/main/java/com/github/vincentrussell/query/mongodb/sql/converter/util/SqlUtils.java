@@ -242,8 +242,8 @@ public final class SqlUtils {
      * @return the offset
      */
     public static long getOffsetAsLong(final Offset offset) {
-        if (offset != null) {
-            return offset.getOffset();
+        if (offset != null && LongValue.class.isInstance(offset.getOffset())) {
+            return ((LongValue) offset.getOffset()).getValue();
         }
         return -1;
     }
@@ -671,6 +671,21 @@ public final class SqlUtils {
         return column;
     }
 
+
+    /**
+     * Remove tablename from column.  For instance will rename column from c.column1 to column1.
+     * @param selectExpressionItem
+     * @param aliasBase
+     * @return the column without the tablename in the {@link SelectExpressionItem}
+     */
+    public static SelectExpressionItem removeAliasFromSelectExpressionItem(
+            final SelectExpressionItem selectExpressionItem, final String aliasBase) {
+        if (selectExpressionItem != null && Column.class.isInstance(selectExpressionItem.getExpression())) {
+            removeAliasFromColumn((Column) selectExpressionItem.getExpression(), aliasBase);
+        }
+        return selectExpressionItem;
+    }
+
     /**
      * For nested fields we need it, no alias, clear first part "t1."column1.nested1, alias is mandatory.
      * @param column the column object
@@ -759,6 +774,10 @@ public final class SqlUtils {
      * @throws ParseException if there is an issue parsing the query
      */
     public static String getFieldFromFunction(final Function function) throws ParseException {
+        if (function.getParameters() != null && function.getParameters().getExpressions().size() == 1
+                && AllColumns.class.isInstance(function.getParameters().getExpressions().get(0))) {
+            return null;
+        }
         List<String> parameters = function.getParameters() == null
                 ? Collections.<String>emptyList() : Lists.transform(function.getParameters().getExpressions(),
                 new com.google.common.base.Function<Expression, String>() {
@@ -832,5 +851,4 @@ public final class SqlUtils {
         }
 
     }
-
 }
