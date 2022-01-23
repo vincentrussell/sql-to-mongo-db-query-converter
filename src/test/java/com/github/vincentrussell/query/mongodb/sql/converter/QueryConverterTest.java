@@ -1266,6 +1266,22 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void columnsConvertedIntoProjectionsTest() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1, column2 from my_table where \"foo\" IS NULL").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.my_table.find({\n" +
+                "  \"foo\": {\n" +
+                "    \"$exists\": false\n" +
+                "  }\n" +
+                "} , {\n" +
+                "  \"_id\": 0,\n" +
+                "  \"column1\": 1,\n" +
+                "  \"column2\": 1\n" +
+                "})",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+    @Test
     public void writeWithoutProjections() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value IS NULL").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
