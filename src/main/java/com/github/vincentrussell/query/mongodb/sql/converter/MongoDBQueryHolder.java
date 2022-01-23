@@ -12,6 +12,7 @@ public class MongoDBQueryHolder {
     private final SQLCommandType sqlCommandType;
     private Document query = new Document();
     private Document updateSet = new Document();
+    private List<String> fieldsToUnset = new ArrayList<>();
     private Document projection = new Document();
     private Document sort = new Document();
     private Document aliasProjection = new Document();
@@ -101,6 +102,24 @@ public class MongoDBQueryHolder {
         notNull(updateSet, "updateSet is null");
         this.updateSet = updateSet;
     }
+
+    /**
+     * get the updateSet used for updates.
+     * @return the updateSet
+     */
+    public List<String> getFieldsToUnset() {
+        return fieldsToUnset;
+    }
+
+    /**
+     *  set they updateUnSet which sets the fields to be removed.
+     *  @param fieldsToUnset the updateUnSet in the form of {@link Document}
+     */
+    public void setFieldsToUnset(final List<String> fieldsToUnset) {
+        notNull(fieldsToUnset, "updateUnSet is null");
+        this.fieldsToUnset = fieldsToUnset;
+    }
+
 
     /**
      * Get the column that is used in the distinct clause from the sql query or the projections

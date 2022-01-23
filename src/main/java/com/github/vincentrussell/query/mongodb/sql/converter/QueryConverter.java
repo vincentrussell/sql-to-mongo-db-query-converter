@@ -32,6 +32,7 @@ import com.mongodb.client.result.UpdateResult;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
 import net.sf.jsqlparser.schema.Column;
@@ -42,6 +43,7 @@ import net.sf.jsqlparser.statement.select.SubSelect;
 import net.sf.jsqlparser.statement.update.UpdateSet;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
+import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
@@ -54,6 +56,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -273,7 +276,13 @@ public final class QueryConverter {
 
             if (SQLCommandType.UPDATE.equals(sqlCommandInfoHolder.getSqlCommandType())) {
                 Document updateSetDoc = new Document();
-                for (UpdateSet updateSet : sqlCommandInfoHolder.getUpdateSets()) {
+                for (UpdateSet updateSet : Iterables.filter(sqlCommandInfoHolder.getUpdateSets(),
+                        new Predicate<UpdateSet>() {
+                    @Override
+                    public boolean apply(@org.checkerframework.checker.nullness.qual.Nullable final UpdateSet input) {
+                        return !NullValue.class.isInstance(input.getExpressions().get(0));
+                    }
+                })) {
                     SqlUtils.isTrue(updateSet.getColumns().size() == 1,
                             "more than one column in an update set is not supported");
                     SqlUtils.isTrue(updateSet.getExpressions().size() == 1,
@@ -284,6 +293,21 @@ public final class QueryConverter {
                                     sqlCommandInfoHolder.getAliasHolder(), null));
                 }
                 mongoDBQueryHolder.setUpdateSet(updateSetDoc);
+                List<String> unsets = new ArrayList<>();
+                for (UpdateSet updateSet : Iterables.filter(sqlCommandInfoHolder.getUpdateSets(),
+                        new Predicate<UpdateSet>() {
+                    @Override
+                    public boolean apply(@org.checkerframework.checker.nullness.qual.Nullable final UpdateSet input) {
+                        return NullValue.class.isInstance(input.getExpressions().get(0));
+                    }
+                })) {
+                    SqlUtils.isTrue(updateSet.getColumns().size() == 1,
+                            "more than one column in an update set is not supported");
+                    SqlUtils.isTrue(updateSet.getExpressions().size() == 1,
+                            "more than one expression in an update set is not supported");
+                    unsets.add(SqlUtils.getColumnNameFromColumn(updateSet.getColumns().get(0)));
+                }
+                mongoDBQueryHolder.setFieldsToUnset(unsets);
             }
         }
         if (sqlCommandInfoHolder.getHavingClause() != null) {
@@ -641,10 +665,30 @@ public final class QueryConverter {
                         outputStream, StandardCharsets.UTF_8);
 
                 Document updateSet = (Document) queryDocument.get("updateSet");
-                if (updateSet != null && !updateSet.isEmpty()) {
+                List<String> updateUnSet = (List<String>) queryDocument.get("updateUnSet");
+                if ((updateSet != null && !updateSet.isEmpty()) || (updateUnSet != null && !updateUnSet.isEmpty())) {
                     IOUtils.write(",", outputStream, StandardCharsets.UTF_8);
-                    IOUtils.write(prettyPrintJson(new Document().append("$set", queryDocument.get("updateSet"))
-                                    .toJson(RELAXED)), outputStream, StandardCharsets.UTF_8);
+                    String setString =  null;
+                    String unsetString = null;
+                    if (updateSet != null && !updateSet.isEmpty()) {
+                        setString = prettyPrintJson(new Document().append("$set", updateSet).toJson(RELAXED));
+                    }
+                    if (updateUnSet != null && !updateUnSet.isEmpty()) {
+                        unsetString = prettyPrintJson(new Document().append("$unset", updateUnSet).toJson(RELAXED));
+                    }
+
+                    if (setString != null && unsetString != null) {
+                        IOUtils.write("[", outputStream, StandardCharsets.UTF_8);
+                        IOUtils.write(setString, outputStream, StandardCharsets.UTF_8);
+                        IOUtils.write(",", outputStream, StandardCharsets.UTF_8);
+                        IOUtils.write(unsetString, outputStream, StandardCharsets.UTF_8);
+                        IOUtils.write("]", outputStream, StandardCharsets.UTF_8);
+                    } else if (setString != null) {
+                        IOUtils.write(setString, outputStream, StandardCharsets.UTF_8);
+                    } else if (unsetString != null) {
+                        IOUtils.write(unsetString, outputStream, StandardCharsets.UTF_8);
+                    }
+
                 }
 
                 if (queryDocument.get("projection") != null) {
@@ -768,6 +812,9 @@ public final class QueryConverter {
             if (mongoDBQueryHolder.getUpdateSet() != null) {
                 retValDocument.put("updateSet", mongoDBQueryHolder.getUpdateSet());
             }
+            if (mongoDBQueryHolder.getFieldsToUnset() != null) {
+                retValDocument.put("updateUnSet", mongoDBQueryHolder.getFieldsToUnset());
+            }
             retValDocument.put("query", mongoDBQueryHolder.getQuery());
             if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0
                     && sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
@@ -859,8 +906,20 @@ public final class QueryConverter {
             DeleteResult deleteResult = mongoCollection.deleteMany(mongoDBQueryHolder.getQuery());
             return (T) ((Long) deleteResult.getDeletedCount());
         } else if (SQLCommandType.UPDATE.equals(mongoDBQueryHolder.getSqlCommandType())) {
-            UpdateResult result = mongoCollection.updateMany(mongoDBQueryHolder.getQuery(),
-                    new Document("$set", mongoDBQueryHolder.getUpdateSet()));
+            Document updateSet = mongoDBQueryHolder.getUpdateSet();
+            List<String> fieldsToUnset = mongoDBQueryHolder.getFieldsToUnset();
+            UpdateResult result = new EmptyUpdateResult();
+            if ((updateSet != null && !updateSet.isEmpty()) && (fieldsToUnset != null && !fieldsToUnset.isEmpty())) {
+                result = mongoCollection.updateMany(mongoDBQueryHolder.getQuery(),
+                        Arrays.asList(new Document().append("$set", updateSet),
+                                new Document().append("$unset", fieldsToUnset)));
+            } else if (updateSet != null && !updateSet.isEmpty()) {
+                result = mongoCollection.updateMany(mongoDBQueryHolder.getQuery(),
+                        new Document().append("$set", updateSet));
+            } else if (fieldsToUnset != null && !fieldsToUnset.isEmpty()) {
+                result = mongoCollection.updateMany(mongoDBQueryHolder.getQuery(),
+                        new Document().append("$unset", fieldsToUnset));
+            }
             return (T) ((Long) result.getModifiedCount());
         } else {
             throw new UnsupportedOperationException("SQL command type not supported");
@@ -1081,4 +1140,25 @@ public final class QueryConverter {
         }
     }
 
+    private static class EmptyUpdateResult extends UpdateResult {
+        @Override
+        public boolean wasAcknowledged() {
+            return false;
+        }
+
+        @Override
+        public long getMatchedCount() {
+            return 0;
+        }
+
+        @Override
+        public long getModifiedCount() {
+            return 0;
+        }
+
+        @Override
+        public BsonValue getUpsertedId() {
+            return null;
+        }
+    }
 }

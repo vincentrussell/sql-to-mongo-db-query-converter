@@ -2,8 +2,11 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 
 import com.github.vincentrussell.query.mongodb.sql.converter.rule.MongoRule;
 import com.google.common.collect.Lists;
+import com.mongodb.client.MongoCollection;
 import de.flapdoodle.embed.mongo.distribution.Feature;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
@@ -13,6 +16,7 @@ import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -385,6 +389,42 @@ public class MongoV4_3_1QueryConverterIT extends AbstractQueryConverterIT {
                 "	\"total\": 68,\n" +
                 "	\"local\": 31\n" +
                 "}]",toJson(results),false);
+    }
+
+    @Test
+    public void updateManyWithUnsets() throws ParseException, IOException, JSONException {
+        String collection = "new_collection";
+        MongoCollection newCollection = mongoDatabase.getCollection(collection);
+        try {
+            newCollection.insertOne(new Document("_id", "1").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "2").append("key", "value").append("fieldToRemove", "someValue"));
+            newCollection.insertOne(new Document("_id", "3").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "4").append("key2", "value2").append("fieldToRemove", "someValue"));
+            assertEquals(3, newCollection.countDocuments(new BsonDocument("key", new BsonString("value"))));
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("update " + collection + " set key='changedValue', fieldToRemove=NULL where key = 'value'").build();
+            long modifiedCount = queryConverter.run(mongoDatabase);
+            assertEquals(3, modifiedCount);
+            assertEquals(4, newCollection.countDocuments());
+
+            JSONAssert.assertEquals("[{\n" +
+                            "\t\"_id\": \"1\",\n" +
+                            "\t\"key\": \"changedValue\"\n" +
+                            "},{\n" +
+                            "\t\"_id\": \"2\",\n" +
+                            "\t\"key\": \"changedValue\"\n" +
+                            "},{\n" +
+                            "\t\"_id\": \"3\",\n" +
+                            "\t\"key\": \"changedValue\"\n" +
+                            "},{\n" +
+                            "\t\"_id\": \"4\",\n" +
+                            "\t\"key2\": \"value2\"\n" +
+                            "}]",
+                    toJson(Lists.newArrayList((Iterator<? extends Document>) new QueryConverter.Builder()
+                            .sqlString("select _id, key, key2, fieldToRemove from "+collection+" ORDER BY _id").build().run(mongoDatabase))),false);
+
+        } finally {
+            newCollection.drop();
+        }
     }
 
     public enum Version implements IFeatureAwareVersion {

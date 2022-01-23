@@ -1277,8 +1277,6 @@ public abstract class AbstractQueryConverterIT {
         }
     }
 
-
-
     protected static String toJson(List<Document> documents) throws IOException {
         StringWriter stringWriter = new StringWriter();
         IOUtils.write("[", stringWriter);

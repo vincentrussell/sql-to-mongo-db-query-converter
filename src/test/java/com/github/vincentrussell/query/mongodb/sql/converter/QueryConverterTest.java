@@ -1161,6 +1161,32 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void updateManyWithNullSet() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("UPDATE customers\n" +
+                "SET contactName = 'John Doe', city= 'Birmingham', valueToUnset = NULL\n" +
+                "WHERE value = 1;").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("value",1L),mongoDBQueryHolder.getQuery());
+        assertEquals(document("contactName","John Doe").append("city", "Birmingham"),mongoDBQueryHolder.getUpdateSet());
+        assertEquals(SQLCommandType.UPDATE, mongoDBQueryHolder.getSqlCommandType());
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.customers.updateMany({\n" +
+                "  \"value\": 1\n" +
+                "},[{\n" +
+                "  \"$set\": {\n" +
+                "    \"contactName\": \"John Doe\",\n" +
+                "    \"city\": \"Birmingham\"\n" +
+                "  }\n" +
+                "},{\n" +
+                "  \"$unset\": [\n" +
+                "    \"valueToUnset\"\n" +
+                "  ]\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
+
+    @Test
     public void fromWithSubQuery() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("Only one simple table name is supported."));
