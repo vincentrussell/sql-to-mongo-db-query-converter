@@ -11,6 +11,7 @@ public class MongoDBQueryHolder {
     private final String collection;
     private final SQLCommandType sqlCommandType;
     private Document query = new Document();
+    private Document updateSet = new Document();
     private Document projection = new Document();
     private Document sort = new Document();
     private Document aliasProjection = new Document();
@@ -81,6 +82,24 @@ public class MongoDBQueryHolder {
     public void setQuery(final Document query) {
         notNull(query, "query is null");
         this.query = query;
+    }
+
+
+    /**
+     * get the updateSet used for updates.
+     * @return the updateSet
+     */
+    public Document getUpdateSet() {
+        return updateSet;
+    }
+
+    /**
+     *  set they updateSet which sets the fields to be updated.
+     *  @param updateSet the updateSet in the form of {@link Document}
+     */
+    public void setUpdateSet(final Document updateSet) {
+        notNull(updateSet, "updateSet is null");
+        this.updateSet = updateSet;
     }
 
     /**

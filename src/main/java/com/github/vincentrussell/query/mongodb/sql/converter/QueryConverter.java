@@ -28,6 +28,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
@@ -38,6 +39,7 @@ import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
+import net.sf.jsqlparser.statement.update.UpdateSet;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.bson.Document;
@@ -52,6 +54,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -266,6 +269,21 @@ public final class QueryConverter {
                 //can't be null because of where of joined tables
                 mongoDBQueryHolder.setQuery((Document) whereClauseProcessor
                         .parseExpression(new Document(), preprocessedWhere, null));
+            }
+
+            if (SQLCommandType.UPDATE.equals(sqlCommandInfoHolder.getSqlCommandType())) {
+                Document updateSetDoc = new Document();
+                for (UpdateSet updateSet : sqlCommandInfoHolder.getUpdateSets()) {
+                    SqlUtils.isTrue(updateSet.getColumns().size() == 1,
+                            "more than one column in an update set is not supported");
+                    SqlUtils.isTrue(updateSet.getExpressions().size() == 1,
+                            "more than one expression in an update set is not supported");
+                    updateSetDoc.put(SqlUtils.getColumnNameFromColumn(updateSet.getColumns().get(0)),
+                            SqlUtils.getNormalizedValue(updateSet.getExpressions().get(0), null,
+                                    defaultFieldType, fieldNameToFieldTypeMapping,
+                                    sqlCommandInfoHolder.getAliasHolder(), null));
+                }
+                mongoDBQueryHolder.setUpdateSet(updateSetDoc);
             }
         }
         if (sqlCommandInfoHolder.getHavingClause() != null) {
@@ -616,9 +634,19 @@ public final class QueryConverter {
                     IOUtils.write("db." + collectionName + ".find(", outputStream, StandardCharsets.UTF_8);
                 } else if (SQLCommandType.DELETE.equals(sqlCommandType)) {
                     IOUtils.write("db." + collectionName + ".remove(", outputStream, StandardCharsets.UTF_8);
+                } else if (SQLCommandType.UPDATE.equals(sqlCommandType)) {
+                    IOUtils.write("db." + collectionName + ".updateMany(", outputStream, StandardCharsets.UTF_8);
                 }
                 IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)),
                         outputStream, StandardCharsets.UTF_8);
+
+                Document updateSet = (Document) queryDocument.get("updateSet");
+                if (updateSet != null && !updateSet.isEmpty()) {
+                    IOUtils.write(",", outputStream, StandardCharsets.UTF_8);
+                    IOUtils.write(prettyPrintJson(new Document().append("$set", queryDocument.get("updateSet"))
+                                    .toJson(RELAXED)), outputStream, StandardCharsets.UTF_8);
+                }
+
                 if (queryDocument.get("projection") != null) {
                     IOUtils.write(" , ", outputStream, StandardCharsets.UTF_8);
                     IOUtils.write(prettyPrintJson(((Document) queryDocument.get("projection")).toJson(RELAXED)),
@@ -733,8 +761,12 @@ public final class QueryConverter {
             if (sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.SELECT) {
                 isFindQuery = true;
                 retValDocument.put("collection", collectionName);
-            } else if (sqlCommandInfoHolder.getSqlCommandType() == SQLCommandType.DELETE) {
+            } else if (Arrays.asList(SQLCommandType.DELETE, SQLCommandType.UPDATE)
+                    .contains(sqlCommandInfoHolder.getSqlCommandType())) {
                 retValDocument.put("collection", collectionName);
+            }
+            if (mongoDBQueryHolder.getUpdateSet() != null) {
+                retValDocument.put("updateSet", mongoDBQueryHolder.getUpdateSet());
             }
             retValDocument.put("query", mongoDBQueryHolder.getQuery());
             if (mongoDBQueryHolder.getProjection() != null && mongoDBQueryHolder.getProjection().size() > 0
@@ -826,6 +858,10 @@ public final class QueryConverter {
         } else if (SQLCommandType.DELETE.equals(mongoDBQueryHolder.getSqlCommandType())) {
             DeleteResult deleteResult = mongoCollection.deleteMany(mongoDBQueryHolder.getQuery());
             return (T) ((Long) deleteResult.getDeletedCount());
+        } else if (SQLCommandType.UPDATE.equals(mongoDBQueryHolder.getSqlCommandType())) {
+            UpdateResult result = mongoCollection.updateMany(mongoDBQueryHolder.getQuery(),
+                    new Document("$set", mongoDBQueryHolder.getUpdateSet()));
+            return (T) ((Long) result.getModifiedCount());
         } else {
             throw new UnsupportedOperationException("SQL command type not supported");
         }

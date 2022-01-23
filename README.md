@@ -314,6 +314,16 @@ delete from my_table where value IN ("theValue1","theValue2","theValue3")
 3 (number or records deleted)
 ```
 
+###Update
+
+```
+UPDATE my_table SET name = 'John Doe', city= 'Melphis' WHERE customerID = 1;
+
+******Result:*********
+
+1 (number or records updated)
+```
+
 ###Group By (Aggregation)
 
 ```
@@ -707,6 +717,7 @@ more results? (y/n): n
 **Enhancements:**
 
 - upgrade jsqlparser to  4.3
+- Added support for update SQL statements
 
 **Bugs:**
 

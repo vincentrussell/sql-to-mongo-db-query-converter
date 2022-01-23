@@ -1241,6 +1241,42 @@ public abstract class AbstractQueryConverterIT {
         }
     }
 
+    @Test
+    public void updateMany() throws ParseException, IOException, JSONException {
+        String collection = "new_collection";
+        MongoCollection newCollection = mongoDatabase.getCollection(collection);
+        try {
+            newCollection.insertOne(new Document("_id", "1").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "2").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "3").append("key", "value"));
+            newCollection.insertOne(new Document("_id", "4").append("key2", "value2"));
+            assertEquals(3, newCollection.countDocuments(new BsonDocument("key", new BsonString("value"))));
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("update " + collection + " set key='changedValue' where key = 'value'").build();
+            long modifiedCount = queryConverter.run(mongoDatabase);
+            assertEquals(3, modifiedCount);
+            assertEquals(4, newCollection.countDocuments());
+
+            JSONAssert.assertEquals("[{\n" +
+                            "\t\"_id\": \"1\",\n" +
+                            "\t\"key\": \"changedValue\"\n" +
+                            "},{\n" +
+                            "\t\"_id\": \"2\",\n" +
+                            "\t\"key\": \"changedValue\"\n" +
+                            "},{\n" +
+                            "\t\"_id\": \"3\",\n" +
+                            "\t\"key\": \"changedValue\"\n" +
+                            "},{\n" +
+                            "\t\"_id\": \"4\",\n" +
+                            "\t\"key2\": \"value2\"\n" +
+                            "}]",
+                    toJson(Lists.newArrayList((Iterator<? extends Document>) new QueryConverter.Builder()
+                            .sqlString("select _id, key, key2 from "+collection+" ORDER BY _id").build().run(mongoDatabase))),false);
+
+        } finally {
+            newCollection.drop();
+        }
+    }
+
 
 
     protected static String toJson(List<Document> documents) throws IOException {

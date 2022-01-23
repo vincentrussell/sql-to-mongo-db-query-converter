@@ -20,6 +20,8 @@ import net.sf.jsqlparser.statement.select.SelectBody;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SetOperationList;
+import net.sf.jsqlparser.statement.update.Update;
+import net.sf.jsqlparser.statement.update.UpdateSet;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +46,7 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
     private final List<OrderByElement> orderByElements;
     private final AliasHolder aliasHolder;
     private final Expression havingClause;
+    private final List<UpdateSet> updateSets;
 
 
     private SQLCommandInfoHolder(final Builder builder) {
@@ -61,6 +64,7 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
         this.havingClause = builder.havingClause;
         this.orderByElements = builder.orderByElements;
         this.aliasHolder = builder.aliasHolder;
+        this.updateSets = builder.updateSets;
     }
 
     @Override
@@ -189,6 +193,14 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
     }
 
     /**
+     * get the update sets used for updates.
+     * @return the update sets
+     */
+    public List<UpdateSet> getUpdateSets() {
+        return updateSets;
+    }
+
+    /**
      * Builder for {@link SQLCommandInfoHolder}.
      */
     public static final class Builder {
@@ -196,6 +208,7 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
         private final Map<String, FieldType> fieldNameToFieldTypeMapping;
         private SQLCommandType sqlCommandType;
         private Expression whereClause;
+        private List<UpdateSet> updateSets = new ArrayList<>();
         private boolean isDistinct = false;
         private boolean isCountAll = false;
         private boolean isTotalGroup = false;
@@ -262,15 +275,34 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
                 }
 
                 throw new ParseException("No supported sentence");
-
-
             } else if (Delete.class.isAssignableFrom(statement.getClass())) {
                 sqlCommandType = SQLCommandType.DELETE;
-                Delete delete = (Delete) statement;
-                return setDelete(delete);
+                return setDelete((Delete) statement);
+            } else if (Update.class.isAssignableFrom(statement.getClass())) {
+                sqlCommandType = SQLCommandType.UPDATE;
+                return setUpdate((Update) statement);
             } else {
                 throw new ParseException("No supported sentence");
             }
+        }
+
+        /**
+         * Set the update information for this query if it is a update query.
+         * @param update the {@link Update} object
+         * @return the builder
+         * @throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException if there is an issue
+         * parsing the sql
+         * @throws ParseException if there is an issue parsing the sql
+         */
+        public Builder setUpdate(final Update update)
+                throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
+            SqlUtils.isTrue(update.getTable() != null,
+                    "there must be a table specified for update");
+            from = generateFromHolder(new FromHolder(this.defaultFieldType,
+                    this.fieldNameToFieldTypeMapping), update.getTable(), null);
+            whereClause = update.getWhere();
+            updateSets.addAll(update.getUpdateSets());
+            return this;
         }
 
         /**
