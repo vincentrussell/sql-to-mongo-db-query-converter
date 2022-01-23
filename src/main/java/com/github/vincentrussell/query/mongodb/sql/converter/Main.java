@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -200,9 +201,9 @@ public final class Main {
                             }
                         }
                     } else {
-                        IOUtils.write("\n\n******Mongo Query:*********\n\n", outputStream);
+                        IOUtils.write("\n\n******Mongo Query:*********\n\n", outputStream, StandardCharsets.UTF_8);
                         queryConverter.write(outputStream);
-                        IOUtils.write("\n\n", outputStream);
+                        IOUtils.write("\n\n", outputStream, StandardCharsets.UTF_8);
                     }
 
                 }
@@ -263,9 +264,9 @@ public final class Main {
             Object result = queryConverter.run(mongoClient.getDatabase(db));
 
             if (Long.class.isInstance(result) || long.class.isInstance(result)) {
-                IOUtils.write("\n\n******Query Results:*********\n\n", outputStream);
-                IOUtils.write("" + result, outputStream);
-                IOUtils.write("\n\n", outputStream);
+                IOUtils.write("\n\n******Query Results:*********\n\n", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write("" + result, outputStream, StandardCharsets.UTF_8);
+                IOUtils.write("\n\n", outputStream, StandardCharsets.UTF_8);
             } else if (QueryResultIterator.class.isInstance(result)) {
                 processMongoResults(batchSize, outputStream, (QueryResultIterator) result);
             }
@@ -338,23 +339,23 @@ public final class Main {
         QueryResultIterator<Document> iterator = result;
 
         if (FileOutputStream.class.isInstance(outputStream)) {
-            IOUtils.write("[", outputStream);
+            IOUtils.write("[", outputStream, StandardCharsets.UTF_8);
             while (iterator.hasNext()) {
-                IOUtils.write(iterator.next().toJson(), outputStream);
+                IOUtils.write(iterator.next().toJson(), outputStream, StandardCharsets.UTF_8);
                 if (iterator.hasNext()) {
-                    IOUtils.write(",\n", outputStream);
+                    IOUtils.write(",\n", outputStream, StandardCharsets.UTF_8);
                 }
             }
-            IOUtils.write("]", outputStream);
+            IOUtils.write("]", outputStream, StandardCharsets.UTF_8);
 
         } else {
-            IOUtils.write("\n\n******Query Results:*********\n\n", outputStream);
+            IOUtils.write("\n\n******Query Results:*********\n\n", outputStream, StandardCharsets.UTF_8);
 
             resultIterator:
             for (Iterator<List<Document>> listIterator = Iterators
                     .partition(iterator, batchSize); listIterator.hasNext();) {
                 List<Document> documents = listIterator.next();
-                IOUtils.write(toJson(documents) + "\n\n", outputStream);
+                IOUtils.write(toJson(documents) + "\n\n", outputStream, StandardCharsets.UTF_8);
                 outputStream.flush();
 
                 if (listIterator.hasNext()) {

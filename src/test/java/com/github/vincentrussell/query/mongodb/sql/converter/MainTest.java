@@ -16,6 +16,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -205,7 +206,7 @@ public class MainTest {
         exit.expectSystemExitWithStatus(0);
         destinationFile.delete();
         try (FileOutputStream fileOutputStream = new FileOutputStream(sourceFile)) {
-            IOUtils.write("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")", fileOutputStream);
+            IOUtils.write("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")", fileOutputStream, StandardCharsets.UTF_8);
             Main.main(new String[]{"-s", sourceFile.getAbsolutePath(), "-d", destinationFile.getAbsolutePath()});
             assertTrue(destinationFile.exists());
             try (FileInputStream fileInputStream = new FileInputStream(destinationFile)) {
@@ -256,7 +257,7 @@ public class MainTest {
         exit.expectSystemExitWithStatus(0);
         destinationFile.delete();
         try (FileOutputStream fileOutputStream = new FileOutputStream(sourceFile)) {
-            IOUtils.write("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")", fileOutputStream);
+            IOUtils.write("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")", fileOutputStream, StandardCharsets.UTF_8);
             Main.main(new String[]{"-s", sourceFile.getAbsolutePath()});
 
             assertEquals("******Mongo Query:*********\n" +

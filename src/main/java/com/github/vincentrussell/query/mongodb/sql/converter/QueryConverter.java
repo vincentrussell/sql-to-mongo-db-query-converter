@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -576,17 +577,19 @@ public final class QueryConverter {
         boolean isAggregation = queryDocument.get("query") != null && List.class.isInstance(queryDocument.get("query"));
         boolean isFindQuery = false;
         if (queryDocument.get("distinct") != null) {
-            IOUtils.write("db." + collectionName + ".distinct(", outputStream);
-            IOUtils.write("\"" + queryDocument.get("distinct") + "\"", outputStream);
-            IOUtils.write(" , ", outputStream);
-            IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream);
+            IOUtils.write("db." + collectionName + ".distinct(", outputStream, StandardCharsets.UTF_8);
+            IOUtils.write("\"" + queryDocument.get("distinct") + "\"", outputStream, StandardCharsets.UTF_8);
+            IOUtils.write(" , ", outputStream, StandardCharsets.UTF_8);
+            IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)),
+                    outputStream, StandardCharsets.UTF_8);
         } else if (Boolean.TRUE.equals(queryDocument.getBoolean("countAll")) && !isAggregation) {
-            IOUtils.write("db." + collectionName + ".count(", outputStream);
-            IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream);
+            IOUtils.write("db." + collectionName + ".count(", outputStream, StandardCharsets.UTF_8);
+            IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream,
+                    StandardCharsets.UTF_8);
         } else {
             if (isAggregation) {
-                IOUtils.write("db." + collectionName + ".aggregate(", outputStream);
-                IOUtils.write("[", outputStream);
+                IOUtils.write("db." + collectionName + ".aggregate(", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write("[", outputStream, StandardCharsets.UTF_8);
 
                 IOUtils.write(Joiner.on(",").join(Lists.transform(
                         queryDocument.getList("query", Document.class),
@@ -595,13 +598,13 @@ public final class QueryConverter {
                             public String apply(@Nonnull final Document document) {
                                 return prettyPrintJson(document.toJson(RELAXED));
                             }
-                        })), outputStream);
-                IOUtils.write("]", outputStream);
+                        })), outputStream, StandardCharsets.UTF_8);
+                IOUtils.write("]", outputStream, StandardCharsets.UTF_8);
 
                 Document options = (Document) queryDocument.get("options");
                 if (options != null && options.size() > 0) {
-                    IOUtils.write(",", outputStream);
-                    IOUtils.write(prettyPrintJson(options.toJson(RELAXED)), outputStream);
+                    IOUtils.write(",", outputStream, StandardCharsets.UTF_8);
+                    IOUtils.write(prettyPrintJson(options.toJson(RELAXED)), outputStream, StandardCharsets.UTF_8);
                 }
 
 
@@ -610,37 +613,39 @@ public final class QueryConverter {
                         firstNonNull(queryDocument.get("commandType"), SQLCommandType.SELECT.name()).toString());
                 if (SQLCommandType.SELECT.equals(sqlCommandType)) {
                     isFindQuery = true;
-                    IOUtils.write("db." + collectionName + ".find(", outputStream);
+                    IOUtils.write("db." + collectionName + ".find(", outputStream, StandardCharsets.UTF_8);
                 } else if (SQLCommandType.DELETE.equals(sqlCommandType)) {
-                    IOUtils.write("db." + collectionName + ".remove(", outputStream);
+                    IOUtils.write("db." + collectionName + ".remove(", outputStream, StandardCharsets.UTF_8);
                 }
-                IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)), outputStream);
+                IOUtils.write(prettyPrintJson(((Document) queryDocument.get("query")).toJson(RELAXED)),
+                        outputStream, StandardCharsets.UTF_8);
                 if (queryDocument.get("projection") != null) {
-                    IOUtils.write(" , ", outputStream);
+                    IOUtils.write(" , ", outputStream, StandardCharsets.UTF_8);
                     IOUtils.write(prettyPrintJson(((Document) queryDocument.get("projection")).toJson(RELAXED)),
-                            outputStream);
+                            outputStream, StandardCharsets.UTF_8);
                 }
             }
         }
-        IOUtils.write(")", outputStream);
+        IOUtils.write(")", outputStream, StandardCharsets.UTF_8);
 
         if (isFindQuery) {
             if (queryDocument.get("sort") != null) {
-                IOUtils.write(".sort(", outputStream);
-                IOUtils.write(prettyPrintJson(((Document) queryDocument.get("sort")).toJson(RELAXED)), outputStream);
-                IOUtils.write(")", outputStream);
+                IOUtils.write(".sort(", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write(prettyPrintJson(((Document) queryDocument.get("sort")).toJson(RELAXED)),
+                        outputStream, StandardCharsets.UTF_8);
+                IOUtils.write(")", outputStream, StandardCharsets.UTF_8);
             }
 
             if (queryDocument.get("skip") != null) {
-                IOUtils.write(".skip(", outputStream);
-                IOUtils.write(queryDocument.get("skip") + "", outputStream);
-                IOUtils.write(")", outputStream);
+                IOUtils.write(".skip(", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write(queryDocument.get("skip") + "", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write(")", outputStream, StandardCharsets.UTF_8);
             }
 
             if (queryDocument.get("limit") != null) {
-                IOUtils.write(".limit(", outputStream);
-                IOUtils.write(queryDocument.get("limit") + "", outputStream);
-                IOUtils.write(")", outputStream);
+                IOUtils.write(".limit(", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write(queryDocument.get("limit") + "", outputStream, StandardCharsets.UTF_8);
+                IOUtils.write(")", outputStream, StandardCharsets.UTF_8);
             }
         }
     }
