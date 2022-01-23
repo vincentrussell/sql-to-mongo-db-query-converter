@@ -71,11 +71,11 @@ public final class QueryConverter {
     private final CCJSqlParser jSqlParser;
     private final Integer aggregationBatchSize;
     private final Boolean aggregationAllowDiskUse;
-    private MongoDBQueryHolder mongoDBQueryHolder;
+    private final MongoDBQueryHolder mongoDBQueryHolder;
 
     private final Map<String, FieldType> fieldNameToFieldTypeMapping;
     private final FieldType defaultFieldType;
-    private SQLCommandInfoHolder sqlCommandInfoHolder;
+    private final SQLCommandInfoHolder sqlCommandInfoHolder;
 
     private static final JsonWriterSettings RELAXED = JsonWriterSettings.builder().outputMode(JsonMode.RELAXED).build();
 
@@ -104,7 +104,7 @@ public final class QueryConverter {
                     .setStatement(jSqlParser.Statement())
                     .build();
             this.fieldNameToFieldTypeMapping = fieldNameToFieldTypeMapping != null
-                    ? fieldNameToFieldTypeMapping : Collections.<String, FieldType>emptyMap();
+                    ? fieldNameToFieldTypeMapping : Collections.emptyMap();
 
             net.sf.jsqlparser.parser.Token nextToken = jSqlParser.getNextToken();
             SqlUtils.isTrue(
@@ -1007,7 +1007,7 @@ public final class QueryConverter {
     }
 
     private static class AliasProjectionForGroupItems {
-        private Map<String, String> fieldToAliasMapping = new HashMap<>();
+        private final Map<String, String> fieldToAliasMapping = new HashMap<>();
         private Document document = new Document();
 
 
