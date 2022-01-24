@@ -53,7 +53,7 @@ public class WhereClauseProcessor {
      * @param defaultFieldType the default {@link FieldType}
      * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} mapping
      * @param requiresMultistepAggregation if aggregation is detected for the sql query
-     * @param aliasHolder
+     * @param aliasHolder the {@link AliasHolder}
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping,
@@ -66,9 +66,9 @@ public class WhereClauseProcessor {
 
     /**
      * Constructor without AliasHolder.
-     * @param defaultFieldType
-     * @param fieldNameToFieldTypeMapping
-     * @param requiresMultistepAggregation
+     * @param defaultFieldType the default {@link FieldType}
+     * @param fieldNameToFieldTypeMapping the field name to type mapping
+     * @param requiresMultistepAggregation if multistep aggregation is required.
      */
     public WhereClauseProcessor(final FieldType defaultFieldType,
                                 final Map<String, FieldType> fieldNameToFieldTypeMapping,

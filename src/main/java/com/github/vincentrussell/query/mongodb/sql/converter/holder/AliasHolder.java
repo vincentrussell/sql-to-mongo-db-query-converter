@@ -41,7 +41,7 @@ public class AliasHolder {
 
     /**
      * is there an alias for this field?
-     * @param field
+     * @param field  the field that you want the alias for.
      * @return true if there is an alias for this field
      */
     public boolean containsAliasForFieldExp(final String field) {
@@ -83,7 +83,7 @@ public class AliasHolder {
 
     /**
      * Combine two alias holders.
-     * @param aliasHolder
+     * @param aliasHolder the {@link AliasHolder}
      */
     public void combine(final AliasHolder aliasHolder) {
         aliasFromFieldHash.putAll(aliasHolder.aliasFromFieldHash);

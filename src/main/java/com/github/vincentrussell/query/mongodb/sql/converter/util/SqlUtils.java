@@ -674,8 +674,8 @@ public final class SqlUtils {
 
     /**
      * Remove tablename from column.  For instance will rename column from c.column1 to column1.
-     * @param selectExpressionItem
-     * @param aliasBase
+     * @param selectExpressionItem the {@link SelectExpressionItem}
+     * @param aliasBase the alias base
      * @return the column without the tablename in the {@link SelectExpressionItem}
      */
     public static SelectExpressionItem removeAliasFromSelectExpressionItem(
