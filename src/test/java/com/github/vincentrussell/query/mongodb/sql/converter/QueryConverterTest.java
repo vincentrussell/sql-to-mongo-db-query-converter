@@ -1379,6 +1379,24 @@ public class QueryConverterTest {
                 "})",byteArrayOutputStream.toString("UTF-8"));
     }
 
+
+    @Test
+    public void functionInProjectClause() throws ParseException, IOException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select id,sin(temperature) as temp from GasRecordV1;\n" +
+                "\n").build();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        queryConverter.write(byteArrayOutputStream);
+        assertEquals("db.GasRecordV1.aggregate([{\n" +
+                "  \"$project\": {\n" +
+                "    \"_id\": 0,\n" +
+                "    \"id\": 1,\n" +
+                "    \"temp\": {\n" +
+                "      \"$sin\": \"$temperature\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}])",byteArrayOutputStream.toString("UTF-8"));
+    }
+
     @Test
     public void writeSumGroupBy() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT agent_code,   \n" +

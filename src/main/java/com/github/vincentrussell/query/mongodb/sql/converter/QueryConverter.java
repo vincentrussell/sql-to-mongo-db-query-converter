@@ -136,7 +136,6 @@ public final class QueryConverter {
                     public boolean apply(final SelectItem selectItem) {
                         try {
                             if (SelectExpressionItem.class.isInstance(selectItem)) {
-//                                    && Column.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
                                 return true;
                             }
                         } catch (NullPointerException e) {
@@ -156,8 +155,7 @@ public final class QueryConverter {
                 || SqlUtils.isSelectAll(selectItems))
                 && sqlCommandInfoHolder.isDistinct(), "cannot run distinct one more than one column");
         SqlUtils.isFalse(sqlCommandInfoHolder.getGroupBys().size() == 0
-                        && selectItems.size() != filteredItems.size()
-                        && !SqlUtils.isSelectAll(selectItems)
+                        && selectItems.size() != filteredItems.size() && !SqlUtils.isSelectAll(selectItems)
                         && !SqlUtils.isCountAll(selectItems)
                         && !sqlCommandInfoHolder.isTotalGroup(),
                 "illegal expression(s) found in select clause.  Only column names supported");
@@ -354,7 +352,7 @@ public final class QueryConverter {
             Object normalizedValue = SqlUtils.getNormalizedValue((Expression) object, null,
                     defaultFieldType, fieldNameToFieldTypeMapping, null);
             if (Column.class.isInstance(object)) {
-                return "$" + ((String)normalizedValue);
+                return "$" + ((String) normalizedValue);
             } else {
                 return normalizedValue;
             }

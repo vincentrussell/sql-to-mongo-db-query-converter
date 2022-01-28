@@ -712,6 +712,14 @@ more results? (y/n): n
 
 # Change Log
 
+
+## [1.21](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.21) (TBD)
+
+**Enhancements:**
+
+- Add support for functions in the projection clause
+
+
 ## [1.20](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.20) (2022-01-23)
 
 **Enhancements:**
