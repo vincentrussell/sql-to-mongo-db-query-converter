@@ -33,6 +33,7 @@ import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
 import net.sf.jsqlparser.schema.Column;
@@ -134,8 +135,7 @@ public final class QueryConverter {
                     @Override
                     public boolean apply(final SelectItem selectItem) {
                         try {
-                            if (SelectExpressionItem.class.isInstance(selectItem)
-                                    && Column.class.isInstance(((SelectExpressionItem) selectItem).getExpression())) {
+                            if (SelectExpressionItem.class.isInstance(selectItem)) {
                                 return true;
                             }
                         } catch (NullPointerException e) {
@@ -237,6 +237,14 @@ public final class QueryConverter {
                             (alias != null ? "$" + columnName : 1));
                 } else if (selectExpressionItem.getExpression() instanceof SubSelect) {
                     throw new ParseException("Unsupported subselect expression");
+                } else if (selectExpressionItem.getExpression() instanceof Function) {
+                    Function f = (Function) selectExpressionItem.getExpression();
+                    String columnName = f.toString();
+                    Alias alias = selectExpressionItem.getAlias();
+                    String key = (alias != null ? alias.getName() : columnName);
+                    Document functionDoc = (Document) recurseFunctions(new Document(), f,
+                            defaultFieldType, fieldNameToFieldTypeMapping);
+                    document.put(key, functionDoc);
                 } else {
                     throw new ParseException("Unsupported project expression");
                 }
@@ -322,6 +330,35 @@ public final class QueryConverter {
         mongoDBQueryHolder.setLimit(sqlCommandInfoHolder.getLimit());
 
         return mongoDBQueryHolder;
+    }
+
+    protected Object recurseFunctions(final Document query, final Object object,
+                                      final FieldType defaultFieldType,
+                                      final Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+        if (Function.class.isInstance(object)) {
+            Function function = (Function) object;
+            query.put("$" + SqlUtils.translateFunctionName(function.getName()),
+                    recurseFunctions(new Document(), function.getParameters(),
+                            defaultFieldType, fieldNameToFieldTypeMapping));
+        } else if (ExpressionList.class.isInstance(object)) {
+            ExpressionList expressionList = (ExpressionList) object;
+            List<Object> objectList = new ArrayList<>();
+            for (Expression expression : expressionList.getExpressions()) {
+                objectList.add(recurseFunctions(new Document(), expression,
+                        defaultFieldType, fieldNameToFieldTypeMapping));
+            }
+            return objectList.size() == 1 ? objectList.get(0) : objectList;
+        } else if (Expression.class.isInstance(object)) {
+            Object normalizedValue = SqlUtils.getNormalizedValue((Expression) object, null,
+                    defaultFieldType, fieldNameToFieldTypeMapping, null);
+            if (Column.class.isInstance(object)) {
+                return "$" + ((String) normalizedValue);
+            } else {
+                return normalizedValue;
+            }
+        }
+
+        return query.isEmpty() ? null : query;
     }
 
     private Expression preprocessWhere(final Expression exp, final FromHolder tholder) {
