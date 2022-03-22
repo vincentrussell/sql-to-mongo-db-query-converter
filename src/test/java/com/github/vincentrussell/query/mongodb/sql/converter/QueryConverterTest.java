@@ -640,6 +640,17 @@ public class QueryConverterTest {
     }
 
     @Test
+    public void specialtyFunctionTestWithIsNull() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder()
+            .sqlString("select * from my_table where QUICKSEARCH(field1) IS NULL AND QUICKSEARCH(field2) IS NOT NULL")
+            .defaultFieldType(FieldType.STRING).build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(0,mongoDBQueryHolder.getProjection().size());
+        assertEquals("my_table",mongoDBQueryHolder.getCollection());
+        assertEquals(documentValuesArray("$and", document("$QUICKSEARCH", "field1").append("$exists", Boolean.FALSE), document("$QUICKSEARCH", "field2").append("$exists", Boolean.TRUE) ), mongoDBQueryHolder.getQuery());
+    }
+
+    @Test
     public void specialtyFunctionTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder()
                 .sqlString("select * from my_table where QUICKSEARCH('123') AND (foo = 'bar')")

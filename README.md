@@ -718,6 +718,7 @@ more results? (y/n): n
 **Enhancements:**
 
 - Add support for functions in the projection clause
+- Handling speciality functions with IS NULL and IS NOT NULL expression
 
 
 ## [1.20](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.20) (2022-01-23)
