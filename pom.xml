@@ -47,6 +47,17 @@
     <jdk.version>1.8</jdk.version>
     <jdk-release.version>8</jdk-release.version>
 
+    <maven-checkstyle.version>3.2.1</maven-checkstyle.version>
+    <maven-compiler.version>3.11.0</maven-compiler.version>
+    <maven-failsafe.version>3.0.0-M9</maven-failsafe.version>
+    <maven-gpg.version>3.0.1</maven-gpg.version>
+    <maven-javadoc.version>3.5.0</maven-javadoc.version>
+    <maven-jxr.version>3.3.0</maven-jxr.version>
+    <maven-shade.version>3.4.1</maven-shade.version>
+    <maven-site.version>4.0.0-M5</maven-site.version>
+    <maven-source.version>3.2.1</maven-source.version>
+    <maven-spotbugs.version>4.7.3.2</maven-spotbugs.version>
+
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
     <commons-lang3.version>3.12.0</commons-lang3.version>
@@ -258,7 +269,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-checkstyle-plugin</artifactId>
-          <version>3.1.1</version>
+          <version>${maven-checkstyle.version}</version>
           <configuration>
             <configLocation>src/test/resources/checkstyle/checkstyle.xml</configLocation>
             <encoding>UTF-8</encoding>
@@ -279,7 +290,7 @@
         <plugin>
           <groupId>com.github.spotbugs</groupId>
           <artifactId>spotbugs-maven-plugin</artifactId>
-          <version>4.7.3.0</version>
+          <version>${maven-spotbugs.version}</version>
           <executions>
             <execution>
               <id>spotbugs</id>
@@ -300,7 +311,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.10.1</version>
+        <version>${maven-compiler.version}</version>
         <configuration>
           <source>${jdk.version}</source>
           <target>${jdk.version}</target>
@@ -319,7 +330,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.19.1</version>
+        <version>${maven-failsafe.version}</version>
         <executions>
           <execution>
             <goals>
@@ -332,7 +343,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.4.3</version>
+        <version>${maven-shade.version}</version>
         <executions>
           <execution>
             <goals>
@@ -390,7 +401,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.4.1</version>
+            <version>${maven-javadoc.version}</version>
             <executions>
               <execution>
                 <id>attach-javadocs</id>
@@ -403,7 +414,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>3.2.1</version>
+            <version>${maven-source.version}</version>
             <executions>
               <execution>
                 <id>attach-sources</id>
@@ -416,7 +427,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.0.1</version>
+            <version>${maven-gpg.version}</version>
             <executions>
               <execution>
                 <id>sign-artifacts</id>
@@ -430,13 +441,13 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-site-plugin</artifactId>
-            <version>3.5.1</version>
+            <version>${maven-site.version}</version>
             <configuration>
               <reportPlugins>
                 <plugin>
                   <groupId>org.apache.maven.plugins</groupId>
                   <artifactId>maven-jxr-plugin</artifactId>
-                  <version>2.4</version>
+                  <version>${maven-jxr.version}</version>
                   <configuration>
                     <aggregate>true</aggregate>
                     <javadocDir>target/site/apidocs/</javadocDir>
@@ -447,7 +458,7 @@
                 <plugin>
                   <groupId>org.apache.maven.plugins</groupId>
                   <artifactId>maven-javadoc-plugin</artifactId>
-                  <version>2.9.1</version>
+                  <version>${maven-javadoc.version}</version>
                   <configuration>
                     <aggregate>true</aggregate>
                     <!--<linksource>true</linksource>-->
