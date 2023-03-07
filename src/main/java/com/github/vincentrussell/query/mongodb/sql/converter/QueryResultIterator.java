@@ -4,8 +4,6 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import org.calrissian.mango.collect.AbstractCloseableIterator;
 
-import java.io.IOException;
-
 /**
  * Wrapper {@link java.util.Iterator} around the {@link MongoCursor}.
  * @param <T> the type of elements returned by this iterator
@@ -41,7 +39,7 @@ public class QueryResultIterator<T> extends AbstractCloseableIterator<T> {
      * {@inheritDoc}
      */
     @Override
-    public void close() throws IOException {
+    public void close() {
         mongoCursor.close();
     }
 }
