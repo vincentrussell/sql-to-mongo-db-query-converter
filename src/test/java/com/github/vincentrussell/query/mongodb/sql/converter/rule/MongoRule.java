@@ -1,35 +1,25 @@
 package com.github.vincentrussell.query.mongodb.sql.converter.rule;
 
-import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import de.flapdoodle.embed.mongo.MongodExecutable;
-import de.flapdoodle.embed.mongo.MongodProcess;
-import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.ImmutableMongoCmdOptions;
-import de.flapdoodle.embed.mongo.config.MongodConfig;
+import de.flapdoodle.embed.mongo.commands.MongodArguments;
+import de.flapdoodle.embed.mongo.commands.ServerAddress;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
-import de.flapdoodle.embed.process.runtime.Network;
+import de.flapdoodle.embed.mongo.transitions.Mongod;
+import de.flapdoodle.embed.mongo.transitions.RunningMongodProcess;
+import de.flapdoodle.reverse.Transition;
+import de.flapdoodle.reverse.TransitionWalker;
+import de.flapdoodle.reverse.transitions.Start;
 import org.junit.rules.ExternalResource;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.util.Random;
 
 public class MongoRule extends ExternalResource {
 
     private final IFeatureAwareVersion version;
-    private MongodStarter starter = MongodStarter.getDefaultInstance();
-    private MongodProcess mongodProcess;
-    private MongodExecutable mongodExecutable;
-    private int port = getRandomFreePort();
     private MongoClient mongoClient;
-    private MongoDatabase mongoDatabase;
-    private MongoCollection mongoCollection;
-
+    private TransitionWalker.ReachedState<RunningMongodProcess> running;
 
     public MongoRule(IFeatureAwareVersion version) {
         this.version = version;
@@ -37,56 +27,36 @@ public class MongoRule extends ExternalResource {
 
     @Override
     protected void before() throws Throwable {
-        MongodConfig mongodConfig = MongodConfig.builder()
-                .version(version)
-                .cmdOptions(ImmutableMongoCmdOptions.builder()
-                        .useNoPrealloc(false)
-                        .useSmallFiles(false)
-                        .build())
-                .net(new Net(port, Network.localhostIsIPv6()))
-                .build();
+        Net net = Net.of(de.flapdoodle.net.Net.getLocalHost().getHostName(),
+                de.flapdoodle.net.Net.freeServerPort(),
+                de.flapdoodle.net.Net.localhostIsIPv6());
 
-        mongodExecutable = starter.prepare(mongodConfig);
-        mongodProcess = mongodExecutable.start();
-        mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost:" + port));
+        Mongod mongod = new Mongod() {
+            @Override
+            public Transition<MongodArguments> mongodArguments() {
+                return Start.to(MongodArguments.class)
+                        .initializedWith(MongodArguments.defaults()
+                                .withUseNoPrealloc(false)
+                                .withUseSmallFiles(false));
+            }
+
+            @Override
+            public Transition<Net> net() {
+                return Start.to(Net.class).initializedWith(net);
+            }
+        };
+        running = mongod.start(version);
+        ServerAddress serverAddress = running.current().getServerAddress();
+        mongoClient = MongoClients.create("mongodb://" + serverAddress.toString());
     }
 
     public MongoDatabase getDatabase(String databaseName) {
         return mongoClient.getDatabase(databaseName);
     }
 
-    private static int getRandomFreePort() {
-        Random r = new Random();
-        int count = 0;
-
-        while (count < 13) {
-            int port = r.nextInt((1 << 16) - 1024) + 1024;
-
-            ServerSocket so = null;
-            try {
-                so = new ServerSocket(port);
-                so.setReuseAddress(true);
-                return port;
-            } catch (IOException ioe) {
-
-            } finally {
-                if (so != null)
-                    try {
-                        so.close();
-                    } catch (IOException e) {}
-            }
-
-        }
-
-        throw new RuntimeException("Unable to find port");
-    }
-
     @Override
     protected void after() {
         mongoClient.close();
-        mongodProcess.stop();
-        mongodExecutable.stop();
+        running.close();
     }
-
-
 }
