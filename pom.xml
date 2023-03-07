@@ -8,7 +8,7 @@
   <packaging>jar</packaging>
 
   <name>sql-to-mongo-db-query-converter</name>
-  <description>sql-to-mongo-db-query-converter helps you build quieres for
+  <description>sql-to-mongo-db-query-converter helps you build queries for
     MongoDb based on Queries provided in SQL.</description>
   <url>https://github.com/vincentrussell/sql-to-mongo-db-query-converter</url>
 
@@ -51,19 +51,19 @@
     <commons-io.version>2.11.0</commons-io.version>
     <commons-lang3.version>3.12.0</commons-lang3.version>
     <findbugs-jsr305.version>3.0.2</findbugs-jsr305.version>
-    <flapdoodle.version>4.4.0</flapdoodle.version>
+    <flapdoodle.version>4.6.1</flapdoodle.version>
     <gson.version>2.10.1</gson.version>
     <guava.version>31.1-jre</guava.version>
     <joda-time.version>2.12.2</joda-time.version>
     <jsonassert.version>1.5.1</jsonassert.version>
-    <jsqlparser.version>4.5</jsqlparser.version>
+    <jsqlparser.version>4.6</jsqlparser.version>
     <junit.version>4.13.2</junit.version>
-    <lombok.version>1.18.10</lombok.version>
+    <lombok.version>1.18.26</lombok.version>
     <mango.version>3.0.0</mango.version>
-    <mongodb.version>4.8.2</mongodb.version>
+    <mongodb.version>4.9.0</mongodb.version>
     <natty.version>0.13</natty.version>
     <slf4j.version>2.0.6</slf4j.version>
-    <system-rules.version>1.16.0</system-rules.version>
+    <system-rules.version>1.19.0</system-rules.version>
   </properties>
 
   <dependencyManagement>
