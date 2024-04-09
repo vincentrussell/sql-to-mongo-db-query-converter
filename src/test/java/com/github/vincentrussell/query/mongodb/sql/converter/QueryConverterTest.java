@@ -96,6 +96,27 @@ public class QueryConverterTest {
         assertEquals(documentValuesArray("$and", document("date", document("$gte", toDate("yyyy-MM-dd", "2012-12-01"))),
                 document("date", document("$lte", toDate("yyyy-MM-dd", "2012-12-02")))), mongoDBQueryHolder.getQuery());
     }
+    
+        @Test
+        public void functionsStayOnSameSideOfOperandLeftSide() throws ParseException {
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where beginningOfMonth(-1) < eventTime").build();
+            MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+            assertEquals(document("$lt", objsToList(document("$beginningOfMonth", Long.parseLong("-1")), "eventTime")), mongoDBQueryHolder.getQuery());
+        }
+    
+    @Test
+    public void functionsStayOnSameSideOfOperandRightSide() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where eventTime > beginningOfMonth(-1)").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("$gt", objsToList("eventTime", document("$beginningOfMonth", Long.parseLong("-1")))), mongoDBQueryHolder.getQuery());
+    }
+    
+    @Test
+    public void functionsOnBothSide() throws ParseException {
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where beginningOfMonth(-1) > beginningOfMonth(-1)").build();
+        MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
+        assertEquals(document("$gt", objsToList(document("$beginningOfMonth", Long.parseLong("-1")), document("$beginningOfMonth", Long.parseLong("-1")))), mongoDBQueryHolder.getQuery());
+    }
 
     @Test
     public void selectFieldSurroundedInQuotesInFunctions() throws ParseException {

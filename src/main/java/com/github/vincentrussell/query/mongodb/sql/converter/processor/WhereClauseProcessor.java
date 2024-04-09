@@ -95,8 +95,9 @@ public class WhereClauseProcessor {
             Document doc = new Document();
             Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
             Object rightParse = parseExpression(new Document(), rightExpression, leftExpression);
-            doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(rightExpression)
-                    && !rightExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
+            doc.put(operator, Arrays.asList(leftParse, ((SqlUtils.isColumn(rightExpression)
+                        && !rightExpression.toString().startsWith("$")
+                        && !Document.class.isInstance(leftParse)) ? "$" + rightParse : rightParse)));
             if (requiresMultistepAggregation) {
                 query.put("$expr", doc);
             } else {
@@ -117,10 +118,11 @@ public class WhereClauseProcessor {
             }
         } else if (Function.class.isInstance(rightExpression)) {
             Document doc = new Document();
-            Object leftParse = parseExpression(new Document(), rightExpression, leftExpression);
-            Object rightParse = parseExpression(new Document(), leftExpression, rightExpression);
-            doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(leftExpression)
-                    && !leftExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
+            Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
+            Object rightParse = parseExpression(new Document(), rightExpression, leftExpression);
+            doc.put(operator, Arrays.asList(leftParse, ((SqlUtils.isColumn(leftExpression)
+                    && !leftExpression.toString().startsWith("$")
+                    && !Document.class.isInstance(rightParse)) ? "$" + rightParse : rightParse)));
             if (requiresMultistepAggregation) {
                 query.put("$expr", doc);
             } else {

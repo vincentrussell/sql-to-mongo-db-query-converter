@@ -712,6 +712,12 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.22](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.21) (2024-04-09)
+
+**Bugs:**
+
+- Custom functions weren't being parsed correctly
+
 
 ## [1.21](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.21) (2022-03-21)
 
