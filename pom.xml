@@ -4,7 +4,7 @@
 
   <groupId>com.github.vincentrussell</groupId>
   <artifactId>sql-to-mongo-db-query-converter</artifactId>
-  <version>1.22</version>
+  <version>1.23-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>sql-to-mongo-db-query-converter</name>
