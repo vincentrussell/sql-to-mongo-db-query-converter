@@ -4,6 +4,7 @@ import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.ExpressionHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.FromHolder;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.from.SQLCommandInfoHolder;
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.CaseClauseProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.processor.HavingClauseProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.processor.JoinProcessor;
 import com.github.vincentrussell.query.mongodb.sql.converter.processor.WhereClauseProcessor;
@@ -30,9 +31,14 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.CaseExpression;
+import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
@@ -209,7 +215,7 @@ public final class QueryConverter {
             if (sqlCommandInfoHolder.getGroupBys().size() > 0) {
                 mongoDBQueryHolder.setGroupBys(groupBys);
             }
-            mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selects, groupBys));
+            mongoDBQueryHolder.setProjection(createProjectionsFromSelectItems(selects, groupBys, mongoDBQueryHolder));
             AliasProjectionForGroupItems aliasProjectionForGroupItems = createAliasProjectionForGroupItems(
                     selects, groupBys);
             mongoDBQueryHolder.setAliasProjection(aliasProjectionForGroupItems.getDocument());
@@ -217,7 +223,7 @@ public final class QueryConverter {
         } else if (sqlCommandInfoHolder.isTotalGroup()) {
             List<SelectItem> selects = preprocessSelect(sqlCommandInfoHolder.getSelectItems(),
                     sqlCommandInfoHolder.getFromHolder());
-            Document d = createProjectionsFromSelectItems(selects, null);
+            Document d = createProjectionsFromSelectItems(selects, null, mongoDBQueryHolder);
             mongoDBQueryHolder.setProjection(d);
             AliasProjectionForGroupItems aliasProjectionForGroupItems = createAliasProjectionForGroupItems(
                     selects, null);
@@ -268,7 +274,8 @@ public final class QueryConverter {
         if (sqlCommandInfoHolder.getOrderByElements() != null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
             mongoDBQueryHolder.setSort(createSortInfoFromOrderByElements(
                     preprocessOrderBy(sqlCommandInfoHolder.getOrderByElements(), sqlCommandInfoHolder.getFromHolder()),
-                    sqlCommandInfoHolder.getAliasHolder(), sqlCommandInfoHolder.getGroupBys()));
+                    sqlCommandInfoHolder.getAliasHolder(), sqlCommandInfoHolder.getGroupBys(),
+                    mongoDBQueryHolder));
         }
 
         if (sqlCommandInfoHolder.getWhereClause() != null) {
@@ -409,7 +416,8 @@ public final class QueryConverter {
 
     private Document createSortInfoFromOrderByElements(final List<OrderByElement> orderByElements,
                                                        final AliasHolder aliasHolder,
-                                                       final List<String> groupBys) throws ParseException {
+                                                       final List<String> groupBys,
+                                                       final MongoDBQueryHolder mongoHolder) throws ParseException {
         if (orderByElements.size() == 0) {
             return new Document();
         }
@@ -474,7 +482,7 @@ public final class QueryConverter {
                 } else {
                     Document parseFunctionDocument = new Document();
                     parseFunctionForAggregation(function, parseFunctionDocument,
-                            Collections.<String>emptyList(), null);
+                            Collections.<String>emptyList(), null, mongoHolder);
                     sortKey = Iterables.get(parseFunctionDocument.keySet(), 0);
                 }
                 sortItems.put(sortKey, orderByElement.isAsc() ? 1 : -1);
@@ -485,7 +493,8 @@ public final class QueryConverter {
     }
 
     private Document createProjectionsFromSelectItems(final List<SelectItem> selectItems,
-                                                      final List<String> groupBys) throws ParseException {
+                                                      final List<String> groupBys,
+                                                      final MongoDBQueryHolder mongoHolder) throws ParseException {
         Document document = new Document();
         if (selectItems.size() == 0) {
             return document;
@@ -539,7 +548,8 @@ public final class QueryConverter {
 
         for (SelectItem selectItem : functionItems) {
             Function function = (Function) ((SelectExpressionItem) selectItem).getExpression();
-            parseFunctionForAggregation(function, document, groupBys, ((SelectExpressionItem) selectItem).getAlias());
+            parseFunctionForAggregation(function, document, groupBys, ((SelectExpressionItem) selectItem).getAlias(),
+                    mongoHolder);
         }
 
         return document;
@@ -620,7 +630,8 @@ public final class QueryConverter {
     }
 
     private void parseFunctionForAggregation(final Function function, final Document document,
-                                             final List<String> groupBys, final Alias alias) throws ParseException {
+                                             final List<String> groupBys, final Alias alias,
+                                             final MongoDBQueryHolder mongoHolder) throws ParseException {
         String op = function.getName().toLowerCase();
         String aggField = SqlUtils.generateAggField(function, alias).getValue();
         switch (op) {
@@ -631,7 +642,12 @@ public final class QueryConverter {
             case "min":
             case "max":
             case "avg":
-                createFunction(op, aggField, document, "$" + SqlUtils.getFieldFromFunction(function));
+                Expression expression = function.getParameters().getExpressions().get(0);
+                if (expression instanceof CaseExpression) {
+                    createFunction(op, aggField, document, parseCaseExpression(expression, mongoHolder));
+                } else {
+                    createFunction(op, aggField, document, "$" + SqlUtils.getFieldFromFunction(function));
+                }
                 break;
             default:
                 throw new ParseException("could not understand function:" + function.getName());
@@ -643,6 +659,42 @@ public final class QueryConverter {
         document.put(aggField, new Document("$" + functionName, value));
     }
 
+    private Document parseCaseExpression(final Expression expression, final MongoDBQueryHolder mongoHolder)
+            throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
+        Document value = new Document();
+        Document cond = new Document();
+        CaseExpression caseExpression = (CaseExpression) expression;
+        CaseClauseProcessor processor = new CaseClauseProcessor(defaultFieldType, fieldNameToFieldTypeMapping,
+                mongoHolder.isRequiresMultistepAggregation());
+        WhenClause whenExpression = caseExpression.getWhenClauses().get(0);
+        processor.parseExpression(cond, whenExpression.getWhenExpression(), null);
+        Object thenValue = getActualValue(whenExpression.getThenExpression(), mongoHolder);
+        if (thenValue instanceof String) {
+            thenValue = String.format("$%s", thenValue);
+        }
+        Object elseValue = getActualValue(caseExpression.getElseExpression(), mongoHolder);
+        if (elseValue instanceof String) {
+            elseValue = String.format("$%s", elseValue);
+        }
+        value.put("$cond", Lists.newArrayList(cond, thenValue, elseValue));
+        return value;
+    }
+
+    private Object getActualValue(final Expression expression, final MongoDBQueryHolder mongoHolder)
+            throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
+        if (expression instanceof StringValue) {
+            return ((StringValue) expression).getValue();
+        } else if (expression instanceof LongValue) {
+            return ((LongValue) expression).getValue();
+        } else if (expression instanceof DoubleValue) {
+            return ((DoubleValue) expression).getValue();
+        } else if (expression instanceof Column) {
+            return SqlUtils.getStringValue(expression);
+        } else if (expression instanceof CaseExpression) {
+            return parseCaseExpression(expression, mongoHolder);
+        }
+        return expression.toString();
+    }
 
     /**
      * Build a mongo shell statement with the code to run the specified query.
@@ -1044,7 +1096,7 @@ public final class QueryConverter {
 
 
     private static String prettyPrintJson(final String json) {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Gson gson = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
         JsonParser jp = new JsonParser();
         JsonElement je = jp.parse(json);
         return gson.toJson(je);

@@ -3,7 +3,7 @@ package com.github.vincentrussell.query.mongodb.sql.converter.util;
 import com.github.vincentrussell.query.mongodb.sql.converter.FieldType;
 import com.github.vincentrussell.query.mongodb.sql.converter.ParseException;
 import com.github.vincentrussell.query.mongodb.sql.converter.holder.AliasHolder;
-import com.github.vincentrussell.query.mongodb.sql.converter.processor.WhereClauseProcessor;
+import com.github.vincentrussell.query.mongodb.sql.converter.processor.ClauseProcessor;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -16,6 +16,7 @@ import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.SignedExpression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimestampValue;
@@ -146,6 +147,8 @@ public final class SqlUtils {
         } else if (DoubleValue.class.isInstance(incomingExpression)) {
             return getNormalizedValue(convertToNegativeIfNeeded(((DoubleValue) incomingExpression).getValue(), sign),
                     fieldType);
+        } else if (NullValue.class.isInstance(incomingExpression)) {
+            return null;
         } else if (SignedExpression.class.isInstance(incomingExpression)) {
             SignedExpression signedExpression = (SignedExpression) incomingExpression;
             return getNormalizedValue(signedExpression.getExpression(), otherSide, defaultFieldType,
@@ -440,12 +443,12 @@ public final class SqlUtils {
     /**
      * Will take the expression and create an {@link ObjectIdFunction} if the expression is an ObjectId function.
      * Otherwise it will return null.
-     * @param whereClauseProcessor the {@link WhereClauseProcessor}
+     * @param clauseProcessor the {@link ClauseProcessor}
      * @param incomingExpression the incoming expression
      * @return the {@link ObjectIdFunction}
      * @throws ParseException if there is an issue parsing the query
      */
-    public static ObjectIdFunction isObjectIdFunction(final WhereClauseProcessor whereClauseProcessor,
+    public static ObjectIdFunction isObjectIdFunction(final ClauseProcessor clauseProcessor,
                                                       final Expression incomingExpression) throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
             ComparisonOperator comparisonOperator = (ComparisonOperator) incomingExpression;
@@ -489,7 +492,7 @@ public final class SqlUtils {
                                 @Override
                                 public Object apply(final Expression expression) {
                                     try {
-                                        return whereClauseProcessor.parseExpression(
+                                        return clauseProcessor.parseExpression(
                                                 new Document(), expression, leftExpression);
                                     } catch (ParseException e) {
                                         throw new RuntimeException(e);
