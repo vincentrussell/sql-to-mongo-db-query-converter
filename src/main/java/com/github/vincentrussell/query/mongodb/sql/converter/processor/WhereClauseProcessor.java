@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 /**
  * Class responsible for parsing where clause in sql structure.
  */
-public class WhereClauseProcessor {
+public class WhereClauseProcessor implements ClauseProcessor {
 
     private final FieldType defaultFieldType;
     private final Map<String, FieldType> fieldNameToFieldTypeMapping;
@@ -134,9 +134,10 @@ public class WhereClauseProcessor {
                 query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
                         parseExpression(new Document(), rightExpression, leftExpression));
             } else {
-                subdocument.put(operator, parseExpression(new Document(), rightExpression, leftExpression));
-                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
-                        subdocument);
+                String leftParse = parseExpression(new Document(), leftExpression, rightExpression).toString();
+                Object rightParse = parseExpression(new Document(), rightExpression, leftExpression);
+                subdocument.put(operator, rightParse);
+                query.put(leftParse, subdocument);
             }
         } else {
             Document doc = new Document();
@@ -224,8 +225,7 @@ public class WhereClauseProcessor {
             String convertedRegexString = "^" + SqlUtils.replaceRegexCharacters(stringValueRightSide) + "$";
             Document document = new Document("$regex", convertedRegexString);
             if (likeExpression.isNot()) {
-                document = new Document(stringValueLeftSide, new Document("$not", Pattern.compile(
-                        convertedRegexString)));
+                document = new Document(stringValueLeftSide, new Document("$not", document));
             } else {
                 document = new Document(stringValueLeftSide, document);
             }
