@@ -287,7 +287,7 @@ public final class QueryConverter {
                 for (UpdateSet updateSet : Iterables.filter(sqlCommandInfoHolder.getUpdateSets(),
                         new Predicate<UpdateSet>() {
                     @Override
-                    public boolean apply(@org.checkerframework.checker.nullness.qual.Nullable final UpdateSet input) {
+                    public boolean apply(@Nullable final UpdateSet input) {
                         return !NullValue.class.isInstance(input.getExpressions().get(0));
                     }
                 })) {
@@ -305,7 +305,7 @@ public final class QueryConverter {
                 for (UpdateSet updateSet : Iterables.filter(sqlCommandInfoHolder.getUpdateSets(),
                         new Predicate<UpdateSet>() {
                     @Override
-                    public boolean apply(@org.checkerframework.checker.nullness.qual.Nullable final UpdateSet input) {
+                    public boolean apply(@Nullable final UpdateSet input) {
                         return NullValue.class.isInstance(input.getExpressions().get(0));
                     }
                 })) {

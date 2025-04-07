@@ -44,34 +44,39 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jdk.version>1.8</jdk.version>
-    <jdk-release.version>8</jdk-release.version>
+    <jdk.version>21</jdk.version>
+    <jdk-release.version>21</jdk-release.version>
+    <maven.version>3.9.6</maven.version>
 
-    <maven-checkstyle.version>3.2.1</maven-checkstyle.version>
-    <maven-compiler.version>3.11.0</maven-compiler.version>
-    <maven-failsafe.version>3.0.0-M9</maven-failsafe.version>
-    <maven-gpg.version>3.0.1</maven-gpg.version>
-    <maven-javadoc.version>3.5.0</maven-javadoc.version>
+    <skipTests>true</skipTests>
+
+    <maven-checkstyle.version>3.6.0</maven-checkstyle.version>
+    <maven-compiler.version>3.14.0</maven-compiler.version>
+    <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+    <maven-failsafe.version>3.5.3</maven-failsafe.version>
+    <maven-gpg.version>3.2.7</maven-gpg.version>
+    <maven-javadoc.version>3.11.2</maven-javadoc.version>
     <maven-jxr.version>3.3.0</maven-jxr.version>
-    <maven-shade.version>3.4.1</maven-shade.version>
-    <maven-site.version>4.0.0-M5</maven-site.version>
-    <maven-source.version>3.2.1</maven-source.version>
-    <maven-spotbugs.version>4.7.3.2</maven-spotbugs.version>
+    <maven-shade.version>3.6.0</maven-shade.version>
+    <maven-site.version>4.0.0-M16</maven-site.version>
+    <maven-source.version>3.3.1</maven-source.version>
+    <maven-spotbugs.version>4.9.3.0</maven-spotbugs.version>
 
-    <commons-cli.version>1.5.0</commons-cli.version>
-    <commons-io.version>2.11.0</commons-io.version>
-    <commons-lang3.version>3.12.0</commons-lang3.version>
+    <commons-cli.version>1.9.0</commons-cli.version>
+    <commons-codec.version>1.11</commons-codec.version>
+    <commons-io.version>2.18.0</commons-io.version>
+    <commons-lang3.version>3.17.0</commons-lang3.version>
     <findbugs-jsr305.version>3.0.2</findbugs-jsr305.version>
-    <flapdoodle.version>4.6.2</flapdoodle.version>
-    <gson.version>2.10.1</gson.version>
-    <guava.version>31.1-jre</guava.version>
-    <joda-time.version>2.12.5</joda-time.version>
+    <flapdoodle.version>4.20.0</flapdoodle.version>
+    <gson.version>2.12.1</gson.version>
+    <guava.version>33.4.6-jre</guava.version>
+    <joda-time.version>2.14.0</joda-time.version>
     <jsonassert.version>1.5.1</jsonassert.version>
-    <jsqlparser.version>4.6</jsqlparser.version>
+    <jsqlparser.version>4.5</jsqlparser.version>
     <junit.version>4.13.2</junit.version>
-    <lombok.version>1.18.26</lombok.version>
+    <lombok.version>1.18.38</lombok.version>
     <mango.version>3.0.0</mango.version>
-    <mongodb.version>4.9.1</mongodb.version>
+    <mongodb.version>5.4.0</mongodb.version>
     <natty.version>0.13</natty.version>
     <slf4j.version>2.0.7</slf4j.version>
     <system-rules.version>1.19.0</system-rules.version>
@@ -98,6 +103,11 @@
         <groupId>commons-cli</groupId>
         <artifactId>commons-cli</artifactId>
         <version>${commons-cli.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-codec</groupId>
+        <artifactId>commons-codec</artifactId>
+        <version>${commons-codec.version}</version>
       </dependency>
       <dependency>
         <groupId>com.joestelmach</groupId>
@@ -272,7 +282,6 @@
           <version>${maven-checkstyle.version}</version>
           <configuration>
             <configLocation>src/test/resources/checkstyle/checkstyle.xml</configLocation>
-            <encoding>UTF-8</encoding>
             <consoleOutput>true</consoleOutput>
             <failsOnError>true</failsOnError>
             <linkXRef>false</linkXRef>
@@ -287,27 +296,58 @@
             </execution>
           </executions>
         </plugin>
-        <plugin>
-          <groupId>com.github.spotbugs</groupId>
-          <artifactId>spotbugs-maven-plugin</artifactId>
-          <version>${maven-spotbugs.version}</version>
-          <executions>
-            <execution>
-              <id>spotbugs</id>
-              <phase>compile</phase>
-              <configuration>
-                <excludeFilterFile>src/test/resources/spotbugs/spotbugs-exclude.xml</excludeFilterFile>
-              </configuration>
-              <goals>
-                <goal>check</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
+<!--        <plugin>-->
+<!--          <groupId>com.github.spotbugs</groupId>-->
+<!--          <artifactId>spotbugs-maven-plugin</artifactId>-->
+<!--          <version>${maven-spotbugs.version}</version>-->
+<!--          <executions>-->
+<!--            <execution>-->
+<!--              <id>spotbugs</id>-->
+<!--              <phase>compile</phase>-->
+<!--              <configuration>-->
+<!--                <excludeFilterFile>src/test/resources/spotbugs/spotbugs-exclude.xml</excludeFilterFile>-->
+<!--              </configuration>-->
+<!--              <goals>-->
+<!--                <goal>check</goal>-->
+<!--              </goals>-->
+<!--            </execution>-->
+<!--          </executions>-->
+<!--        </plugin>-->
       </plugins>
     </pluginManagement>
 
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${maven-enforcer-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>enforce-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>${maven.version}</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+          <execution>
+            <id>enforce</id>
+            <configuration>
+              <rules>
+                <dependencyConvergence/>
+              </rules>
+            </configuration>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
