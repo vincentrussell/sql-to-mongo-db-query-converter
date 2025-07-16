@@ -94,12 +94,12 @@
       <dependency>
         <groupId>org.mongodb</groupId>
         <artifactId>bson</artifactId>
-        <version>${mongodb.version}</version>
+        <version>4.3.1</version>
       </dependency>
       <dependency>
         <groupId>org.mongodb</groupId>
         <artifactId>mongodb-driver-sync</artifactId>
-        <version>${mongodb.version}</version>
+        <version>4.3.1</version>
       </dependency>
       <dependency>
         <groupId>com.github.jsqlparser</groupId>
@@ -109,7 +109,7 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>${slf4j.version}</version>
+        <version>1.6.1</version>
       </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
@@ -119,17 +119,17 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-nop</artifactId>
-        <version>${slf4j.version}</version>
+        <version>1.6.1</version>
       </dependency>
       <dependency>
         <groupId>com.github.stefanbirkner</groupId>
         <artifactId>system-rules</artifactId>
-        <version>1.16.0</version>
+        <version>1.19.0</version>
       </dependency>
       <dependency>
         <groupId>de.flapdoodle.embed</groupId>
         <artifactId>de.flapdoodle.embed.mongo</artifactId>
-        <version>3.0.0</version>
+        <version>4.12.3</version>
       </dependency>
       <dependency>
         <groupId>org.skyscreamer</groupId>
@@ -215,7 +215,7 @@
     <dependency>
       <groupId>de.flapdoodle.embed</groupId>
       <artifactId>de.flapdoodle.embed.mongo</artifactId>
-      <version>3.0.0</version>
+      <version>1.6.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
