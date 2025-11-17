@@ -73,6 +73,9 @@ public final class SqlUtils {
             YY_MM_DDFORMATTER,
             YYMMDDFORMATTER));
 
+    private static final Collection<Pattern> BAD_DATE_REGEXES = Collections.unmodifiableList(Arrays.asList(
+            Pattern.compile("^\\d{4}-\\d{2}$"), Pattern.compile("^\\d{4}$")));
+
     private static final Character NEGATIVE_NUMBER_SIGN = Character.valueOf('-');
 
     private SqlUtils() {
@@ -322,6 +325,11 @@ public final class SqlUtils {
                     //noop
                 }
             }
+            for (Pattern pattern : BAD_DATE_REGEXES) {
+                if (pattern.matcher((String) value).matches()) {
+                     throw new ParseException("could not convert " + value + " to a valid date");
+                }
+            }
             try {
                 return parseNaturalLanguageDate((String) value);
             } catch (Exception e) {
@@ -329,7 +337,7 @@ public final class SqlUtils {
             }
 
         }
-        throw new ParseException("could not convert " + value + " to a date");
+        throw new ParseException("could not convert " + value + " to a valid date");
     }
 
     /**

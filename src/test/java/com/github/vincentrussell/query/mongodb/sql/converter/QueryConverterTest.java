@@ -389,7 +389,7 @@ public class QueryConverterTest {
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWitUnparseableNaturalDateGT() throws ParseException {
         expectedException.expect(ParseException.class);
-        expectedException.expectMessage(containsString("could not convert who cares to a date"));
+        expectedException.expectMessage(containsString("could not convert who cares to a valid date"));
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"who cares\"").fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.DATE);
         }}).build();
@@ -3100,6 +3100,17 @@ public class QueryConverterTest {
                 "  }\n" +
                 "}])",byteArrayOutputStream.toString("UTF-8"));
     }
+    
+      @Test
+        @SuppressWarnings("unchecked")
+        public void dateFormatYYYYMM() throws ParseException {
+            expectedException.expect(ParseException.class);
+            expectedException.expectMessage(containsString("could not convert 2013-07 to a valid date"));
+            QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"2013-07\"")
+                    .fieldNameToFieldTypeMapping(new HashMap(){{
+                put("value",FieldType.DATE);
+            }}).build();
+        }
 
     private static Document document(String key, Object... values) {
         Document document = new Document();

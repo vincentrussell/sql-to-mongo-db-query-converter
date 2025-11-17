@@ -712,6 +712,12 @@ more results? (y/n): n
 
 # Change Log
 
+## [1.23](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.23) (2025-11-17)
+
+**Bugs:**
+
+- Throw an exception if dates in queries are passed in with the following invalid formats: YYYY-MM, YYYY
+
 ## [1.22](https://github.com/vincentrussell/sql-to-mongo-db-query-converter/tree/sql-to-mongo-db-query-converter-1.22) (2024-04-09)
 
 **Bugs:**
