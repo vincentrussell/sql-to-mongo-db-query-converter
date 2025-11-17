@@ -4,7 +4,7 @@
 
   <groupId>com.github.vincentrussell</groupId>
   <artifactId>sql-to-mongo-db-query-converter</artifactId>
-  <version>1.23</version>
+  <version>1.24-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>sql-to-mongo-db-query-converter</name>
@@ -346,6 +346,15 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.9.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+        </configuration>
       </plugin>
     </plugins>
 
