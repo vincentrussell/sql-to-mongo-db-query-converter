@@ -241,12 +241,17 @@ public final class SqlUtils {
 
     /**
      * get offset as long.
+     * @param limit  the limit
      * @param offset the offset
      * @return the offset
      */
-    public static long getOffsetAsLong(final Offset offset) {
+    public static long getOffsetAsLong(final Limit limit, final Offset offset) throws ParseException {
         if (offset != null && LongValue.class.isInstance(offset.getOffset())) {
             return ((LongValue) offset.getOffset()).getValue();
+        } else {
+            if (limit != null) {
+                return getLongFromStringIfInteger(SqlUtils.getStringValue(limit.getOffset()));
+            }
         }
         return -1;
     }
