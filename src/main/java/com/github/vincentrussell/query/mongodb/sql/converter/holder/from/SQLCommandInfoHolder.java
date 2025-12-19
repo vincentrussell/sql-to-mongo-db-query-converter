@@ -327,7 +327,7 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
             from = generateFromHolder(new FromHolder(this.defaultFieldType,
                     this.fieldNameToFieldTypeMapping), plainSelect.getFromItem(), plainSelect.getJoins());
             limit = SqlUtils.getLimitAsLong(plainSelect.getLimit());
-            offset = SqlUtils.getOffsetAsLong(plainSelect.getOffset());
+            offset = SqlUtils.getOffsetAsLong(plainSelect.getLimit(), plainSelect.getOffset());
             orderByElements = plainSelect.getOrderByElements();
             selectItems = plainSelect.getSelectItems();
             joins = plainSelect.getJoins();
